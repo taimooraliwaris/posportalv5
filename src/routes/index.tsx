@@ -13,7 +13,10 @@ export const Route = createFileRoute("/")({
       { title: "Open Register — Velora POS" },
       { name: "description", content: "Open your register and start selling with Velora POS." },
       { property: "og:title", content: "Open Register — Velora POS" },
-      { property: "og:description", content: "Open your register and start selling with Velora POS." },
+      {
+        property: "og:description",
+        content: "Open your register and start selling with Velora POS.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

@@ -179,7 +179,11 @@ function Orders() {
             This will permanently remove order {confirmDelete?.number}.
           </p>
           <div className="flex gap-2">
-            <Button variant="destructive" className="h-11" onClick={() => confirmDelete && handleDelete(confirmDelete)}>
+            <Button
+              variant="destructive"
+              className="h-11"
+              onClick={() => confirmDelete && handleDelete(confirmDelete)}
+            >
               Delete
             </Button>
             <Button variant="secondary" className="h-11" onClick={() => setConfirmDelete(null)}>

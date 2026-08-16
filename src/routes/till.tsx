@@ -1,13 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  MoreVertical,
-  Plus,
-  StickyNote,
-  Trash2,
-  Upload,
-  User,
-} from "lucide-react";
+import { MoreVertical, Plus, StickyNote, Trash2, Upload, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PosHeader } from "@/components/pos/PosHeader";
 import { ProductTile } from "@/components/pos/ProductTile";
@@ -16,7 +9,14 @@ import { ScannerOverlay } from "@/components/pos/ScannerOverlay";
 import { ChooseCustomerModal } from "@/components/pos/CustomerModals";
 import { OrderActionsModal } from "@/components/pos/OrderActionModals";
 import { usePos, orderTotals, type CartLine } from "@/lib/pos-context";
-import { categories, formatRs, pricelists, products, toneClass, type Product } from "@/lib/pos-data";
+import {
+  categories,
+  formatRs,
+  pricelists,
+  products,
+  toneClass,
+  type Product,
+} from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -93,7 +93,8 @@ function Till() {
     if (Number.isNaN(num)) return;
     if (keypadMode === "qty") updateLine(selectedLineId, { qty: Math.max(1, num) });
     if (keypadMode === "price") updateLine(selectedLineId, { unitPrice: Math.max(0, num) });
-    if (keypadMode === "percent") updateLine(selectedLineId, { discount: Math.max(0, Math.min(100, num)) });
+    if (keypadMode === "percent")
+      updateLine(selectedLineId, { discount: Math.max(0, Math.min(100, num)) });
   };
   const handleAddProduct = (product: Product) => {
     addProduct(product);
@@ -107,7 +108,12 @@ function Till() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <PosHeader tab="register" search={search} onSearch={setSearch} onScan={() => setScanning(true)} />
+      <PosHeader
+        tab="register"
+        search={search}
+        onSearch={setSearch}
+        onScan={() => setScanning(true)}
+      />
       <main className="flex flex-1 flex-col gap-0 overflow-hidden lg:flex-row">
         <section className="flex flex-col border-r border-border bg-card lg:w-[26rem] xl:w-[30rem]">
           <div className="flex-1 overflow-y-auto p-3">
@@ -228,7 +234,9 @@ function Till() {
           <div className="grid flex-1 grid-cols-2 gap-3 overflow-y-auto p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProducts.map((p) => {
               const qty = activeOrder?.lines.find((l) => l.productId === p.id)?.qty ?? 0;
-              return <ProductTile key={p.id} product={p} qty={qty} onAdd={() => handleAddProduct(p)} />;
+              return (
+                <ProductTile key={p.id} product={p} qty={qty} onAdd={() => handleAddProduct(p)} />
+              );
             })}
           </div>
         </section>
@@ -280,7 +288,9 @@ function CartLineItem({
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <span className="font-semibold">{formatRs(line.qty * line.unitPrice * (1 - line.discount / 100))}</span>
+        <span className="font-semibold">
+          {formatRs(line.qty * line.unitPrice * (1 - line.discount / 100))}
+        </span>
         <button
           type="button"
           onClick={(e) => {
@@ -296,4 +306,3 @@ function CartLineItem({
     </div>
   );
 }
-

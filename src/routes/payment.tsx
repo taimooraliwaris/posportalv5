@@ -165,11 +165,7 @@ function Payment() {
             <Button variant="secondary" className="h-14" asChild>
               <Link to="/till">Back</Link>
             </Button>
-            <Button
-              className="h-14 text-base"
-              disabled={!covered}
-              onClick={handleValidate}
-            >
+            <Button className="h-14 text-base" disabled={!covered} onClick={handleValidate}>
               Validate
             </Button>
           </div>

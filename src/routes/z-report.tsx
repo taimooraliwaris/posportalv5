@@ -25,9 +25,18 @@ function ZReport() {
   const [daily, setDaily] = useState(false);
 
   const paidOrders = orders.filter((o) => o.status === "paid");
-  const totalSales = paidOrders.reduce((s, o) => s + o.lines.reduce((l, li) => l + li.qty * li.unitPrice, 0), 0);
-  const totalTax = paidOrders.reduce((s, o) => s + o.lines.reduce((l, li) => l + li.qty * li.unitPrice * 0.18, 0), 0);
-  const totalPayments = paidOrders.reduce((s, o) => s + o.payments.reduce((p, py) => p + py.amount, 0), 0);
+  const totalSales = paidOrders.reduce(
+    (s, o) => s + o.lines.reduce((l, li) => l + li.qty * li.unitPrice, 0),
+    0,
+  );
+  const totalTax = paidOrders.reduce(
+    (s, o) => s + o.lines.reduce((l, li) => l + li.qty * li.unitPrice * 0.18, 0),
+    0,
+  );
+  const totalPayments = paidOrders.reduce(
+    (s, o) => s + o.payments.reduce((p, py) => p + py.amount, 0),
+    0,
+  );
   const cashPayments = paidOrders
     .flatMap((o) => o.payments)
     .filter((p) => p.method === "Cash")
@@ -46,7 +55,12 @@ function ZReport() {
           </Link>
         </Button>
         <h1 className="text-lg font-semibold">Z Report</h1>
-        <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => setDaily((d) => !d)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-11 w-11"
+          onClick={() => setDaily((d) => !d)}
+        >
           <FileText className="h-5 w-5" />
         </Button>
       </header>
@@ -98,7 +112,9 @@ function ZReport() {
               >
                 <span className="font-medium">{o.number}</span>
                 <span className="text-sm text-muted-foreground">{o.time}</span>
-                <span className="text-sm text-muted-foreground">{o.lines.reduce((s, l) => s + l.qty, 0)}</span>
+                <span className="text-sm text-muted-foreground">
+                  {o.lines.reduce((s, l) => s + l.qty, 0)}
+                </span>
                 <span className="font-medium">
                   {formatRs(o.lines.reduce((s, l) => s + l.qty * l.unitPrice * 1.18, 0))}
                 </span>
