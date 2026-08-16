@@ -189,7 +189,7 @@ function PaymentMethodButton({
 }: {
   label: string;
   onClick: () => void;
-  active?: boolean;
+  active: boolean | undefined;
 }) {
   return (
     <button
