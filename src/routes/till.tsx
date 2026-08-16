@@ -53,7 +53,7 @@ function Till() {
   const [scanning, setScanning] = useState(false);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [keypadMode, setKeypadMode] = useKeypadMode();
+  const [keypadMode, setKeypadMode] = useState<KeypadMode>("qty");
   const [keypadValue, setKeypadValue] = useState("");
 
   const pricelist = pricelists.find((p) => p.id === activeOrder?.pricelistId) ?? pricelists[0]!;
@@ -293,14 +293,4 @@ function CartLineItem({
   );
 }
 
-function useKeypadMode() {
-  const [mode, setMode] = useState<KeypadMode>("qty");
-  return [
-    mode,
-    (value: string) => {
-      if (value === "qty" || value === "price" || value === "percent") {
-        setMode(value);
-      }
-    },
-  ] as const;
 }
