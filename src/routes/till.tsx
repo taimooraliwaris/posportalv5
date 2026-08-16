@@ -70,6 +70,11 @@ function Till() {
   }, [category, search]);
 
   const onKey = (key: string) => {
+    if (key === "qty" || key === "price" || key === "percent") {
+      setKeypadMode(key);
+      setKeypadValue("");
+      return;
+    }
     if (!selectedLineId) {
       toast("Select a line first to use the keypad");
       return;
@@ -90,7 +95,6 @@ function Till() {
     if (keypadMode === "price") updateLine(selectedLineId, { unitPrice: Math.max(0, num) });
     if (keypadMode === "percent") updateLine(selectedLineId, { discount: Math.max(0, Math.min(100, num)) });
   };
-
   const handleAddProduct = (product: Product) => {
     addProduct(product);
     const line = activeOrder?.lines.find((l) => l.productId === product.id);
