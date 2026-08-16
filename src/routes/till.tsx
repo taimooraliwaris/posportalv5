@@ -141,7 +141,7 @@ function Till() {
                 type="button"
                 onClick={() => setCustomerOpen(true)}
                 className={cn(
-                  "flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium transition-colors",
+                  "flex min-h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors",
                   customer ? "bg-accent text-accent-foreground" : "bg-card",
                 )}
               >
@@ -150,21 +150,21 @@ function Till() {
               <button
                 type="button"
                 onClick={() => setActionsOpen(true)}
-                className="flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium transition-colors"
+                className="flex min-h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors"
               >
                 <StickyNote className="h-4 w-4" /> Note
               </button>
               <button
                 type="button"
                 onClick={() => toast("Upload not implemented in prototype")}
-                className="flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium transition-colors"
+                className="flex min-h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors"
               >
                 <Upload className="h-4 w-4" /> Upload
               </button>
               <button
                 type="button"
                 onClick={() => setActionsOpen(true)}
-                className="grid h-11 w-11 place-items-center rounded-full border border-border"
+                className="grid h-11 w-11 place-items-center rounded-md border border-border"
                 aria-label="Order actions"
               >
                 <MoreVertical className="h-4 w-4" />
@@ -211,7 +211,7 @@ function Till() {
               type="button"
               onClick={() => setCategory(null)}
               className={cn(
-                "min-h-11 shrink-0 rounded-full border border-border px-4 text-sm font-medium",
+                "min-h-11 shrink-0 rounded-md border border-border px-4 text-sm font-medium",
                 category === null && "bg-primary text-primary-foreground",
               )}
             >
@@ -223,7 +223,7 @@ function Till() {
                 type="button"
                 onClick={() => setCategory(c.id)}
                 className={cn(
-                  "min-h-11 shrink-0 rounded-full border border-border px-4 text-sm font-medium",
+                  "min-h-11 shrink-0 rounded-md border border-border px-4 text-sm font-medium",
                   category === c.id && toneClass[c.tone],
                 )}
               >
