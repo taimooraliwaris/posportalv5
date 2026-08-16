@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CloseRegisterRouteImport } from './routes/close-register'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PaymentRouteImport } from './routes/payment'
+import { Route as PriceCheckRouteImport } from './routes/price-check'
 import { Route as TillRouteImport } from './routes/till'
 import { Route as ZReportRouteImport } from './routes/z-report'
 
@@ -36,6 +37,11 @@ const PaymentRoute = PaymentRouteImport.update({
   path: '/payment',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PriceCheckRoute = PriceCheckRouteImport.update({
+  id: '/price-check',
+  path: '/price-check',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TillRoute = TillRouteImport.update({
   id: '/till',
   path: '/till',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
+  '/price-check': typeof PriceCheckRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
+  '/price-check': typeof PriceCheckRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
 }
@@ -69,21 +77,36 @@ export interface FileRoutesById {
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
+  '/price-check': typeof PriceCheckRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/close-register' | '/orders' | '/payment' | '/till' | '/z-report'
+    | '/'
+    | '/close-register'
+    | '/orders'
+    | '/payment'
+    | '/price-check'
+    | '/till'
+    | '/z-report'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/close-register' | '/orders' | '/payment' | '/till' | '/z-report'
+  to:
+    | '/'
+    | '/close-register'
+    | '/orders'
+    | '/payment'
+    | '/price-check'
+    | '/till'
+    | '/z-report'
   id:
     | '__root__'
     | '/'
     | '/close-register'
     | '/orders'
     | '/payment'
+    | '/price-check'
     | '/till'
     | '/z-report'
   fileRoutesById: FileRoutesById
@@ -93,6 +116,7 @@ export interface RootRouteChildren {
   CloseRegisterRoute: typeof CloseRegisterRoute
   OrdersRoute: typeof OrdersRoute
   PaymentRoute: typeof PaymentRoute
+  PriceCheckRoute: typeof PriceCheckRoute
   TillRoute: typeof TillRoute
   ZReportRoute: typeof ZReportRoute
 }
@@ -127,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/price-check': {
+      id: '/price-check'
+      path: '/price-check'
+      fullPath: '/price-check'
+      preLoaderRoute: typeof PriceCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/till': {
       id: '/till'
       path: '/till'
@@ -149,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   CloseRegisterRoute: CloseRegisterRoute,
   OrdersRoute: OrdersRoute,
   PaymentRoute: PaymentRoute,
+  PriceCheckRoute: PriceCheckRoute,
   TillRoute: TillRoute,
   ZReportRoute: ZReportRoute,
 }
