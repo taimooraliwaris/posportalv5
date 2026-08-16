@@ -203,7 +203,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
           setActiveOrderId(o.id);
           return [o];
         }
-        if (id === activeOrderId) setActiveOrderId(next[0].id);
+        if (id === activeOrderId) setActiveOrderId(next[0]!.id);
         return next;
       });
     },
