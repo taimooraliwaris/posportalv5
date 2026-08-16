@@ -4,7 +4,6 @@ import { ArrowLeft, Barcode, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductIcon } from "@/components/pos/ProductTile";
-import { ScannerOverlay } from "@/components/pos/ScannerOverlay";
 import { usePos } from "@/lib/pos-context";
 import { TAX_RATE, formatRs, categories, toneClass, type Product } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
@@ -32,15 +31,12 @@ export const Route = createFileRoute("/price-check")({
 function PriceCheck() {
   const { productList } = usePos();
   const [query, setQuery] = useState("");
-  const [scanning, setScanning] = useState(false);
   const [selected, setSelected] = useState<Product | null>(null);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return productList.slice(0, 12);
-    return productList.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.barcode.includes(q),
-    );
+    return productList.filter((p) => p.name.toLowerCase().includes(q) || p.barcode.includes(q));
   }, [productList, query]);
 
   const categoryName = selected
@@ -75,7 +71,13 @@ function PriceCheck() {
             variant="secondary"
             size="icon"
             className="h-12 w-12"
-            onClick={() => setScanning(true)}
+            onClick={() => {
+              const random = productList[Math.floor(Math.random() * productList.length)];
+              if (random) {
+                setSelected(random);
+                setQuery(random.barcode);
+              }
+            }}
             aria-label="Scan barcode"
           >
             <Barcode className="h-5 w-5" />
@@ -144,19 +146,6 @@ function PriceCheck() {
           )}
         </ul>
       </main>
-
-      {scanning && (
-        <ScannerOverlay
-          onClose={() => {
-            setScanning(false);
-            const random = productList[Math.floor(Math.random() * productList.length)];
-            if (random) {
-              setSelected(random);
-              setQuery(random.barcode);
-            }
-          }}
-        />
-      )}
     </div>
   );
 }
