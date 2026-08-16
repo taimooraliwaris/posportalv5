@@ -124,7 +124,8 @@ export function CustomerNoteModal({
               className={cn(
                 "min-h-11 rounded-full px-4 text-sm font-medium transition-all duration-150",
                 tagTone[t.label],
-                tags.includes(t.label) && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                tags.includes(t.label) &&
+                  "ring-2 ring-primary ring-offset-2 ring-offset-background",
               )}
             >
               {t.label}

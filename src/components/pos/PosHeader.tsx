@@ -150,7 +150,12 @@ export function PosHeader({
             <DropdownMenuItem onSelect={() => toast("Customer display opened on screen 2")}>
               <Monitor className="h-4 w-4" /> Customer Display
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); toggle(); }}>
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                toggle();
+              }}
+            >
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               {dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             </DropdownMenuItem>

@@ -93,11 +93,7 @@ export function Receipt({ order, simple }: { order: Order | null; simple?: boole
       {!simple && (
         <div className="border-t border-dashed border-border pt-3">
           {(order?.lines ?? []).map((l) => (
-            <Row
-              key={l.id}
-              label={`${l.qty} x ${l.name}`}
-              value={formatRs(l.qty * l.unitPrice)}
-            />
+            <Row key={l.id} label={`${l.qty} x ${l.name}`} value={formatRs(l.qty * l.unitPrice)} />
           ))}
         </div>
       )}

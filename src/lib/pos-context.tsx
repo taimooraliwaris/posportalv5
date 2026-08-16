@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import {
   TAX_RATE,
   products as seedProducts,
@@ -69,10 +62,7 @@ function makeOrder(number?: string): Order {
 
 export function orderTotals(order: Order | undefined, discountRate = 0) {
   const lines = order?.lines ?? [];
-  const gross = lines.reduce(
-    (sum, l) => sum + l.unitPrice * l.qty * (1 - l.discount / 100),
-    0,
-  );
+  const gross = lines.reduce((sum, l) => sum + l.unitPrice * l.qty * (1 - l.discount / 100), 0);
   const subtotal = gross * (1 - discountRate);
   const taxes = subtotal * TAX_RATE;
   return { subtotal, taxes, total: subtotal + taxes };
@@ -148,9 +138,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
           if (existing) {
             return {
               ...o,
-              lines: o.lines.map((l) =>
-                l.id === existing.id ? { ...l, qty: l.qty + 1 } : l,
-              ),
+              lines: o.lines.map((l) => (l.id === existing.id ? { ...l, qty: l.qty + 1 } : l)),
             };
           }
           return {
@@ -256,9 +244,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
     removePayment: (id) => {
       setOrders((prev) =>
         prev.map((o) =>
-          o.id === activeOrderId
-            ? { ...o, payments: o.payments.filter((p) => p.id !== id) }
-            : o,
+          o.id === activeOrderId ? { ...o, payments: o.payments.filter((p) => p.id !== id) } : o,
         ),
       );
     },
@@ -279,11 +265,17 @@ export function PosProvider({ children }: { children: ReactNode }) {
     },
     productList,
     addProductToCatalog: (p) => {
-      setProductList((prev) => [{ ...p, id: `p-${Math.random().toString(36).slice(2, 8)}` }, ...prev]);
+      setProductList((prev) => [
+        { ...p, id: `p-${Math.random().toString(36).slice(2, 8)}` },
+        ...prev,
+      ]);
     },
     cashMoves,
     addCashMove: (m) => {
-      setCashMoves((prev) => [...prev, { ...m, id: `cm-${Math.random().toString(36).slice(2, 8)}` }]);
+      setCashMoves((prev) => [
+        ...prev,
+        { ...m, id: `cm-${Math.random().toString(36).slice(2, 8)}` },
+      ]);
     },
     lastPaidOrder,
   };
