@@ -107,16 +107,16 @@ function Till() {
     : null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       <PosHeader
         tab="register"
         search={search}
         onSearch={setSearch}
         onScan={() => setScanning(true)}
       />
-      <main className="flex flex-1 flex-col gap-0 overflow-hidden lg:flex-row">
-        <section className="flex flex-col border-r border-border bg-card lg:w-[26rem] xl:w-[30rem]">
-          <div className="flex-1 overflow-y-auto p-3">
+      <main className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden lg:flex-row">
+        <section className="flex min-h-0 flex-col border-r border-border bg-card lg:w-[26rem] lg:shrink-0 xl:w-[30rem]">
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
             {activeOrder && activeOrder.lines.length > 0 ? (
               activeOrder.lines.map((line) => (
                 <CartLineItem
@@ -135,7 +135,7 @@ function Till() {
             )}
           </div>
 
-          <div className="border-t border-border p-3">
+          <div className="shrink-0 border-t border-border p-3">
             <div className="mb-3 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -205,8 +205,8 @@ function Till() {
           </div>
         </section>
 
-        <section className="flex flex-1 flex-col overflow-hidden bg-background">
-          <div className="flex items-center gap-2 overflow-x-auto border-b border-border p-3">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
+          <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border p-3">
             <button
               type="button"
               onClick={() => setCategory(null)}
@@ -231,7 +231,7 @@ function Till() {
               </button>
             ))}
           </div>
-          <div className="grid flex-1 grid-cols-2 gap-3 overflow-y-auto p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-3 overflow-y-auto p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProducts.map((p) => {
               const qty = activeOrder?.lines.find((l) => l.productId === p.id)?.qty ?? 0;
               return (
