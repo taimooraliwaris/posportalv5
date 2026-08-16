@@ -185,7 +185,7 @@ function Payment() {
 function PaymentMethodButton({
   label,
   onClick,
-  active,
+  active = false,
 }: {
   label: string;
   onClick: () => void;
