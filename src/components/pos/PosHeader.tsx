@@ -13,6 +13,7 @@ import {
   Search,
   Server,
   Sun,
+  Tag,
   Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,9 +52,9 @@ export function PosHeader({
   const openTabs = orders.filter((o) => o.status !== "paid" && o.status !== "cancelled");
 
   return (
-    <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-card px-3 py-2 lg:flex lg:flex-wrap">
-      <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
-        <div className="flex shrink-0 overflow-hidden rounded-xl border border-border">
+    <header className="flex flex-wrap items-center gap-3 border-b border-border bg-card px-3 py-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+        <div className="flex shrink-0 overflow-hidden rounded-md border border-border">
           <Link
             to="/till"
             className={cn(
@@ -95,7 +96,7 @@ export function PosHeader({
                 navigate({ to: "/till" });
               }}
               className={cn(
-                "min-h-11 shrink-0 rounded-xl border border-border px-4 text-sm font-medium transition-colors",
+                "min-h-11 shrink-0 rounded-md border border-border px-4 text-sm font-medium transition-colors",
                 o.id === activeOrderId && tab === "register"
                   ? "border-primary bg-accent text-accent-foreground"
                   : "bg-card",
@@ -107,9 +108,9 @@ export function PosHeader({
         </div>
       </div>
 
-      <div className="col-span-2 flex min-w-0 flex-1 items-center gap-2 lg:col-auto">
-        {onSearch && (
-          <div className="relative min-w-0 flex-1 lg:mx-4 lg:max-w-md">
+      {onSearch && (
+        <div className="order-last w-full shrink-0 lg:order-none lg:w-auto lg:flex-[2] lg:justify-center">
+          <div className="relative mx-auto w-full max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -118,7 +119,10 @@ export function PosHeader({
               className="h-11 pl-9"
             />
           </div>
-        )}
+        </div>
+      )}
+
+      <div className="flex flex-1 items-center justify-end gap-2">
         {onScan && (
           <Button
             variant="ghost"
@@ -133,7 +137,7 @@ export function PosHeader({
         <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 text-xs font-medium sm:flex">
           <Wifi className="h-3.5 w-3.5" /> {STORE.network}
         </span>
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-foreground text-sm font-semibold text-background">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-foreground text-sm font-semibold text-background">
           R
         </span>
         <DropdownMenu>
@@ -161,6 +165,9 @@ export function PosHeader({
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => toast("Install prompt is not available in preview")}>
               <Download className="h-4 w-4" /> Install App
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate({ to: "/price-check" })}>
+              <Tag className="h-4 w-4" /> Price check
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setCashOpen(true)}>
               <Banknote className="h-4 w-4" /> Cash In/Out
