@@ -13,6 +13,7 @@ import {
   Search,
   Server,
   Sun,
+  Tag,
   Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -136,7 +137,7 @@ export function PosHeader({
         <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 text-xs font-medium sm:flex">
           <Wifi className="h-3.5 w-3.5" /> {STORE.network}
         </span>
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-foreground text-sm font-semibold text-background">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-foreground text-sm font-semibold text-background">
           R
         </span>
         <DropdownMenu>
@@ -164,6 +165,9 @@ export function PosHeader({
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => toast("Install prompt is not available in preview")}>
               <Download className="h-4 w-4" /> Install App
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate({ to: "/price-check" })}>
+              <Tag className="h-4 w-4" /> Price check
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setCashOpen(true)}>
               <Banknote className="h-4 w-4" /> Cash In/Out
