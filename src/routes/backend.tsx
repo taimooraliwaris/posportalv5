@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { BackendProvider } from "@/lib/backend-context";
+import { PasscodeGate } from "@/components/backend/passcode-gate";
 
 export const Route = createFileRoute("/backend")({
   component: BackendShell,
@@ -7,8 +7,8 @@ export const Route = createFileRoute("/backend")({
 
 function BackendShell() {
   return (
-    <BackendProvider>
+    <PasscodeGate>
       <Outlet />
-    </BackendProvider>
+    </PasscodeGate>
   );
 }
