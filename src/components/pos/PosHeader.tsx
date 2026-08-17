@@ -3,17 +3,15 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Barcode,
   Banknote,
-  Download,
   LogOut,
   Menu,
-  Monitor,
   Moon,
   Plus,
-  RefreshCw,
   Search,
   Server,
   Sun,
   Tag,
+  Undo2,
   Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
