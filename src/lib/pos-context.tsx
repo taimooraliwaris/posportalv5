@@ -146,7 +146,8 @@ const PosContext = createContext<PosState | null>(null);
 
 export function PosProvider({ children }: { children: ReactNode }) {
   const first = useMemo(() => makeOrder("1001"), []);
-  const [orders, setOrders] = useState<Order[]>([first]);
+  const [orders, setOrders] = useState<Order[]>(() => [first, ...makePaidHistory()]);
+  const [returns, setReturns] = useState<ReturnRecord[]>([]);
   const [activeOrderId, setActiveOrderId] = useState(first.id);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [customers, setCustomers] = useState<Customer[]>(seedCustomers);
