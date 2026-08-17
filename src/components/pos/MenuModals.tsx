@@ -266,8 +266,8 @@ export function NewProductModal({
                 reorderPoint: Number(minStock || 0),
                 cost: Number(price || 0) * 0.6,
                 supplierId: "",
-                location: storeSettings.name,
-                description: created.name,
+                active: true,
+                description: `${created.name} - stocked at ${storeSettings.name}.`,
                 history: [0, 0, 0, 0, 0, 0],
               });
               setName("");
