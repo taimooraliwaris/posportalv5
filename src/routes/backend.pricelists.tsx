@@ -53,7 +53,10 @@ function PricelistsPage() {
           <Button
             className="h-11"
             onClick={() => {
-              if (!name.trim()) return toast("Enter a pricelist name");
+              if (!name.trim()) {
+                toast("Enter a pricelist name");
+                return;
+              }
               addPricelist({
                 name,
                 ruleType: "percentage",

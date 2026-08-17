@@ -97,7 +97,7 @@ function CustomersPage() {
         </DataCard>
       </DetailDrawer>
 
-      <CreatePartnerModal open={createOpen} onOpenChange={setCreateOpen} />
+      <CreatePartnerModal open={createOpen} onOpenChange={setCreateOpen} onCreated={() => setCreateOpen(false)} />
     </BackendLayout>
   );
 }
