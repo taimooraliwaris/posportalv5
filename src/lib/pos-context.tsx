@@ -142,6 +142,36 @@ type PosState = {
   updateProductInCatalog: (id: string, patch: Partial<Product>) => void;
 };
 
+/** A few completed sales so returns and exchanges have real orders to look up. */
+function makePaidHistory(): Order[] {
+  const preset: { number: string; time: string; items: [string, number][] }[] = [
+    { number: "0998", time: "10:24", items: [["p1", 2], ["p5", 1]] },
+    { number: "0999", time: "11:47", items: [["p15", 1], ["p2", 2]] },
+    { number: "1000", time: "13:05", items: [["p9", 1], ["p4", 3]] },
+  ];
+  return preset.map((p) => ({
+    id: `o-${p.number}`,
+    number: p.number,
+    receipt: `RCP/${p.number}`,
+    time: p.time,
+    status: "paid" as OrderStatus,
+    lines: p.items.map(([productId, qty], index) => {
+      const product = seedProducts.find((sp) => sp.id === productId)!;
+      return {
+        id: `l-${p.number}-${index}`,
+        productId,
+        name: product.name,
+        qty,
+        unitPrice: product.price,
+        discount: 0,
+      };
+    }),
+    payments: [],
+    noteTags: [],
+    pricelistId: "pl1",
+  }));
+}
+
 const PosContext = createContext<PosState | null>(null);
 
 export function PosProvider({ children }: { children: ReactNode }) {
