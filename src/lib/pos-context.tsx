@@ -130,7 +130,7 @@ type PosState = {
   addCustomer: (c: Omit<Customer, "id">) => Customer;
 
   productList: Product[];
-  addProductToCatalog: (p: Omit<Product, "id">) => void;
+  addProductToCatalog: (p: Omit<Product, "id">) => Product;
 
   categoryList: Category[];
   addCategory: (name: string) => Category;
@@ -338,10 +338,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
     },
     productList,
     addProductToCatalog: (p) => {
-      setProductList((prev) => [
-        { ...p, id: `p-${Math.random().toString(36).slice(2, 8)}` },
-        ...prev,
-      ]);
+      const created: Product = { ...p, id: `p-${Math.random().toString(36).slice(2, 8)}` };
+      setProductList((prev) => [created, ...prev]);
+      return created;
     },
     categoryList,
     addCategory: (name) => {

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { usePos } from "@/lib/pos-context";
+import { useBackend } from "@/lib/backend-context";
 import { formatRs, TAX_RATE, type CategoryId } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -102,6 +103,7 @@ export function NewProductModal({
   presetBarcode?: string;
 }) {
   const { addProductToCatalog, categoryList, addCategory } = usePos();
+  const { addStockItem, storeSettings } = useBackend();
   const [name, setName] = useState("");
   const [newCategory, setNewCategory] = useState("");
   const [minStock, setMinStock] = useState("5");
@@ -248,17 +250,26 @@ export function NewProductModal({
             className="h-11 px-6"
             disabled={!name.trim()}
             onClick={() => {
-              addProductToCatalog(
-                {
-                  name,
-                  price: Number(price || 0),
-                  category,
-                  barcode: barcode || "0000000",
-                  tone,
-                  icon: "Package",
-                },
-                { minStock: Number(minStock || 0) },
-              );
+              const created = addProductToCatalog({
+                name,
+                price: Number(price || 0),
+                category,
+                barcode: barcode || "0000000",
+                tone,
+                icon: "Package",
+              });
+              addStockItem({
+                productId: created.id,
+                sku: `SKU-${created.id.slice(-4).toUpperCase()}`,
+                onHand: 0,
+                reserved: 0,
+                reorderPoint: Number(minStock || 0),
+                cost: Number(price || 0) * 0.6,
+                supplierId: "",
+                location: storeSettings.name,
+                description: created.name,
+                history: [0, 0, 0, 0, 0, 0],
+              });
               setName("");
               onOpenChange(false);
               toast.success("Product created");
