@@ -34,7 +34,9 @@ function Dashboard() {
   const days = [...new Set(sessions.map((s) => s.date))].sort().slice(-7);
   const chartData = days.map((day) => ({
     day: formatDate(day).slice(0, 5),
-    sales: Math.round(sessions.filter((s) => s.date === day).reduce((sum, s) => sum + s.totalSales, 0)),
+    sales: Math.round(
+      sessions.filter((s) => s.date === day).reduce((sum, s) => sum + s.totalSales, 0),
+    ),
   }));
   const today = chartData.at(-1)?.sales ?? 0;
   const yesterday = chartData.at(-2)?.sales ?? 0;
@@ -86,7 +88,10 @@ function Dashboard() {
         <DataCard className="p-4">
           <p className="mb-3 font-medium">Top selling products</p>
           {top.map((t) => (
-            <div key={t.name} className="flex justify-between border-b border-border py-2 text-sm last:border-0">
+            <div
+              key={t.name}
+              className="flex justify-between border-b border-border py-2 text-sm last:border-0"
+            >
               <span>{t.name}</span>
               <span className="text-muted-foreground">
                 {t.units} units · {formatRs(t.revenue)}
@@ -95,17 +100,26 @@ function Dashboard() {
           ))}
         </DataCard>
         <DataCard className="grid gap-2 p-4 sm:grid-cols-3">
-          <QuickTile to="/backend/products" icon={<Plus className="h-5 w-5" />} label="Add product" />
+          <QuickTile
+            to="/backend/products"
+            icon={<Plus className="h-5 w-5" />}
+            label="Add product"
+          />
           <QuickTile
             to="/backend/purchases"
             icon={<ShoppingCart className="h-5 w-5" />}
             label="New purchase order"
           />
-          <QuickTile to="/z-report" icon={<Receipt className="h-5 w-5" />} label="Today's Z Report" />
+          <QuickTile
+            to="/z-report"
+            icon={<Receipt className="h-5 w-5" />}
+            label="Today's Z Report"
+          />
         </DataCard>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Latest trading day shown: {lastDay ? formatDate(lastDay) : formatDate(toDateKey(new Date()))}
+        Latest trading day shown:{" "}
+        {lastDay ? formatDate(lastDay) : formatDate(toDateKey(new Date()))}
       </p>
     </BackendLayout>
   );

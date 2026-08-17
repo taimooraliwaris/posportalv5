@@ -14,9 +14,15 @@ export const Route = createFileRoute("/backend/sales")({
   head: () => ({
     meta: [
       { title: "Sales — Velora back office" },
-      { name: "description", content: "Completed sales plus every return and exchange processed at the till." },
+      {
+        name: "description",
+        content: "Completed sales plus every return and exchange processed at the till.",
+      },
       { property: "og:title", content: "Sales — Velora back office" },
-      { property: "og:description", content: "Completed sales plus every return and exchange processed at the till." },
+      {
+        property: "og:description",
+        content: "Completed sales plus every return and exchange processed at the till.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -36,7 +42,9 @@ function SalesPage() {
 
   const rows = sales
     .filter((s) => (!from || s.date >= from) && (!to || s.date <= to))
-    .sort((a, b) => (a.date === b.date ? b.time.localeCompare(a.time) : b.date.localeCompare(a.date)))
+    .sort((a, b) =>
+      a.date === b.date ? b.time.localeCompare(a.time) : b.date.localeCompare(a.date),
+    )
     .slice(0, 120);
 
   return (
@@ -126,7 +134,11 @@ function SalesPage() {
             <Field label="Cashier" value={selected.cashier} />
             <div className="border-t border-dashed border-border pt-2">
               {selected.lines.map((l, i) => (
-                <Field key={i} label={`${l.qty} × ${l.name}`} value={formatRs(l.qty * l.unitPrice)} />
+                <Field
+                  key={i}
+                  label={`${l.qty} × ${l.name}`}
+                  value={formatRs(l.qty * l.unitPrice)}
+                />
               ))}
             </div>
             <div className="border-t border-dashed border-border pt-2">

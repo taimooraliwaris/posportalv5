@@ -15,9 +15,15 @@ export const Route = createFileRoute("/backend/settings")({
   head: () => ({
     meta: [
       { title: "Settings — Velora back office" },
-      { name: "description", content: "Staff roles, tax rates, store details and register session history." },
+      {
+        name: "description",
+        content: "Staff roles, tax rates, store details and register session history.",
+      },
       { property: "og:title", content: "Settings — Velora back office" },
-      { property: "og:description", content: "Staff roles, tax rates, store details and register session history." },
+      {
+        property: "og:description",
+        content: "Staff roles, tax rates, store details and register session history.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

@@ -28,9 +28,15 @@ export const Route = createFileRoute("/backend/reports")({
   head: () => ({
     meta: [
       { title: "Reports — Velora back office" },
-      { name: "description", content: "Profit and loss, sales analytics and a calendar of X and Z reports." },
+      {
+        name: "description",
+        content: "Profit and loss, sales analytics and a calendar of X and Z reports.",
+      },
       { property: "og:title", content: "Reports — Velora back office" },
-      { property: "og:description", content: "Profit and loss, sales analytics and a calendar of X and Z reports." },
+      {
+        property: "og:description",
+        content: "Profit and loss, sales analytics and a calendar of X and Z reports.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -56,8 +62,7 @@ function ReportsPage() {
 
   if (!hydrated) return <BackendLayout title="Reports">{null}</BackendLayout>;
 
-  const costFor = (productId: string) =>
-    stock.find((s) => s.productId === productId)?.cost ?? 0;
+  const costFor = (productId: string) => stock.find((s) => s.productId === productId)?.cost ?? 0;
 
   const revenue = sales.reduce((sum, s) => sum + s.total / (1 + TAX_RATE), 0);
   const cogs = sales.reduce(
@@ -96,7 +101,8 @@ function ReportsPage() {
     .map((p) => ({
       name: p.name,
       units: sales.reduce(
-        (sum, s) => sum + s.lines.filter((l) => l.productId === p.id).reduce((ls, l) => ls + l.qty, 0),
+        (sum, s) =>
+          sum + s.lines.filter((l) => l.productId === p.id).reduce((ls, l) => ls + l.qty, 0),
         0,
       ),
     }))
@@ -160,7 +166,11 @@ function ReportsPage() {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={bestSellers} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--border)"
+                      horizontal={false}
+                    />
                     <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} />
                     <YAxis dataKey="name" type="category" width={110} fontSize={12} />
                     <Tooltip />
@@ -174,7 +184,13 @@ function ReportsPage() {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={byMethod} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90}>
+                    <Pie
+                      data={byMethod}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={55}
+                      outerRadius={90}
+                    >
                       {byMethod.map((entry) => (
                         <Cell key={entry.name} fill={entry.fill} />
                       ))}
@@ -311,7 +327,10 @@ function ReportsPage() {
               <div className="border-t border-dashed border-border pt-2">
                 <p className="font-medium">SOLD</p>
                 <Field label="Orders" value={selectedSession.orderCount} />
-                <Field label="Net sales" value={formatRs(selectedSession.totalSales / (1 + TAX_RATE))} />
+                <Field
+                  label="Net sales"
+                  value={formatRs(selectedSession.totalSales / (1 + TAX_RATE))}
+                />
               </div>
               <div className="border-t border-dashed border-border pt-2">
                 <p className="font-medium">PAYMENTS</p>
@@ -322,7 +341,9 @@ function ReportsPage() {
                 <p className="font-medium">TAXES</p>
                 <Field
                   label="GST 18%"
-                  value={formatRs(selectedSession.totalSales - selectedSession.totalSales / (1 + TAX_RATE))}
+                  value={formatRs(
+                    selectedSession.totalSales - selectedSession.totalSales / (1 + TAX_RATE),
+                  )}
                 />
               </div>
               <div className="border-t border-dashed border-border pt-2">

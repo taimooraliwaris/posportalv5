@@ -14,7 +14,10 @@ export const Route = createFileRoute("/backend/customers")({
       { title: "Customers — Velora back office" },
       { name: "description", content: "Customer records, order history and account ledgers." },
       { property: "og:title", content: "Customers — Velora back office" },
-      { property: "og:description", content: "Customer records, order history and account ledgers." },
+      {
+        property: "og:description",
+        content: "Customer records, order history and account ledgers.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -32,7 +35,11 @@ function CustomersPage() {
   return (
     <BackendLayout
       title="Customers"
-      actions={<Button className="h-11" onClick={() => setCreateOpen(true)}>New customer</Button>}
+      actions={
+        <Button className="h-11" onClick={() => setCreateOpen(true)}>
+          New customer
+        </Button>
+      }
     >
       <DataCard>
         <div className="hidden grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-3 border-b border-border px-4 py-2 text-sm font-medium text-muted-foreground md:grid">
@@ -60,7 +67,9 @@ function CustomersPage() {
               <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>
               <span>{customerOrders.length}</span>
               <span>{formatRs(spend)}</span>
-              <span className={cn("font-medium", balance < 0 ? "text-destructive" : "text-success")}>
+              <span
+                className={cn("font-medium", balance < 0 ? "text-destructive" : "text-success")}
+              >
                 {formatRs(Math.abs(balance))}
               </span>
             </button>
@@ -87,7 +96,10 @@ function CustomersPage() {
             { date: "09/08/2026", description: "Invoice RCP/1000", amount: -12500 },
             { date: "14/08/2026", description: "Cash received", amount: 8000 },
           ].map((row) => (
-            <div key={row.date} className="flex justify-between border-b border-border py-2 text-sm last:border-0">
+            <div
+              key={row.date}
+              className="flex justify-between border-b border-border py-2 text-sm last:border-0"
+            >
               <span className="text-muted-foreground">
                 {row.date} · {row.description}
               </span>
@@ -97,7 +109,11 @@ function CustomersPage() {
         </DataCard>
       </DetailDrawer>
 
-      <CreatePartnerModal open={createOpen} onOpenChange={setCreateOpen} onCreated={() => setCreateOpen(false)} />
+      <CreatePartnerModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => setCreateOpen(false)}
+      />
     </BackendLayout>
   );
 }

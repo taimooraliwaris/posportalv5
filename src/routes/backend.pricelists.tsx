@@ -13,9 +13,15 @@ export const Route = createFileRoute("/backend/pricelists")({
   head: () => ({
     meta: [
       { title: "Pricelists — Velora back office" },
-      { name: "description", content: "Create and manage retail, wholesale and seasonal pricing rules." },
+      {
+        name: "description",
+        content: "Create and manage retail, wholesale and seasonal pricing rules.",
+      },
       { property: "og:title", content: "Pricelists — Velora back office" },
-      { property: "og:description", content: "Create and manage retail, wholesale and seasonal pricing rules." },
+      {
+        property: "og:description",
+        content: "Create and manage retail, wholesale and seasonal pricing rules.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

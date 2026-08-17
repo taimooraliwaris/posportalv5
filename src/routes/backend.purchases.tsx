@@ -14,9 +14,15 @@ export const Route = createFileRoute("/backend/purchases")({
   head: () => ({
     meta: [
       { title: "Purchases — Velora back office" },
-      { name: "description", content: "Suppliers and purchase orders that feed stock back into inventory." },
+      {
+        name: "description",
+        content: "Suppliers and purchase orders that feed stock back into inventory.",
+      },
       { property: "og:title", content: "Purchases — Velora back office" },
-      { property: "og:description", content: "Suppliers and purchase orders that feed stock back into inventory." },
+      {
+        property: "og:description",
+        content: "Suppliers and purchase orders that feed stock back into inventory.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

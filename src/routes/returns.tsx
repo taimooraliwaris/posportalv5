@@ -95,9 +95,7 @@ function ReturnExchange() {
 
   const selectOrder = (o: Order) => {
     setOrder(o);
-    setDrafts(
-      Object.fromEntries(o.lines.map((l) => [l.id, { qty: 0, reason: returnReasons[0] }])),
-    );
+    setDrafts(Object.fromEntries(o.lines.map((l) => [l.id, { qty: 0, reason: returnReasons[0] }])));
     setStage("lines");
   };
 
@@ -156,7 +154,12 @@ function ReturnExchange() {
                   className="h-12 pl-9"
                 />
               </div>
-              <Button variant="secondary" className="h-12 w-12 p-0" onClick={scan} aria-label="Scan receipt QR code">
+              <Button
+                variant="secondary"
+                className="h-12 w-12 p-0"
+                onClick={scan}
+                aria-label="Scan receipt QR code"
+              >
                 <QrCode className="h-5 w-5" />
               </Button>
             </div>
@@ -305,7 +308,10 @@ function ReturnExchange() {
 
             <aside className="space-y-3">
               <div className="space-y-1 rounded-xl bg-muted p-3 text-sm">
-                <Row label="Items selected" value={String(returnLines.reduce((s, l) => s + l.qty, 0))} />
+                <Row
+                  label="Items selected"
+                  value={String(returnLines.reduce((s, l) => s + l.qty, 0))}
+                />
                 <Row label="Refund subtotal" value={formatRs(refundNet)} />
                 <Row label="Taxes" value={formatRs(refundNet * TAX_RATE)} />
                 <div className="flex justify-between text-base font-semibold">
@@ -353,11 +359,7 @@ function ReturnExchange() {
                   <Button className="h-14 w-full text-base" onClick={() => confirm("return")}>
                     Confirm refund
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="h-11 w-full"
-                    onClick={() => setStage("lines")}
-                  >
+                  <Button variant="ghost" className="h-11 w-full" onClick={() => setStage("lines")}>
                     Back
                   </Button>
                 </div>
@@ -379,11 +381,7 @@ function ReturnExchange() {
                   >
                     Confirm exchange
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="h-11 w-full"
-                    onClick={() => setStage("lines")}
-                  >
+                  <Button variant="ghost" className="h-11 w-full" onClick={() => setStage("lines")}>
                     Back
                   </Button>
                 </div>
@@ -425,9 +423,7 @@ function ReturnExchange() {
                 <div className="flex justify-between border-t border-dashed border-border pt-2 text-base font-semibold">
                   <span>{result.kind === "return" ? "Refunded" : "Difference"}</span>
                   <span>
-                    {formatRs(
-                      result.kind === "return" ? refundTotal : Math.abs(difference),
-                    )}
+                    {formatRs(result.kind === "return" ? refundTotal : Math.abs(difference))}
                   </span>
                 </div>
                 <p className="pt-2 text-center text-xs text-muted-foreground">
@@ -464,11 +460,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StepButton({
-  children,
-  onClick,
-  ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+function StepButton({ children, onClick, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       type="button"

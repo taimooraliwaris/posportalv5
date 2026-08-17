@@ -17,9 +17,15 @@ export const Route = createFileRoute("/backend/products")({
   head: () => ({
     meta: [
       { title: "Products — Velora back office" },
-      { name: "description", content: "Manage the catalogue, pricing, stock and printable product labels." },
+      {
+        name: "description",
+        content: "Manage the catalogue, pricing, stock and printable product labels.",
+      },
       { property: "og:title", content: "Products — Velora back office" },
-      { property: "og:description", content: "Manage the catalogue, pricing, stock and printable product labels." },
+      {
+        property: "og:description",
+        content: "Manage the catalogue, pricing, stock and printable product labels.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -50,7 +56,11 @@ function ProductsPage() {
   return (
     <BackendLayout
       title="Products"
-      actions={<Button className="h-11" onClick={() => setCreateOpen(true)}>New product</Button>}
+      actions={
+        <Button className="h-11" onClick={() => setCreateOpen(true)}>
+          New product
+        </Button>
+      }
     >
       <div className="mb-4 flex flex-wrap gap-2">
         <Input

@@ -83,7 +83,12 @@ export type SessionRecord = {
   orderCount: number;
 };
 
-export type HistoricalSaleLine = { productId: string; name: string; qty: number; unitPrice: number };
+export type HistoricalSaleLine = {
+  productId: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+};
 
 export type HistoricalSale = {
   id: string;

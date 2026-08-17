@@ -15,9 +15,15 @@ export const Route = createFileRoute("/backend/inventory")({
   head: () => ({
     meta: [
       { title: "Inventory — Velora back office" },
-      { name: "description", content: "Track stock levels, adjustments, transfers and inventory valuation." },
+      {
+        name: "description",
+        content: "Track stock levels, adjustments, transfers and inventory valuation.",
+      },
       { property: "og:title", content: "Inventory — Velora back office" },
-      { property: "og:description", content: "Track stock levels, adjustments, transfers and inventory valuation." },
+      {
+        property: "og:description",
+        content: "Track stock levels, adjustments, transfers and inventory valuation.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
