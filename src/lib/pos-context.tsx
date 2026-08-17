@@ -134,6 +134,12 @@ type PosState = {
   addCashMove: (m: Omit<CashMove, "id">) => void;
 
   lastPaidOrder: Order | null;
+
+  returns: ReturnRecord[];
+  processReturn: (
+    input: Omit<ReturnRecord, "id" | "number" | "date" | "time">,
+  ) => ReturnRecord;
+  updateProductInCatalog: (id: string, patch: Partial<Product>) => void;
 };
 
 const PosContext = createContext<PosState | null>(null);
