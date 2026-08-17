@@ -22,7 +22,37 @@ export type PaymentLine = {
   amount: number;
 };
 
-export type OrderStatus = "ongoing" | "payment" | "paid" | "cancelled";
+export type OrderStatus =
+  | "ongoing"
+  | "payment"
+  | "paid"
+  | "cancelled"
+  | "returned"
+  | "exchanged";
+
+export type ReturnLine = {
+  productId: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  reason: string;
+};
+
+export type ReturnRecord = {
+  id: string;
+  number: string;
+  kind: "return" | "exchange";
+  date: string;
+  time: string;
+  originalOrderId: string;
+  originalNumber: string;
+  lines: ReturnLine[];
+  replacements: ReturnLine[];
+  refundAmount: number;
+  difference: number;
+  method: PaymentLine["method"];
+  processedBy: string;
+};
 
 export type Order = {
   id: string;
@@ -104,13 +134,50 @@ type PosState = {
   addCashMove: (m: Omit<CashMove, "id">) => void;
 
   lastPaidOrder: Order | null;
+
+  returns: ReturnRecord[];
+  processReturn: (
+    input: Omit<ReturnRecord, "id" | "number" | "date" | "time">,
+  ) => ReturnRecord;
+  updateProductInCatalog: (id: string, patch: Partial<Product>) => void;
 };
+
+/** A few completed sales so returns and exchanges have real orders to look up. */
+function makePaidHistory(): Order[] {
+  const preset: { number: string; time: string; items: [string, number][] }[] = [
+    { number: "0998", time: "10:24", items: [["p1", 2], ["p5", 1]] },
+    { number: "0999", time: "11:47", items: [["p15", 1], ["p2", 2]] },
+    { number: "1000", time: "13:05", items: [["p9", 1], ["p4", 3]] },
+  ];
+  return preset.map((p) => ({
+    id: `o-${p.number}`,
+    number: p.number,
+    receipt: `RCP/${p.number}`,
+    time: p.time,
+    status: "paid" as OrderStatus,
+    lines: p.items.map(([productId, qty], index) => {
+      const product = seedProducts.find((sp) => sp.id === productId)!;
+      return {
+        id: `l-${p.number}-${index}`,
+        productId,
+        name: product.name,
+        qty,
+        unitPrice: product.price,
+        discount: 0,
+      };
+    }),
+    payments: [],
+    noteTags: [],
+    pricelistId: "pl1",
+  }));
+}
 
 const PosContext = createContext<PosState | null>(null);
 
 export function PosProvider({ children }: { children: ReactNode }) {
   const first = useMemo(() => makeOrder("1001"), []);
-  const [orders, setOrders] = useState<Order[]>([first]);
+  const [orders, setOrders] = useState<Order[]>(() => [first, ...makePaidHistory()]);
+  const [returns, setReturns] = useState<ReturnRecord[]>([]);
   const [activeOrderId, setActiveOrderId] = useState(first.id);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [customers, setCustomers] = useState<Customer[]>(seedCustomers);
@@ -278,6 +345,44 @@ export function PosProvider({ children }: { children: ReactNode }) {
       ]);
     },
     lastPaidOrder,
+    returns,
+    processReturn: (input) => {
+      const seq = returns.length + 1;
+      const record: ReturnRecord = {
+        ...input,
+        id: `ret-${Math.random().toString(36).slice(2, 8)}`,
+        number: `${input.kind === "return" ? "R" : "X"}/${String(1000 + seq)}`,
+        date: new Date().toISOString().slice(0, 10),
+        time: now(),
+      };
+      setReturns((prev) => [record, ...prev]);
+      const status: OrderStatus = input.kind === "return" ? "returned" : "exchanged";
+      setOrders((prev) => [
+        ...prev.map((o) => (o.id === input.originalOrderId ? { ...o, status } : o)),
+        {
+          id: record.id,
+          number: record.number,
+          receipt: `RCP/${record.number}`,
+          time: record.time,
+          status,
+          lines: (input.kind === "return" ? input.lines : input.replacements).map((l, index) => ({
+            id: `${record.id}-l${index}`,
+            productId: l.productId,
+            name: l.name,
+            qty: l.qty,
+            unitPrice: l.unitPrice,
+            discount: 0,
+          })),
+          payments: [],
+          noteTags: [],
+          pricelistId: "pl1",
+        },
+      ]);
+      return record;
+    },
+    updateProductInCatalog: (id, patch) => {
+      setProductList((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    },
   };
 
   return <PosContext.Provider value={value}>{children}</PosContext.Provider>;

@@ -10,16 +10,32 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BackendRouteImport } from './routes/backend'
 import { Route as CloseRegisterRouteImport } from './routes/close-register'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as PriceCheckRouteImport } from './routes/price-check'
+import { Route as ReturnsRouteImport } from './routes/returns'
 import { Route as TillRouteImport } from './routes/till'
 import { Route as ZReportRouteImport } from './routes/z-report'
+import { Route as BackendIndexRouteImport } from './routes/backend.index'
+import { Route as BackendCustomersRouteImport } from './routes/backend.customers'
+import { Route as BackendInventoryRouteImport } from './routes/backend.inventory'
+import { Route as BackendPricelistsRouteImport } from './routes/backend.pricelists'
+import { Route as BackendProductsRouteImport } from './routes/backend.products'
+import { Route as BackendPurchasesRouteImport } from './routes/backend.purchases'
+import { Route as BackendReportsRouteImport } from './routes/backend.reports'
+import { Route as BackendSalesRouteImport } from './routes/backend.sales'
+import { Route as BackendSettingsRouteImport } from './routes/backend.settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BackendRoute = BackendRouteImport.update({
+  id: '/backend',
+  path: '/backend',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CloseRegisterRoute = CloseRegisterRouteImport.update({
@@ -42,6 +58,11 @@ const PriceCheckRoute = PriceCheckRouteImport.update({
   path: '/price-check',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReturnsRoute = ReturnsRouteImport.update({
+  id: '/returns',
+  path: '/returns',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TillRoute = TillRouteImport.update({
   id: '/till',
   path: '/till',
@@ -52,15 +73,71 @@ const ZReportRoute = ZReportRouteImport.update({
   path: '/z-report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BackendIndexRoute = BackendIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BackendRoute,
+} as any)
+const BackendCustomersRoute = BackendCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => BackendRoute,
+} as any)
+const BackendInventoryRoute = BackendInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => BackendRoute,
+} as any)
+const BackendPricelistsRoute = BackendPricelistsRouteImport.update({
+  id: '/pricelists',
+  path: '/pricelists',
+  getParentRoute: () => BackendRoute,
+} as any)
+const BackendProductsRoute = BackendProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => BackendRoute,
+} as any)
+const BackendPurchasesRoute = BackendPurchasesRouteImport.update({
+  id: '/purchases',
+  path: '/purchases',
+  getParentRoute: () => BackendRoute,
+} as any)
+const BackendReportsRoute = BackendReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => BackendRoute,
+} as any)
+const BackendSalesRoute = BackendSalesRouteImport.update({
+  id: '/sales',
+  path: '/sales',
+  getParentRoute: () => BackendRoute,
+} as any)
+const BackendSettingsRoute = BackendSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => BackendRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/backend': typeof BackendRouteWithChildren
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
+  '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
+  '/backend/customers': typeof BackendCustomersRoute
+  '/backend/inventory': typeof BackendInventoryRoute
+  '/backend/pricelists': typeof BackendPricelistsRoute
+  '/backend/products': typeof BackendProductsRoute
+  '/backend/purchases': typeof BackendPurchasesRoute
+  '/backend/reports': typeof BackendReportsRoute
+  '/backend/sales': typeof BackendSalesRoute
+  '/backend/settings': typeof BackendSettingsRoute
+  '/backend/': typeof BackendIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,29 +145,61 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
+  '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
+  '/backend/customers': typeof BackendCustomersRoute
+  '/backend/inventory': typeof BackendInventoryRoute
+  '/backend/pricelists': typeof BackendPricelistsRoute
+  '/backend/products': typeof BackendProductsRoute
+  '/backend/purchases': typeof BackendPurchasesRoute
+  '/backend/reports': typeof BackendReportsRoute
+  '/backend/sales': typeof BackendSalesRoute
+  '/backend/settings': typeof BackendSettingsRoute
+  '/backend': typeof BackendIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/backend': typeof BackendRouteWithChildren
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
+  '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
+  '/backend/customers': typeof BackendCustomersRoute
+  '/backend/inventory': typeof BackendInventoryRoute
+  '/backend/pricelists': typeof BackendPricelistsRoute
+  '/backend/products': typeof BackendProductsRoute
+  '/backend/purchases': typeof BackendPurchasesRoute
+  '/backend/reports': typeof BackendReportsRoute
+  '/backend/sales': typeof BackendSalesRoute
+  '/backend/settings': typeof BackendSettingsRoute
+  '/backend/': typeof BackendIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/backend'
     | '/close-register'
     | '/orders'
     | '/payment'
     | '/price-check'
+    | '/returns'
     | '/till'
     | '/z-report'
+    | '/backend/customers'
+    | '/backend/inventory'
+    | '/backend/pricelists'
+    | '/backend/products'
+    | '/backend/purchases'
+    | '/backend/reports'
+    | '/backend/sales'
+    | '/backend/settings'
+    | '/backend/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -98,25 +207,48 @@ export interface FileRouteTypes {
     | '/orders'
     | '/payment'
     | '/price-check'
+    | '/returns'
     | '/till'
     | '/z-report'
+    | '/backend/customers'
+    | '/backend/inventory'
+    | '/backend/pricelists'
+    | '/backend/products'
+    | '/backend/purchases'
+    | '/backend/reports'
+    | '/backend/sales'
+    | '/backend/settings'
+    | '/backend'
   id:
     | '__root__'
     | '/'
+    | '/backend'
     | '/close-register'
     | '/orders'
     | '/payment'
     | '/price-check'
+    | '/returns'
     | '/till'
     | '/z-report'
+    | '/backend/customers'
+    | '/backend/inventory'
+    | '/backend/pricelists'
+    | '/backend/products'
+    | '/backend/purchases'
+    | '/backend/reports'
+    | '/backend/sales'
+    | '/backend/settings'
+    | '/backend/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BackendRoute: typeof BackendRouteWithChildren
   CloseRegisterRoute: typeof CloseRegisterRoute
   OrdersRoute: typeof OrdersRoute
   PaymentRoute: typeof PaymentRoute
   PriceCheckRoute: typeof PriceCheckRoute
+  ReturnsRoute: typeof ReturnsRoute
   TillRoute: typeof TillRoute
   ZReportRoute: typeof ZReportRoute
 }
@@ -128,6 +260,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/backend': {
+      id: '/backend'
+      path: '/backend'
+      fullPath: '/backend'
+      preLoaderRoute: typeof BackendRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/close-register': {
@@ -158,6 +297,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PriceCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/returns': {
+      id: '/returns'
+      path: '/returns'
+      fullPath: '/returns'
+      preLoaderRoute: typeof ReturnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/till': {
       id: '/till'
       path: '/till'
@@ -172,15 +318,107 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ZReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/backend/': {
+      id: '/backend/'
+      path: '/'
+      fullPath: '/backend/'
+      preLoaderRoute: typeof BackendIndexRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/customers': {
+      id: '/backend/customers'
+      path: '/customers'
+      fullPath: '/backend/customers'
+      preLoaderRoute: typeof BackendCustomersRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/inventory': {
+      id: '/backend/inventory'
+      path: '/inventory'
+      fullPath: '/backend/inventory'
+      preLoaderRoute: typeof BackendInventoryRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/pricelists': {
+      id: '/backend/pricelists'
+      path: '/pricelists'
+      fullPath: '/backend/pricelists'
+      preLoaderRoute: typeof BackendPricelistsRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/products': {
+      id: '/backend/products'
+      path: '/products'
+      fullPath: '/backend/products'
+      preLoaderRoute: typeof BackendProductsRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/purchases': {
+      id: '/backend/purchases'
+      path: '/purchases'
+      fullPath: '/backend/purchases'
+      preLoaderRoute: typeof BackendPurchasesRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/reports': {
+      id: '/backend/reports'
+      path: '/reports'
+      fullPath: '/backend/reports'
+      preLoaderRoute: typeof BackendReportsRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/sales': {
+      id: '/backend/sales'
+      path: '/sales'
+      fullPath: '/backend/sales'
+      preLoaderRoute: typeof BackendSalesRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/settings': {
+      id: '/backend/settings'
+      path: '/settings'
+      fullPath: '/backend/settings'
+      preLoaderRoute: typeof BackendSettingsRouteImport
+      parentRoute: typeof BackendRoute
+    }
   }
 }
 
+interface BackendRouteChildren {
+  BackendCustomersRoute: typeof BackendCustomersRoute
+  BackendInventoryRoute: typeof BackendInventoryRoute
+  BackendPricelistsRoute: typeof BackendPricelistsRoute
+  BackendProductsRoute: typeof BackendProductsRoute
+  BackendPurchasesRoute: typeof BackendPurchasesRoute
+  BackendReportsRoute: typeof BackendReportsRoute
+  BackendSalesRoute: typeof BackendSalesRoute
+  BackendSettingsRoute: typeof BackendSettingsRoute
+  BackendIndexRoute: typeof BackendIndexRoute
+}
+
+const BackendRouteChildren: BackendRouteChildren = {
+  BackendCustomersRoute: BackendCustomersRoute,
+  BackendInventoryRoute: BackendInventoryRoute,
+  BackendPricelistsRoute: BackendPricelistsRoute,
+  BackendProductsRoute: BackendProductsRoute,
+  BackendPurchasesRoute: BackendPurchasesRoute,
+  BackendReportsRoute: BackendReportsRoute,
+  BackendSalesRoute: BackendSalesRoute,
+  BackendSettingsRoute: BackendSettingsRoute,
+  BackendIndexRoute: BackendIndexRoute,
+}
+
+const BackendRouteWithChildren =
+  BackendRoute._addFileChildren(BackendRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BackendRoute: BackendRouteWithChildren,
   CloseRegisterRoute: CloseRegisterRoute,
   OrdersRoute: OrdersRoute,
   PaymentRoute: PaymentRoute,
   PriceCheckRoute: PriceCheckRoute,
+  ReturnsRoute: ReturnsRoute,
   TillRoute: TillRoute,
   ZReportRoute: ZReportRoute,
 }

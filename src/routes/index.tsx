@@ -79,13 +79,12 @@ function OpenRegister() {
       >
         <Store className="h-5 w-5" /> Open Register
       </button>
-      <button
-        type="button"
-        onClick={() => toast("Backend is coming soon")}
+      <Link
+        to="/backend"
         className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
         Backend
-      </button>
+      </Link>
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
