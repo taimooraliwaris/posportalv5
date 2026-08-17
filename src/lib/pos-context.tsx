@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import {
   TAX_RATE,
+  categories as seedCategories,
   products as seedProducts,
   seedCustomers,
+  type Category,
   type Customer,
   type Product,
 } from "./pos-data";
@@ -128,7 +130,10 @@ type PosState = {
   addCustomer: (c: Omit<Customer, "id">) => Customer;
 
   productList: Product[];
-  addProductToCatalog: (p: Omit<Product, "id">) => void;
+  addProductToCatalog: (p: Omit<Product, "id">) => Product;
+
+  categoryList: Category[];
+  addCategory: (name: string) => Category;
 
   cashMoves: CashMove[];
   addCashMove: (m: Omit<CashMove, "id">) => void;
@@ -182,6 +187,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [customers, setCustomers] = useState<Customer[]>(seedCustomers);
   const [productList, setProductList] = useState<Product[]>(seedProducts);
+  const [categoryList, setCategoryList] = useState<Category[]>(seedCategories);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [openingCash, setOpeningCash] = useState(0);
   const [cashMoves, setCashMoves] = useState<CashMove[]>([]);
@@ -332,10 +338,21 @@ export function PosProvider({ children }: { children: ReactNode }) {
     },
     productList,
     addProductToCatalog: (p) => {
-      setProductList((prev) => [
-        { ...p, id: `p-${Math.random().toString(36).slice(2, 8)}` },
-        ...prev,
-      ]);
+      const created: Product = { ...p, id: `p-${Math.random().toString(36).slice(2, 8)}` };
+      setProductList((prev) => [created, ...prev]);
+      return created;
+    },
+    categoryList,
+    addCategory: (name) => {
+      const created: Category = {
+        id: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        name: name.trim(),
+        tone: (["pink", "sand", "sage", "sky"] as const)[categoryList.length % 4]!,
+      };
+      setCategoryList((prev) =>
+        prev.some((c) => c.id === created.id) ? prev : [...prev, created],
+      );
+      return created;
     },
     cashMoves,
     addCashMove: (m) => {

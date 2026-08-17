@@ -1,4 +1,4 @@
-export type CategoryId = "misc" | "desks" | "chairs";
+export type CategoryId = string;
 
 export type Category = {
   id: CategoryId;

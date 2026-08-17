@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { usePos } from "@/lib/pos-context";
-import { categories, formatRs, TAX_RATE, type CategoryId } from "@/lib/pos-data";
+import { useBackend } from "@/lib/backend-context";
+import { formatRs, TAX_RATE, type CategoryId } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -101,8 +102,11 @@ export function NewProductModal({
   onOpenChange: (o: boolean) => void;
   presetBarcode?: string;
 }) {
-  const { addProductToCatalog } = usePos();
+  const { addProductToCatalog, categoryList, addCategory } = usePos();
+  const { addStockItem, storeSettings } = useBackend();
   const [name, setName] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [minStock, setMinStock] = useState("5");
   const [barcode, setBarcode] = useState(presetBarcode ?? "");
   const [track, setTrack] = useState(true);
   const [price, setPrice] = useState("1.00");
@@ -174,8 +178,8 @@ export function NewProductModal({
               </div>
             </Field>
             <Field label="POS Category">
-              <div className="flex flex-wrap gap-2">
-                {categories.map((c) => (
+              <div className="flex flex-wrap items-center gap-2">
+                {categoryList.map((c) => (
                   <button
                     key={c.id}
                     type="button"
@@ -188,7 +192,37 @@ export function NewProductModal({
                     {c.name}
                   </button>
                 ))}
+                <span className="flex items-center gap-1">
+                  <Input
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    placeholder="New category"
+                    className="h-11 w-36"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-11"
+                    disabled={!newCategory.trim()}
+                    onClick={() => {
+                      const created = addCategory(newCategory);
+                      setCategory(created.id);
+                      setNewCategory("");
+                      toast.success(`Category "${created.name}" added`);
+                    }}
+                  >
+                    Add
+                  </Button>
+                </span>
               </div>
+            </Field>
+            <Field label="Min. Stock">
+              <Input
+                value={minStock}
+                onChange={(e) => setMinStock(e.target.value)}
+                inputMode="numeric"
+                className="h-11"
+              />
             </Field>
             <Field label="Color">
               <div className="flex h-11 items-center gap-3">
@@ -216,13 +250,25 @@ export function NewProductModal({
             className="h-11 px-6"
             disabled={!name.trim()}
             onClick={() => {
-              addProductToCatalog({
+              const created = addProductToCatalog({
                 name,
                 price: Number(price || 0),
                 category,
                 barcode: barcode || "0000000",
                 tone,
                 icon: "Package",
+              });
+              addStockItem({
+                productId: created.id,
+                sku: `SKU-${created.id.slice(-4).toUpperCase()}`,
+                onHand: 0,
+                reserved: 0,
+                reorderPoint: Number(minStock || 0),
+                cost: Number(price || 0) * 0.6,
+                supplierId: "",
+                active: true,
+                description: `${created.name} - stocked at ${storeSettings.name}.`,
+                history: [0, 0, 0, 0, 0, 0],
               });
               setName("");
               onOpenChange(false);

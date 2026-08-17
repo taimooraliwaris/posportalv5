@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { usePersistentState } from "./use-persistent-state";
 import {
   generateHistory,
   seedPricelists,
@@ -70,10 +71,16 @@ export function BackendProvider({ children }: { children: ReactNode }) {
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>(seedSuppliers);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(seedPurchaseOrders);
-  const [pricelists, setPricelists] = useState<PricelistDetail[]>(seedPricelists);
-  const [taxes, setTaxes] = useState<TaxRate[]>(seedTaxes);
+  const [pricelists, setPricelists] = usePersistentState<PricelistDetail[]>(
+    "velora.pricelists",
+    seedPricelists,
+  );
+  const [taxes, setTaxes] = usePersistentState<TaxRate[]>("velora.taxes", seedTaxes);
   const [staff, setStaff] = useState<StaffUser[]>(seedStaff);
-  const [storeSettings, setStoreSettings] = useState<StoreSettings>(seedStoreSettings);
+  const [storeSettings, setStoreSettings] = usePersistentState<StoreSettings>(
+    "velora.store-settings",
+    seedStoreSettings,
+  );
   const history = useMemo(() => generateHistory(new Date()), []);
 
   const value: BackendState = {

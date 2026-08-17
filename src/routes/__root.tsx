@@ -12,6 +12,9 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PosProvider } from "@/lib/pos-context";
+import { AuthProvider } from "@/lib/auth-context";
+import { BackendProvider } from "@/lib/backend-context";
+import { AuthGate } from "@/components/auth/auth-gate";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -123,10 +126,16 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <PosProvider>
-          <Outlet />
-          <Toaster />
-        </PosProvider>
+        <AuthProvider>
+          <BackendProvider>
+            <PosProvider>
+              <AuthGate>
+                <Outlet />
+              </AuthGate>
+              <Toaster />
+            </PosProvider>
+          </BackendProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
