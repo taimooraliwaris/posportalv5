@@ -24,7 +24,15 @@ export const Route = createFileRoute("/orders")({
   component: Orders,
 });
 
-const statusFilters = ["All", "ongoing", "payment", "paid", "cancelled"] as const;
+const statusFilters = [
+  "All",
+  "ongoing",
+  "payment",
+  "paid",
+  "cancelled",
+  "returned",
+  "exchanged",
+] as const;
 
 function Orders() {
   const { orders, deleteOrder } = usePos();
@@ -206,6 +214,10 @@ function statusStyle(status: string) {
       return "bg-warning/40 text-foreground";
     case "cancelled":
       return "bg-destructive/20 text-destructive-foreground";
+    case "returned":
+      return "bg-sky text-cat-foreground";
+    case "exchanged":
+      return "bg-sand text-cat-foreground";
     default:
       return "bg-muted text-foreground";
   }
