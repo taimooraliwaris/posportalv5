@@ -345,6 +345,44 @@ export function PosProvider({ children }: { children: ReactNode }) {
       ]);
     },
     lastPaidOrder,
+    returns,
+    processReturn: (input) => {
+      const seq = returns.length + 1;
+      const record: ReturnRecord = {
+        ...input,
+        id: `ret-${Math.random().toString(36).slice(2, 8)}`,
+        number: `${input.kind === "return" ? "R" : "X"}/${String(1000 + seq)}`,
+        date: new Date().toISOString().slice(0, 10),
+        time: now(),
+      };
+      setReturns((prev) => [record, ...prev]);
+      const status: OrderStatus = input.kind === "return" ? "returned" : "exchanged";
+      setOrders((prev) => [
+        ...prev.map((o) => (o.id === input.originalOrderId ? { ...o, status } : o)),
+        {
+          id: record.id,
+          number: record.number,
+          receipt: `RCP/${record.number}`,
+          time: record.time,
+          status,
+          lines: (input.kind === "return" ? input.lines : input.replacements).map((l, index) => ({
+            id: `${record.id}-l${index}`,
+            productId: l.productId,
+            name: l.name,
+            qty: l.qty,
+            unitPrice: l.unitPrice,
+            discount: 0,
+          })),
+          payments: [],
+          noteTags: [],
+          pricelistId: "pl1",
+        },
+      ]);
+      return record;
+    },
+    updateProductInCatalog: (id, patch) => {
+      setProductList((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    },
   };
 
   return <PosContext.Provider value={value}>{children}</PosContext.Provider>;
