@@ -31,7 +31,7 @@ const navItems = [
   { to: "/backend/purchases", label: "Purchases", icon: ShoppingCart },
   { to: "/backend/reports", label: "Reports", icon: BarChart3 },
   { to: "/backend/settings", label: "Settings", icon: Settings },
-] as const;
+] as { to: string; label: string; icon: typeof Package; exact?: boolean }[];
 
 export function BackendLayout({
   title,
@@ -67,7 +67,7 @@ export function BackendLayout({
             return (
               <Link
                 key={item.to}
-                to={item.to}
+                to={item.to as never}
                 onClick={() => setOpen(false)}
                 className={cn(
                   "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
