@@ -147,12 +147,8 @@ export function PosHeader({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-60">
-            <div className="m-1 rounded-lg bg-info px-3 py-2 text-sm font-medium text-info-foreground">
-              <Wifi className="mr-2 inline h-4 w-4" /> Wifi: {STORE.network}
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => toast("Customer display opened on screen 2")}>
-              <Monitor className="h-4 w-4" /> Customer Display
+            <DropdownMenuItem onSelect={() => navigate({ to: "/returns" })}>
+              <Undo2 className="h-4 w-4" /> Return / Exchange Order
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={(e) => {
@@ -163,22 +159,16 @@ export function PosHeader({
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               {dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => toast("Install prompt is not available in preview")}>
-              <Download className="h-4 w-4" /> Install App
-            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate({ to: "/price-check" })}>
               <Tag className="h-4 w-4" /> Price check
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setCashOpen(true)}>
               <Banknote className="h-4 w-4" /> Cash In/Out
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => toast.success("Data reloaded")}>
-              <RefreshCw className="h-4 w-4" /> Reload Data
-            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setProductOpen(true)}>
               <Plus className="h-4 w-4" /> Create Product
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => toast("Backend is coming soon")}>
+            <DropdownMenuItem onSelect={() => navigate({ to: "/backend" })}>
               <Server className="h-4 w-4" /> Backend
             </DropdownMenuItem>
             <DropdownMenuSeparator />

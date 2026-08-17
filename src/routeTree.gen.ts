@@ -14,6 +14,7 @@ import { Route as CloseRegisterRouteImport } from './routes/close-register'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as PriceCheckRouteImport } from './routes/price-check'
+import { Route as ReturnsRouteImport } from './routes/returns'
 import { Route as TillRouteImport } from './routes/till'
 import { Route as ZReportRouteImport } from './routes/z-report'
 
@@ -42,6 +43,11 @@ const PriceCheckRoute = PriceCheckRouteImport.update({
   path: '/price-check',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReturnsRoute = ReturnsRouteImport.update({
+  id: '/returns',
+  path: '/returns',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TillRoute = TillRouteImport.update({
   id: '/till',
   path: '/till',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
+  '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
+  '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
 }
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
+  '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
 }
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/payment'
     | '/price-check'
+    | '/returns'
     | '/till'
     | '/z-report'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/payment'
     | '/price-check'
+    | '/returns'
     | '/till'
     | '/z-report'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/payment'
     | '/price-check'
+    | '/returns'
     | '/till'
     | '/z-report'
   fileRoutesById: FileRoutesById
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   PaymentRoute: typeof PaymentRoute
   PriceCheckRoute: typeof PriceCheckRoute
+  ReturnsRoute: typeof ReturnsRoute
   TillRoute: typeof TillRoute
   ZReportRoute: typeof ZReportRoute
 }
@@ -158,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PriceCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/returns': {
+      id: '/returns'
+      path: '/returns'
+      fullPath: '/returns'
+      preLoaderRoute: typeof ReturnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/till': {
       id: '/till'
       path: '/till'
@@ -181,6 +201,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   PaymentRoute: PaymentRoute,
   PriceCheckRoute: PriceCheckRoute,
+  ReturnsRoute: ReturnsRoute,
   TillRoute: TillRoute,
   ZReportRoute: ZReportRoute,
 }
