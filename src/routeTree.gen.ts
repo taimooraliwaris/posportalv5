@@ -18,6 +18,7 @@ import { Route as PriceCheckRouteImport } from './routes/price-check'
 import { Route as ReturnsRouteImport } from './routes/returns'
 import { Route as TillRouteImport } from './routes/till'
 import { Route as ZReportRouteImport } from './routes/z-report'
+import { Route as BackendIndexRouteImport } from './routes/backend.index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,10 +65,15 @@ const ZReportRoute = ZReportRouteImport.update({
   path: '/z-report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BackendIndexRoute = BackendIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BackendRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/backend': typeof BackendRoute
+  '/backend': typeof BackendRouteWithChildren
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
@@ -75,10 +81,10 @@ export interface FileRoutesByFullPath {
   '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
+  '/backend/': typeof BackendIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/backend': typeof BackendRoute
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
@@ -86,11 +92,12 @@ export interface FileRoutesByTo {
   '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
+  '/backend': typeof BackendIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/backend': typeof BackendRoute
+  '/backend': typeof BackendRouteWithChildren
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
@@ -98,6 +105,7 @@ export interface FileRoutesById {
   '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
+  '/backend/': typeof BackendIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,10 +119,10 @@ export interface FileRouteTypes {
     | '/returns'
     | '/till'
     | '/z-report'
+    | '/backend/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/backend'
     | '/close-register'
     | '/orders'
     | '/payment'
@@ -122,6 +130,7 @@ export interface FileRouteTypes {
     | '/returns'
     | '/till'
     | '/z-report'
+    | '/backend'
   id:
     | '__root__'
     | '/'
@@ -133,11 +142,12 @@ export interface FileRouteTypes {
     | '/returns'
     | '/till'
     | '/z-report'
+    | '/backend/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  BackendRoute: typeof BackendRoute
+  BackendRoute: typeof BackendRouteWithChildren
   CloseRegisterRoute: typeof CloseRegisterRoute
   OrdersRoute: typeof OrdersRoute
   PaymentRoute: typeof PaymentRoute
@@ -212,12 +222,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ZReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/backend/': {
+      id: '/backend/'
+      path: '/'
+      fullPath: '/backend/'
+      preLoaderRoute: typeof BackendIndexRouteImport
+      parentRoute: typeof BackendRoute
+    }
   }
 }
 
+interface BackendRouteChildren {
+  BackendIndexRoute: typeof BackendIndexRoute
+}
+
+const BackendRouteChildren: BackendRouteChildren = {
+  BackendIndexRoute: BackendIndexRoute,
+}
+
+const BackendRouteWithChildren =
+  BackendRoute._addFileChildren(BackendRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  BackendRoute: BackendRoute,
+  BackendRoute: BackendRouteWithChildren,
   CloseRegisterRoute: CloseRegisterRoute,
   OrdersRoute: OrdersRoute,
   PaymentRoute: PaymentRoute,
