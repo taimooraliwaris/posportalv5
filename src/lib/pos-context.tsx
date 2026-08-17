@@ -22,7 +22,37 @@ export type PaymentLine = {
   amount: number;
 };
 
-export type OrderStatus = "ongoing" | "payment" | "paid" | "cancelled";
+export type OrderStatus =
+  | "ongoing"
+  | "payment"
+  | "paid"
+  | "cancelled"
+  | "returned"
+  | "exchanged";
+
+export type ReturnLine = {
+  productId: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  reason: string;
+};
+
+export type ReturnRecord = {
+  id: string;
+  number: string;
+  kind: "return" | "exchange";
+  date: string;
+  time: string;
+  originalOrderId: string;
+  originalNumber: string;
+  lines: ReturnLine[];
+  replacements: ReturnLine[];
+  refundAmount: number;
+  difference: number;
+  method: PaymentLine["method"];
+  processedBy: string;
+};
 
 export type Order = {
   id: string;
