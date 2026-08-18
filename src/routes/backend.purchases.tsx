@@ -3,9 +3,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BackendLayout } from "@/components/backend/backend-layout";
-import { ConfirmAction, DataCard, StatusPill } from "@/components/backend/backend-ui";
+import { ConfirmAction, StatusPill } from "@/components/backend/backend-ui";
+import { DataTable, type Column } from "@/components/backend/data-table";
+import { AddSupplierModal } from "@/components/backend/SupplierModal";
 import { useBackend } from "@/lib/backend-context";
-import { formatDate } from "@/lib/backend-data";
+import { formatDate, type PurchaseOrder, type Supplier } from "@/lib/backend-data";
 import { usePos } from "@/lib/pos-context";
 import { formatRs } from "@/lib/pos-data";
 import { toast } from "sonner";
@@ -34,6 +36,7 @@ function PurchasesPage() {
   const { suppliers, purchaseOrders, setPurchaseOrderStatus, addPurchaseOrder } = useBackend();
   const { productList } = usePos();
   const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? "");
+  const [supplierOpen, setSupplierOpen] = useState(false);
 
   const totalFor = (lines: { qty: number; cost: number }[]) =>
     lines.reduce((sum, l) => sum + l.qty * l.cost, 0);
@@ -77,89 +80,105 @@ function PurchasesPage() {
             </Button>
           </div>
 
-          <DataCard>
-            <div className="hidden grid-cols-[1fr_1.5fr_1fr_1fr_1fr_auto] gap-3 border-b border-border px-4 py-2 text-sm font-medium text-muted-foreground md:grid">
-              <span>PO</span>
-              <span>Supplier</span>
-              <span>Date</span>
-              <span>Total</span>
-              <span>Status</span>
-              <span>Action</span>
-            </div>
-            {purchaseOrders.map((po) => (
-              <div
-                key={po.id}
-                className="grid grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 last:border-0 md:grid-cols-[1fr_1.5fr_1fr_1fr_1fr_auto]"
-              >
-                <span className="font-medium">{po.number}</span>
-                <span>{suppliers.find((s) => s.id === po.supplierId)?.name}</span>
-                <span className="text-sm text-muted-foreground">{formatDate(po.date)}</span>
-                <span>{formatRs(totalFor(po.lines))}</span>
-                <StatusPill status={po.status} />
-                <span className="flex gap-2">
-                  {po.status === "draft" && (
-                    <Button
-                      variant="secondary"
-                      className="h-9"
-                      onClick={() => setPurchaseOrderStatus(po.id, "ordered")}
-                    >
-                      Mark ordered
-                    </Button>
-                  )}
-                  {po.status === "ordered" && (
-                    <Button
-                      className="h-9"
-                      onClick={() => {
-                        setPurchaseOrderStatus(po.id, "received");
-                        toast.success("Stock received into inventory");
-                      }}
-                    >
-                      Receive
-                    </Button>
-                  )}
-                  {po.status !== "cancelled" && po.status !== "received" && (
-                    <ConfirmAction
-                      trigger={
-                        <Button variant="ghost" className="h-9 text-destructive">
-                          Cancel
-                        </Button>
-                      }
-                      title="Cancel purchase order?"
-                      body={`${po.number} will be marked cancelled.`}
-                      confirmLabel="Cancel PO"
-                      onConfirm={() => setPurchaseOrderStatus(po.id, "cancelled")}
-                    />
-                  )}
-                </span>
-              </div>
-            ))}
-          </DataCard>
+          <DataTable
+            columns={orderColumns(suppliers, setPurchaseOrderStatus)}
+            rows={purchaseOrders}
+            getKey={(po) => po.id}
+            empty="No purchase orders yet."
+          />
         </TabsContent>
 
         <TabsContent value="suppliers">
-          <DataCard>
-            <div className="hidden grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-3 border-b border-border px-4 py-2 text-sm font-medium text-muted-foreground md:grid">
-              <span>Supplier</span>
-              <span>Contact</span>
-              <span>Phone</span>
-              <span>Products</span>
-              <span>Open balance</span>
-            </div>
-            {suppliers.map((s) => (
-              <div
-                key={s.id}
-                className="grid grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 last:border-0 md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]"
-              >
-                <span className="font-medium">{s.name}</span>
-                <span className="text-sm">{s.contact}</span>
-                <span className="text-sm text-muted-foreground">{s.phone}</span>
-                <span>{s.productIds.length}</span>
-                <span>{formatRs(s.openBalance)}</span>
-              </div>
-            ))}
-          </DataCard>
+          <div className="mb-3">
+            <Button className="h-11" onClick={() => setSupplierOpen(true)}>
+              Add supplier
+            </Button>
+          </div>
+          <DataTable
+            columns={supplierColumns}
+            rows={suppliers}
+            getKey={(s) => s.id}
+            empty="No suppliers yet."
+          />
         </TabsContent>
       </Tabs>
+
+      <AddSupplierModal open={supplierOpen} onOpenChange={setSupplierOpen} />
     </BackendLayout>
   );
+}
+
+const supplierColumns: Column<Supplier>[] = [
+  {
+    header: "Supplier",
+    width: "1.5fr",
+    cell: (s) => <span className="font-medium">{s.name}</span>,
+  },
+  { header: "Contact", cell: (s) => <span className="text-sm">{s.contact}</span> },
+  { header: "Phone", cell: (s) => <span className="text-sm text-muted-foreground">{s.phone}</span> },
+  { header: "Products", align: "right", cell: (s) => s.productIds.length },
+  { header: "Open balance", align: "right", cell: (s) => formatRs(s.openBalance) },
+];
+
+function orderColumns(
+  suppliers: Supplier[],
+  setStatus: (id: string, status: PurchaseOrder["status"]) => void,
+): Column<PurchaseOrder>[] {
+  const total = (lines: { qty: number; cost: number }[]) =>
+    lines.reduce((sum, l) => sum + l.qty * l.cost, 0);
+  return [
+    { header: "PO", cell: (po) => <span className="font-medium">{po.number}</span> },
+    {
+      header: "Supplier",
+      width: "1.5fr",
+      cell: (po) => suppliers.find((s) => s.id === po.supplierId)?.name ?? "—",
+    },
+    {
+      header: "Date",
+      cell: (po) => <span className="text-sm text-muted-foreground">{formatDate(po.date)}</span>,
+    },
+    { header: "Total", align: "right", cell: (po) => formatRs(total(po.lines)) },
+    { header: "Status", cell: (po) => <StatusPill status={po.status} /> },
+    {
+      header: "Action",
+      width: "1.6fr",
+      cell: (po) => (
+        <span className="flex justify-end gap-2">
+          {po.status === "draft" && (
+            <Button
+              variant="secondary"
+              className="h-9"
+              onClick={() => setStatus(po.id, "ordered")}
+            >
+              Mark ordered
+            </Button>
+          )}
+          {po.status === "ordered" && (
+            <Button
+              className="h-9"
+              onClick={() => {
+                setStatus(po.id, "received");
+                toast.success("Stock received into inventory");
+              }}
+            >
+              Receive
+            </Button>
+          )}
+          {po.status !== "cancelled" && po.status !== "received" && (
+            <ConfirmAction
+              trigger={
+                <Button variant="ghost" className="h-9 text-destructive">
+                  Cancel
+                </Button>
+              }
+              title="Cancel purchase order?"
+              body={`${po.number} will be marked cancelled.`}
+              confirmLabel="Cancel PO"
+              onConfirm={() => setStatus(po.id, "cancelled")}
+            />
+          )}
+        </span>
+      ),
+    },
+  ];
 }

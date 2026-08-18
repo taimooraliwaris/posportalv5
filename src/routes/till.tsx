@@ -9,6 +9,7 @@ import { ScannerOverlay } from "@/components/pos/ScannerOverlay";
 import { ChooseCustomerModal } from "@/components/pos/CustomerModals";
 import { OrderActionsModal } from "@/components/pos/OrderActionModals";
 import { usePos, orderTotals, type CartLine } from "@/lib/pos-context";
+import { useHardwareScanner } from "@/lib/use-hardware-scanner";
 import {
   categories,
   formatRs,
@@ -47,6 +48,7 @@ function Till() {
     removeLine,
     updateOrder,
     customers,
+    addByBarcode,
   } = usePos();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
@@ -55,6 +57,13 @@ function Till() {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [keypadMode, setKeypadMode] = useState<KeypadMode>("qty");
   const [keypadValue, setKeypadValue] = useState("");
+
+  // USB/Bluetooth scanners work anywhere on the register screen.
+  useHardwareScanner((code) => {
+    const product = addByBarcode(code);
+    if (product) toast.success(`${product.name} added`);
+    else toast.error(`No product matches barcode ${code}`);
+  }, !scanning);
 
   const pricelist = pricelists.find((p) => p.id === activeOrder?.pricelistId) ?? pricelists[0]!;
   const { subtotal, taxes, total } = orderTotals(activeOrder, pricelist.discount);

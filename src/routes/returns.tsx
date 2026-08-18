@@ -15,9 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductTile } from "@/components/pos/ProductTile";
 import { usePos, orderTotals, type Order, type ReturnLine } from "@/lib/pos-context";
-import { TAX_RATE, STORE, categories, formatRs, toneClass } from "@/lib/pos-data";
+import { TAX_RATE, categories, formatRs, toneClass } from "@/lib/pos-data";
 import { returnReasons } from "@/lib/backend-data";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/lib/backend-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/returns")({
@@ -45,6 +46,7 @@ type Draft = { qty: number; reason: string };
 type Stage = "search" | "lines" | "refund" | "exchange" | "done";
 
 function ReturnExchange() {
+  const store = useStore();
   const { orders, productList, processReturn } = usePos();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -120,7 +122,7 @@ function ReturnExchange() {
       refundAmount: refundTotal,
       difference: kind === "exchange" ? difference : -refundTotal,
       method,
-      processedBy: STORE.cashier,
+      processedBy: store.cashier,
     });
     setResult({ kind, number: record.number });
     setStage("done");
@@ -427,7 +429,7 @@ function ReturnExchange() {
                   </span>
                 </div>
                 <p className="pt-2 text-center text-xs text-muted-foreground">
-                  {STORE.name} · processed by {STORE.cashier}
+                  {store.name} · processed by {store.cashier}
                 </p>
               </div>
 

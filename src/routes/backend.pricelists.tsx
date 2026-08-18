@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BackendLayout } from "@/components/backend/backend-layout";
 import { ConfirmAction, DataCard, DetailDrawer, Field } from "@/components/backend/backend-ui";
+import { PricelistRuleBuilder } from "@/components/backend/PricelistRuleBuilder";
 import { useBackend } from "@/lib/backend-context";
 import type { PricelistDetail } from "@/lib/backend-data";
 import { toast } from "sonner";
@@ -118,22 +119,7 @@ function PricelistsPage() {
         title={selected?.name ?? ""}
         description="Rules inside this pricelist."
       >
-        <DataCard>
-          {(selected?.rules ?? []).map((rule) => (
-            <div
-              key={rule.id}
-              className="flex justify-between border-b border-border px-4 py-3 text-sm last:border-0"
-            >
-              <span>{rule.scope}</span>
-              <span className="text-muted-foreground">
-                {rule.type === "fixed" ? `Fixed ${rule.value}` : `${rule.value}% off`}
-              </span>
-            </div>
-          ))}
-          {selected?.rules.length === 0 && (
-            <p className="p-6 text-center text-sm text-muted-foreground">No rules yet.</p>
-          )}
-        </DataCard>
+        {selected && <PricelistRuleBuilder pricelist={selected} />}
       </DetailDrawer>
     </BackendLayout>
   );

@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BackendLayout } from "@/components/backend/backend-layout";
 import { DataCard, StatusPill } from "@/components/backend/backend-ui";
+import { DataTable, type Column } from "@/components/backend/data-table";
+import { SecurityTab } from "@/components/backend/SecurityTab";
 import { useBackend } from "@/lib/backend-context";
-import { formatDate, rolePermissions } from "@/lib/backend-data";
+import { formatDate, rolePermissions, type SessionRecord, type StaffUser, type TaxRate } from "@/lib/backend-data";
 import { formatRs } from "@/lib/pos-data";
 import { useHydrated } from "@/lib/use-hydrated";
 import { toast } from "sonner";
@@ -33,7 +36,11 @@ export const Route = createFileRoute("/backend/settings")({
 
 function SettingsPage() {
   const hydrated = useHydrated();
-  const { staff, taxes, storeSettings, updateStoreSettings, sessions } = useBackend();
+  const { staff, taxes, saveTax, removeTax, storeSettings, updateStoreSettings, sessions } =
+    useBackend();
+  const [taxName, setTaxName] = useState("");
+  const [taxPct, setTaxPct] = useState("");
+  const [taxApplies, setTaxApplies] = useState("");
 
   return (
     <BackendLayout title="Settings">
@@ -42,38 +49,72 @@ function SettingsPage() {
           <TabsTrigger value="users">Users &amp; roles</TabsTrigger>
           <TabsTrigger value="taxes">Taxes</TabsTrigger>
           <TabsTrigger value="store">Store details</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="sessions">Session history</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
-          <DataCard>
-            {staff.map((u) => (
-              <div
-                key={u.id}
-                className="grid grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 last:border-0 md:grid-cols-[1.2fr_1.5fr_1fr_2fr]"
-              >
-                <span className="font-medium">{u.name}</span>
-                <span className="text-sm text-muted-foreground">{u.email}</span>
-                <span className="text-sm">{u.role}</span>
-                <span className="text-sm text-muted-foreground">{rolePermissions[u.role]}</span>
-              </div>
-            ))}
-          </DataCard>
+          <DataTable columns={staffColumns} rows={staff} getKey={(u) => u.id} />
         </TabsContent>
 
         <TabsContent value="taxes">
-          <DataCard>
-            {taxes.map((t) => (
-              <div
-                key={t.id}
-                className="grid grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 last:border-0 md:grid-cols-[1.5fr_1fr_2fr]"
-              >
-                <span className="font-medium">{t.name}</span>
-                <span>{t.percentage}%</span>
-                <span className="text-sm text-muted-foreground">{t.appliesTo}</span>
-              </div>
-            ))}
+          <DataCard className="mb-4 grid gap-3 p-4 sm:grid-cols-4">
+            <div className="space-y-2">
+              <Label htmlFor="tax-name">Tax name</Label>
+              <Input
+                id="tax-name"
+                value={taxName}
+                onChange={(e) => setTaxName(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tax-pct">Percentage</Label>
+              <Input
+                id="tax-pct"
+                type="number"
+                value={taxPct}
+                onChange={(e) => setTaxPct(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tax-applies">Applies to</Label>
+              <Input
+                id="tax-applies"
+                value={taxApplies}
+                onChange={(e) => setTaxApplies(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <Button
+              className="h-11 self-end"
+              onClick={() => {
+                if (!taxName.trim() || !(Number(taxPct) >= 0)) {
+                  toast("Enter a tax name and percentage");
+                  return;
+                }
+                saveTax({
+                  id: `tax-${Math.random().toString(36).slice(2, 8)}`,
+                  name: taxName.trim(),
+                  percentage: Number(taxPct),
+                  appliesTo: taxApplies.trim() || "All products",
+                });
+                setTaxName("");
+                setTaxPct("");
+                setTaxApplies("");
+                toast.success("Tax rate added");
+              }}
+            >
+              Add tax
+            </Button>
           </DataCard>
+          <DataTable
+            columns={taxColumns(saveTax, removeTax)}
+            rows={taxes}
+            getKey={(t) => t.id}
+            empty="No tax rates configured."
+          />
         </TabsContent>
 
         <TabsContent value="store">
@@ -120,32 +161,105 @@ function SettingsPage() {
           </DataCard>
         </TabsContent>
 
+        <TabsContent value="security">
+          <SecurityTab />
+        </TabsContent>
+
         <TabsContent value="sessions">
-          <DataCard>
-            {hydrated &&
-              sessions
-                .slice()
-                .reverse()
-                .map((s) => (
-                  <div
-                    key={s.id}
-                    className="grid grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 last:border-0 md:grid-cols-[1fr_1fr_1fr_1fr_auto]"
-                  >
-                    <span>{formatDate(s.date)}</span>
-                    <span className="text-sm">{s.cashier}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {s.openedAt} — {s.closedAt}
-                    </span>
-                    <span>{formatRs(s.totalSales)}</span>
-                    <StatusPill
-                      status={s.variance === 0 ? "healthy" : "low"}
-                      label={s.variance === 0 ? "Balanced" : `Variance ${formatRs(s.variance)}`}
-                    />
-                  </div>
-                ))}
-          </DataCard>
+          {hydrated && (
+            <DataTable
+              columns={sessionColumns}
+              rows={sessions.slice().reverse()}
+              getKey={(s) => s.id}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </BackendLayout>
   );
 }
+
+const staffColumns: Column<StaffUser>[] = [
+  { header: "Name", width: "1.2fr", cell: (u) => <span className="font-medium">{u.name}</span> },
+  {
+    header: "Email",
+    width: "1.5fr",
+    cell: (u) => <span className="text-sm text-muted-foreground">{u.email}</span>,
+  },
+  { header: "Role", cell: (u) => <span className="text-sm">{u.role}</span> },
+  {
+    header: "Permissions",
+    width: "2fr",
+    cell: (u) => <span className="text-sm text-muted-foreground">{rolePermissions[u.role]}</span>,
+  },
+];
+
+function taxColumns(
+  saveTax: (tax: TaxRate) => void,
+  removeTax: (id: string) => void,
+): Column<TaxRate>[] {
+  return [
+    { header: "Tax", width: "1.5fr", cell: (t) => <span className="font-medium">{t.name}</span> },
+    {
+      header: "Percentage",
+      align: "right",
+      cell: (t) => (
+        <Input
+          type="number"
+          value={t.percentage}
+          aria-label={`${t.name} percentage`}
+          onChange={(e) => saveTax({ ...t, percentage: Number(e.target.value) || 0 })}
+          className="ml-auto h-9 w-24 text-right"
+        />
+      ),
+    },
+    {
+      header: "Applies to",
+      width: "2fr",
+      cell: (t) => <span className="text-sm text-muted-foreground">{t.appliesTo}</span>,
+    },
+    {
+      header: "Action",
+      cell: (t) => (
+        <span className="flex justify-end">
+          <Button
+            variant="ghost"
+            className="h-9 text-destructive"
+            onClick={() => {
+              removeTax(t.id);
+              toast.success(`${t.name} removed`);
+            }}
+          >
+            Delete
+          </Button>
+        </span>
+      ),
+    },
+  ];
+}
+
+const sessionColumns: Column<SessionRecord>[] = [
+  { header: "Date", cell: (s) => formatDate(s.date) },
+  { header: "Cashier", cell: (s) => <span className="text-sm">{s.cashier}</span> },
+  {
+    header: "Hours",
+    cell: (s) => (
+      <span className="text-sm text-muted-foreground">
+        {s.openedAt} — {s.closedAt}
+      </span>
+    ),
+  },
+  { header: "Total sales", align: "right", cell: (s) => formatRs(s.totalSales) },
+  {
+    header: "Variance",
+    width: "1.4fr",
+    cell: (s) => (
+      <span className="flex justify-end">
+        <StatusPill
+          status={s.variance === 0 ? "healthy" : "low"}
+          label={s.variance === 0 ? "Balanced" : `Variance ${formatRs(s.variance)}`}
+        />
+      </span>
+    ),
+  },
+];

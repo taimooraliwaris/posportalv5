@@ -2,7 +2,8 @@ import { useState } from "react";
 import { FileText, MessageCircle, Printer, QrCode, Mail, Smartphone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { formatRs, STORE, TAX_RATE } from "@/lib/pos-data";
+import { formatRs, TAX_RATE } from "@/lib/pos-data";
+import { useStore } from "@/lib/backend-context";
 import type { Order } from "@/lib/pos-context";
 import { orderTotals } from "@/lib/pos-context";
 import { toast } from "sonner";
@@ -75,6 +76,7 @@ export function PrintModal({
 }
 
 export function Receipt({ order, simple }: { order: Order | null; simple?: boolean }) {
+  const store = useStore();
   const { subtotal, taxes, total } = orderTotals(order ?? undefined);
   return (
     <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-border bg-card p-5 font-mono text-xs leading-relaxed">
@@ -82,13 +84,13 @@ export function Receipt({ order, simple }: { order: Order | null; simple?: boole
         <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground">
           V
         </div>
-        <p className="mt-2 font-sans text-base font-semibold">{STORE.name}</p>
-        <p className="text-muted-foreground">{STORE.email}</p>
+        <p className="mt-2 font-sans text-base font-semibold">{store.name}</p>
+        <p className="text-muted-foreground">{store.email}</p>
       </div>
       <div className="my-3 border-t border-dashed border-border pt-3">
         <Row label="Ticket" value={order?.receipt ?? "RCP/0000"} />
         <Row label="Date" value={new Date().toLocaleString()} />
-        <Row label="Served by" value={STORE.cashier} />
+        <Row label="Served by" value={store.cashier} />
       </div>
       {!simple && (
         <div className="border-t border-dashed border-border pt-3">

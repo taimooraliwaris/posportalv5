@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BackendLayout } from "@/components/backend/backend-layout";
 import { DataCard, DetailDrawer, Field, StatusPill } from "@/components/backend/backend-ui";
+import { DataTable, type Column } from "@/components/backend/data-table";
 import { useBackend } from "@/lib/backend-context";
-import { stockStatus } from "@/lib/backend-data";
+import { stockStatus, type StockItem } from "@/lib/backend-data";
 import { usePos } from "@/lib/pos-context";
 import { categories, formatRs, type Product } from "@/lib/pos-data";
 import { NewProductModal } from "@/components/pos/MenuModals";
@@ -84,37 +85,13 @@ function ProductsPage() {
         </select>
       </div>
 
-      <DataCard>
-        <div className="hidden grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-3 border-b border-border px-4 py-2 text-sm font-medium text-muted-foreground md:grid">
-          <span>Product</span>
-          <span>Barcode</span>
-          <span>Category</span>
-          <span>Price</span>
-          <span>On hand</span>
-          <span>Status</span>
-        </div>
-        {rows.map((p) => {
-          const stock = stockFor(p.id);
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setSelected(p)}
-              className="grid w-full grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 text-left last:border-0 hover:bg-muted md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]"
-            >
-              <span className="font-medium">{p.name}</span>
-              <span className="text-sm text-muted-foreground">{p.barcode || "—"}</span>
-              <span className="text-sm capitalize text-muted-foreground">{p.category}</span>
-              <span>{formatRs(p.price)}</span>
-              <span>{stock?.onHand ?? 0}</span>
-              <StatusPill status={stock ? stockStatus(stock) : "out"} />
-            </button>
-          );
-        })}
-        {rows.length === 0 && (
-          <p className="p-8 text-center text-sm text-muted-foreground">No products found.</p>
-        )}
-      </DataCard>
+      <DataTable
+        columns={productColumns(stockFor)}
+        rows={rows}
+        getKey={(p) => p.id}
+        onRowClick={setSelected}
+        empty="No products found."
+      />
 
       <DetailDrawer
         open={!!selected}
@@ -177,4 +154,29 @@ function ProductsPage() {
       <NewProductModal open={createOpen} onOpenChange={setCreateOpen} />
     </BackendLayout>
   );
+}
+
+function productColumns(
+  stockFor: (id: string) => StockItem | undefined,
+): Column<Product>[] {
+  return [
+    { header: "Product", width: "2fr", cell: (p) => <span className="font-medium">{p.name}</span> },
+    {
+      header: "Barcode",
+      cell: (p) => <span className="text-sm text-muted-foreground">{p.barcode || "—"}</span>,
+    },
+    {
+      header: "Category",
+      cell: (p) => <span className="text-sm capitalize text-muted-foreground">{p.category}</span>,
+    },
+    { header: "Price", align: "right", cell: (p) => formatRs(p.price) },
+    { header: "On hand", align: "right", cell: (p) => stockFor(p.id)?.onHand ?? 0 },
+    {
+      header: "Status",
+      cell: (p) => {
+        const stock = stockFor(p.id);
+        return <StatusPill status={stock ? stockStatus(stock) : "out"} />;
+      },
+    },
+  ];
 }

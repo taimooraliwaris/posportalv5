@@ -56,6 +56,7 @@ type BackendState = {
 
   staff: StaffUser[];
   saveStaff: (user: StaffUser) => void;
+  removeStaff: (id: string) => void;
 
   storeSettings: StoreSettings;
   updateStoreSettings: (patch: Partial<StoreSettings>) => void;
@@ -78,7 +79,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     seedPricelists,
   );
   const [taxes, setTaxes] = usePersistentState<TaxRate[]>("velora.taxes", seedTaxes);
-  const [staff, setStaff] = useState<StaffUser[]>(seedStaff);
+  const [staff, setStaff] = usePersistentState<StaffUser[]>("velora.staff", seedStaff);
   const [storeSettings, setStoreSettings] = usePersistentState<StoreSettings>(
     "velora.store-settings",
     seedStoreSettings,
@@ -170,7 +171,8 @@ export function BackendProvider({ children }: { children: ReactNode }) {
           ? prev.map((u) => (u.id === user.id ? user : u))
           : [...prev, user],
       ),
-    storeSettings,
+    removeStaff: (id) => setStaff((prev) => prev.filter((u) => u.id !== id)),
+    storeSettings: { ...seedStoreSettings, ...storeSettings },
     updateStoreSettings: (patch) => setStoreSettings((prev) => ({ ...prev, ...patch })),
     sessions: history.sessions,
     sales: history.sales,

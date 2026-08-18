@@ -17,9 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BackendLayout } from "@/components/backend/backend-layout";
 import { DataCard, Field, StatCard } from "@/components/backend/backend-ui";
-import { useBackend } from "@/lib/backend-context";
+import { useBackend, useStore } from "@/lib/backend-context";
 import { formatDate, toDateKey, type SessionRecord } from "@/lib/backend-data";
-import { categories, formatRs, products, TAX_RATE, STORE } from "@/lib/pos-data";
+import { categories, formatRs, products, TAX_RATE } from "@/lib/pos-data";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -47,6 +47,7 @@ export const Route = createFileRoute("/backend/reports")({
 const chartColors = ["var(--primary)", "var(--success)", "var(--info)", "var(--warning)"];
 
 function ReportsPage() {
+  const store = useStore();
   const hydrated = useHydrated();
   const { sessions, sales, stock } = useBackend();
   const [monthOffset, setMonthOffset] = useState(0);
@@ -320,7 +321,7 @@ function ReportsPage() {
 
           {selectedSession && (
             <DataCard className="mt-4 max-w-md space-y-2 p-4 text-sm">
-              <p className="text-center font-semibold">{STORE.name} — Z Report</p>
+              <p className="text-center font-semibold">{store.name} — Z Report</p>
               <Field label="Session" value={selectedSession.id} />
               <Field label="Cashier" value={selectedSession.cashier} />
               <Field label="Opening float" value={formatRs(selectedSession.openingFloat)} />
