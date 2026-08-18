@@ -23,10 +23,10 @@ export function applyNumericKey(current: string, key: NumericKey, maxDecimals = 
 
 type KeyboardOptions = {
   /** Only listen while the field is the active edit target. */
-  enabled?: boolean;
+  enabled?: boolean | undefined;
   onKey: (key: NumericKey) => void;
-  onEnter?: () => void;
-  onEscape?: () => void;
+  onEnter?: (() => void) | undefined;
+  onEscape?: (() => void) | undefined;
 };
 
 /**
@@ -84,10 +84,10 @@ export function useNumericKeyboard({ enabled = true, onKey, onEnter, onEscape }:
 }
 
 type EntryOptions = {
-  enabled?: boolean;
-  maxDecimals?: number;
-  onEnter?: (value: string) => void;
-  onEscape?: () => void;
+  enabled?: boolean | undefined;
+  maxDecimals?: number | undefined;
+  onEnter?: ((value: string) => void) | undefined;
+  onEscape?: (() => void) | undefined;
 };
 
 /** Self-contained numeric entry: holds the value and wires up the keyboard. */
