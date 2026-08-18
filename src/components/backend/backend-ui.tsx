@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Keypad } from "@/components/pos/Keypad";
+import { applyNumericKey, useNumericKeyboard } from "@/lib/use-numeric-entry";
 import { formatRs } from "@/lib/pos-data";
+
 import { cn } from "@/lib/utils";
 
 export function StatCard({
