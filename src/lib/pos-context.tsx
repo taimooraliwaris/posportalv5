@@ -118,6 +118,7 @@ type PosState = {
   selectedLineId: string | null;
   setSelectedLineId: (id: string | null) => void;
   addProduct: (product: Product) => void;
+  addByBarcode: (code: string) => Product | null;
   updateLine: (lineId: string, patch: Partial<CartLine>) => void;
   removeLine: (lineId: string) => void;
 
@@ -234,6 +235,19 @@ export function PosProvider({ children }: { children: ReactNode }) {
     [activeOrderId],
   );
 
+  const addByBarcode = useCallback(
+    (code: string) => {
+      const trimmed = code.trim();
+      const product =
+        productList.find((p) => p.barcode === trimmed) ??
+        productList.find((p) => p.id === trimmed) ??
+        null;
+      if (product) addProduct(product);
+      return product;
+    },
+    [productList, addProduct],
+  );
+
   const value: PosState = {
     registerOpen,
     openingCash,
@@ -272,6 +286,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
     selectedLineId,
     setSelectedLineId,
     addProduct,
+    addByBarcode,
     updateLine: (lineId, patch) => {
       setOrders((prev) =>
         prev.map((o) =>

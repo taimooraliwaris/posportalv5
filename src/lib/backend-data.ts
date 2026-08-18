@@ -63,7 +63,11 @@ export type StaffUser = { id: string; name: string; email: string; role: StaffRo
 
 export type StoreSettings = {
   name: string;
+  brand: string;
+  tagline: string;
   address: string;
+  phone: string;
+  email: string;
   currency: string;
   receiptFooter: string;
   logoName: string;
@@ -304,6 +308,10 @@ export const seedStaff: StaffUser[] = [
 
 export const seedStoreSettings: StoreSettings = {
   name: "Velora Mart",
+  brand: "Velora POS",
+  tagline: "Point of Sale, Simplified.",
+  phone: "+92 21 3456 7890",
+  email: "hello@veloramart.com",
   address: "42 Zamzama Boulevard, Karachi, Pakistan",
   currency: "Rs.",
   receiptFooter: "Thank you for shopping at Velora Mart. Exchanges accepted within 14 days.",

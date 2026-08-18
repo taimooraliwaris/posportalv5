@@ -62,6 +62,8 @@ type BackendState = {
 
   sessions: SessionRecord[];
   sales: HistoricalSale[];
+
+  lowStock: StockItem[];
 };
 
 const BackendContext = createContext<BackendState | null>(null);
@@ -172,9 +174,15 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     updateStoreSettings: (patch) => setStoreSettings((prev) => ({ ...prev, ...patch })),
     sessions: history.sessions,
     sales: history.sales,
+    lowStock: stock.filter((s) => s.active && s.onHand - s.reserved <= s.reorderPoint),
   };
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>;
+}
+
+/** Global store identity — always read through this so settings apply app-wide. */
+export function useStore() {
+  return useBackend().storeSettings;
 }
 
 export function useBackend() {
