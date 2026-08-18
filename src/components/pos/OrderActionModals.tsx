@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ListChecks, StickyNote, Trash2 } from "lucide-react";
+import { Check, ListChecks, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
