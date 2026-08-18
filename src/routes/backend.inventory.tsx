@@ -10,6 +10,7 @@ import { useBackend } from "@/lib/backend-context";
 import { stockAdjustReasons, stockStatus, type StockItem } from "@/lib/backend-data";
 import { usePos } from "@/lib/pos-context";
 import { formatRs } from "@/lib/pos-data";
+import { useHardwareScanner } from "@/lib/use-hardware-scanner";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/backend/inventory")({
@@ -41,6 +42,25 @@ function InventoryPage() {
 
   const nameFor = (id: string) => productList.find((p) => p.id === id)?.name ?? id;
   const priceFor = (id: string) => productList.find((p) => p.id === id)?.price ?? 0;
+  const openAdjust = (productId: string) => {
+    setAdjusting(productId);
+    setValue(String(stock.find((s) => s.productId === productId)?.onHand ?? 0));
+  };
+
+  const saveAdjustment = () => {
+    if (!adjusting) return;
+    adjustStock(adjusting, Number(value) || 0, reason);
+    setAdjusting(null);
+    toast.success("Stock adjusted");
+  };
+
+  // Focus-free restocking: scan a product anywhere on the page to count it in.
+  useHardwareScanner((code) => {
+    const product = productList.find((p) => p.barcode === code);
+    if (!product) return toast.error(`No product matches barcode ${code}`);
+    openAdjust(product.id);
+  }, !adjusting);
+
   const atCost = stock.reduce((sum, s) => sum + s.onHand * s.cost, 0);
   const atRetail = stock.reduce((sum, s) => sum + s.onHand * priceFor(s.productId), 0);
 
@@ -52,6 +72,11 @@ function InventoryPage() {
         <StatCard label="Potential margin" value={formatRs(atRetail - atCost)} />
       </div>
 
+      <p className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
+        Scanner ready — scan any product barcode to open its stock count.
+      </p>
+
       <Tabs defaultValue="stock">
         <TabsList>
           <TabsTrigger value="stock">Stock on hand</TabsTrigger>
@@ -59,10 +84,7 @@ function InventoryPage() {
         </TabsList>
         <TabsContent value="stock">
           <DataTable
-            columns={stockColumns(nameFor, (item) => {
-              setAdjusting(item.productId);
-              setValue(String(item.onHand));
-            })}
+            columns={stockColumns(nameFor, (item) => openAdjust(item.productId))}
             rows={stock}
             getKey={(s) => s.productId}
           />
@@ -95,7 +117,13 @@ function InventoryPage() {
           <p className="text-sm text-muted-foreground">
             Current quantity: {stock.find((s) => s.productId === adjusting)?.onHand ?? 0}
           </p>
-          <MoneyKeypadField label="New counted quantity" value={value} onChange={setValue} />
+          <MoneyKeypadField
+            label="New counted quantity"
+            value={value}
+            onChange={setValue}
+            maxDecimals={0}
+            onEnter={saveAdjustment}
+          />
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value as typeof reason)}
@@ -108,15 +136,7 @@ function InventoryPage() {
               </option>
             ))}
           </select>
-          <Button
-            className="h-11"
-            onClick={() => {
-              if (!adjusting) return;
-              adjustStock(adjusting, Number(value) || 0, reason);
-              setAdjusting(null);
-              toast.success("Stock adjusted");
-            }}
-          >
+          <Button className="h-11" onClick={saveAdjustment}>
             Save adjustment
           </Button>
         </DialogContent>
