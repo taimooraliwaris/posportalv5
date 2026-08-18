@@ -57,7 +57,10 @@ function InventoryPage() {
   // Focus-free restocking: scan a product anywhere on the page to count it in.
   useHardwareScanner((code) => {
     const product = productList.find((p) => p.barcode === code);
-    if (!product) return toast.error(`No product matches barcode ${code}`);
+    if (!product) {
+      toast.error(`No product matches barcode ${code}`);
+      return;
+    }
     openAdjust(product.id);
   }, !adjusting);
 

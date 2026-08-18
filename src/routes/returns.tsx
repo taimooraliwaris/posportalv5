@@ -117,7 +117,10 @@ function ReturnExchange() {
   useHardwareScanner((code) => {
     if (stage === "exchange") {
       const product = productList.find((p) => p.barcode === code);
-      if (!product) return toast.error(`No product matches barcode ${code}`);
+      if (!product) {
+        toast.error(`No product matches barcode ${code}`);
+        return;
+      }
       setReplacements((prev) => ({ ...prev, [product.id]: (prev[product.id] ?? 0) + 1 }));
       toast.success(`${product.name} added as replacement`);
       return;
