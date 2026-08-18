@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Keypad } from "@/components/pos/Keypad";
+import { applyNumericKey, useNumericKeyboard } from "@/lib/use-numeric-entry";
 import { formatRs } from "@/lib/pos-data";
+
 import { cn } from "@/lib/utils";
 
 export function StatCard({
@@ -108,37 +110,33 @@ export function MoneyKeypadField({
   label,
   value,
   onChange,
+  maxDecimals = 2,
+  onEnter,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  maxDecimals?: number;
+  onEnter?: () => void;
 }) {
-  const onKey = (key: string) => {
-    if (key === "backspace") return onChange(value.slice(0, -1));
-    if (key === "clear") return onChange("");
-    if (key === "+/-") return onChange(value.startsWith("-") ? value.slice(1) : "-" + value);
-    if (key === "+10") return onChange(String((Number(value) || 0) + 10));
-    if (key === "+100") return onChange(String((Number(value) || 0) + 100));
-    if (key === "." && value.includes(".")) return;
-    onChange(value + key);
-  };
+  const onKey = (key: string) => onChange(applyNumericKey(value, key, maxDecimals));
+
+  useNumericKeyboard({ onKey, onEnter });
+
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
-      <div className="rounded-md border border-border bg-muted px-3 py-2 text-right text-lg font-semibold">
-        {formatRs(Number(value) || 0)}
+      <div className="rounded-md border-2 border-primary bg-muted px-3 py-2 text-right text-lg font-semibold tabular-nums shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_18%,transparent)]">
+        {maxDecimals === 0 ? (Number(value) || 0) : formatRs(Number(value) || 0)}
       </div>
-      <Keypad
-        onKey={onKey}
-        rightColumn={[
-          { label: "+10", value: "+10" },
-          { label: "+100", value: "+100" },
-          { label: "Clear", value: "clear", tone: "green" },
-        ]}
-      />
+      <Keypad onKey={onKey} />
+      <p className="text-xs text-muted-foreground">
+        Type on the keyboard or tap the keypad. Backspace deletes, C clears.
+      </p>
     </div>
   );
 }
+
 
 /** Same one-tap confirmation pattern used for Cancel Order at the till. */
 export function ConfirmAction({

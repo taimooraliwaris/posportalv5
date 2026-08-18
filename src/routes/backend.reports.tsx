@@ -21,6 +21,9 @@ import { useBackend, useStore } from "@/lib/backend-context";
 import { formatDate, toDateKey, type SessionRecord } from "@/lib/backend-data";
 import { categories, formatRs, products, TAX_RATE } from "@/lib/pos-data";
 import { useHydrated } from "@/lib/use-hydrated";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { printReport, escapeHtml, formatDmy, summaryRow } from "@/lib/print-report";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -53,6 +56,12 @@ function ReportsPage() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<SessionRecord | null>(null);
+  const [rangeFrom, setRangeFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 6);
+    return toDateKey(d);
+  });
+  const [rangeTo, setRangeTo] = useState(() => toDateKey(new Date()));
 
   const month = useMemo(() => {
     const d = new Date();
@@ -121,6 +130,77 @@ function ReportsPage() {
       return monthSessions.filter((s) => s.date === key).reduce((sum, s) => sum + s.totalSales, 0);
     }),
   );
+
+  const rangeSessions = sessions
+    .filter((s) => s.date >= rangeFrom && s.date <= rangeTo)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const rangeTotals = rangeSessions.reduce(
+    (acc, s) => ({
+      orders: acc.orders + s.orderCount,
+      cash: acc.cash + s.cashSales,
+      card: acc.card + s.cardSales,
+      total: acc.total + s.totalSales,
+      variance: acc.variance + s.variance,
+    }),
+    { orders: 0, cash: 0, card: 0, total: 0, variance: 0 },
+  );
+  const rangeTax = rangeTotals.total - rangeTotals.total / (1 + TAX_RATE);
+
+  const printXReport = () => {
+    if (rangeSessions.length === 0) {
+      toast.error("No sessions in the selected date range");
+      return;
+    }
+    const rows = rangeSessions
+      .map(
+        (s) =>
+          `<tr><td>${escapeHtml(formatDmy(s.date))}</td><td>${escapeHtml(s.id)}</td><td>${escapeHtml(
+            s.cashier,
+          )}</td><td class="num">${s.orderCount}</td><td class="num">${escapeHtml(
+            formatRs(s.cashSales),
+          )}</td><td class="num">${escapeHtml(formatRs(s.cardSales))}</td><td class="num">${escapeHtml(
+            formatRs(s.totalSales),
+          )}</td></tr>`,
+      )
+      .join("");
+    printReport(
+      "X report",
+      `<div class="head"><h1>${escapeHtml(store.name)}</h1>
+        <p class="meta">X report (interim reading) — ${escapeHtml(formatDmy(rangeFrom))} to ${escapeHtml(formatDmy(rangeTo))}</p>
+        <p class="meta">Generated ${escapeHtml(formatDmy(new Date()))}</p></div>
+      <h2>Sessions</h2>
+      <table><thead><tr><th>Date</th><th>Session</th><th>Cashier</th><th class="num">Orders</th><th class="num">Cash</th><th class="num">Card</th><th class="num">Total</th></tr></thead>
+      <tbody>${rows}<tr class="total"><td colspan="3">Total</td><td class="num">${rangeTotals.orders}</td><td class="num">${escapeHtml(formatRs(rangeTotals.cash))}</td><td class="num">${escapeHtml(formatRs(rangeTotals.card))}</td><td class="num">${escapeHtml(formatRs(rangeTotals.total))}</td></tr></tbody></table>
+      <h2>Summary</h2>
+      ${summaryRow("Net sales", formatRs(rangeTotals.total / (1 + TAX_RATE)))}
+      ${summaryRow("GST 18%", formatRs(rangeTax))}
+      ${summaryRow("Cash variance", formatRs(rangeTotals.variance))}
+      ${summaryRow("Total sales", formatRs(rangeTotals.total), true)}
+      <p class="foot">X report does not close the till session.</p>`,
+    );
+  };
+
+  const printZReport = (session: SessionRecord) => {
+    printReport(
+      `Z report ${session.id}`,
+      `<div class="head"><h1>${escapeHtml(store.name)}</h1>
+        <p class="meta">Z report (end of session) — ${escapeHtml(formatDmy(session.date))}</p>
+        <p class="meta">Session ${escapeHtml(session.id)} · ${escapeHtml(session.cashier)} · ${escapeHtml(session.openedAt)} to ${escapeHtml(session.closedAt)}</p></div>
+      <h2>Sold</h2>
+      ${summaryRow("Orders", String(session.orderCount))}
+      ${summaryRow("Net sales", formatRs(session.totalSales / (1 + TAX_RATE)))}
+      <h2>Payments</h2>
+      ${summaryRow("Cash", formatRs(session.cashSales))}
+      ${summaryRow("Card", formatRs(session.cardSales))}
+      <h2>Taxes</h2>
+      ${summaryRow("GST 18%", formatRs(session.totalSales - session.totalSales / (1 + TAX_RATE)))}
+      <h2>Cash control</h2>
+      ${summaryRow("Opening float", formatRs(session.openingFloat))}
+      ${summaryRow("Cash variance", formatRs(session.variance))}
+      ${summaryRow("Total", formatRs(session.totalSales), true)}
+      <p class="foot">Z report closes the session figures for ${escapeHtml(formatDmy(session.date))}.</p>`,
+    );
+  };
 
   const daySessions = selectedDay ? sessions.filter((s) => s.date === selectedDay) : [];
 
@@ -213,6 +293,41 @@ function ReportsPage() {
               value={formatRs(monthSessions.length ? monthSales / monthSessions.length : 0)}
             />
           </div>
+
+          <DataCard className="mt-4 space-y-3 p-4">
+            <p className="font-medium">X report — date range</p>
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <div className="space-y-1">
+                <Label htmlFor="range-from">From</Label>
+                <Input
+                  id="range-from"
+                  type="date"
+                  value={rangeFrom}
+                  onChange={(e) => setRangeFrom(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="range-to">To</Label>
+                <Input
+                  id="range-to"
+                  type="date"
+                  value={rangeTo}
+                  onChange={(e) => setRangeTo(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <Button className="h-11" onClick={printXReport}>
+                <Printer className="h-4 w-4" /> Print / save PDF
+              </Button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-4">
+              <StatCard label="Sessions" value={String(rangeSessions.length)} />
+              <StatCard label="Orders" value={String(rangeTotals.orders)} />
+              <StatCard label="Cash" value={formatRs(rangeTotals.cash)} />
+              <StatCard label="Total sales" value={formatRs(rangeTotals.total)} />
+            </div>
+          </DataCard>
 
           <DataCard className="mt-4 p-4">
             <div className="mb-3 flex items-center justify-between">
@@ -354,9 +469,9 @@ function ReportsPage() {
               <Button
                 variant="secondary"
                 className="h-11 w-full"
-                onClick={() => toast.success("Report sent to printer")}
+                onClick={() => printZReport(selectedSession)}
               >
-                <Printer className="h-4 w-4" /> Print / export
+                <Printer className="h-4 w-4" /> Print / save PDF
               </Button>
             </DataCard>
           )}

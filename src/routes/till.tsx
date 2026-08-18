@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MoreVertical, Plus, StickyNote, Trash2, Upload, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PosHeader } from "@/components/pos/PosHeader";
@@ -7,9 +7,10 @@ import { ProductTile } from "@/components/pos/ProductTile";
 import { Keypad } from "@/components/pos/Keypad";
 import { ScannerOverlay } from "@/components/pos/ScannerOverlay";
 import { ChooseCustomerModal } from "@/components/pos/CustomerModals";
-import { OrderActionsModal } from "@/components/pos/OrderActionModals";
+import { CustomerNoteModal, OrderActionsModal } from "@/components/pos/OrderActionModals";
 import { usePos, orderTotals, type CartLine } from "@/lib/pos-context";
 import { useHardwareScanner } from "@/lib/use-hardware-scanner";
+import { applyNumericKey, useNumericKeyboard } from "@/lib/use-numeric-entry";
 import {
   categories,
   formatRs,
@@ -35,12 +36,17 @@ export const Route = createFileRoute("/till")({
   component: Till,
 });
 
-type KeypadMode = "qty" | "price" | "percent";
+type EditMode = "qty" | "price" | "percent";
+
+const editLabels: Record<EditMode, string> = {
+  qty: "Quantity",
+  price: "Price",
+  percent: "Discount %",
+};
 
 function Till() {
   const {
     activeOrder,
-    activeOrderId,
     selectedLineId,
     setSelectedLineId,
     addProduct,
@@ -55,15 +61,71 @@ function Till() {
   const [scanning, setScanning] = useState(false);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [keypadMode, setKeypadMode] = useState<KeypadMode>("qty");
-  const [keypadValue, setKeypadValue] = useState("");
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [editMode, setEditMode] = useState<EditMode | null>(null);
+  const [editValue, setEditValue] = useState("");
 
-  // USB/Bluetooth scanners work anywhere on the register screen.
+  const editing = editMode !== null && selectedLineId !== null;
+
+  // Leaving a line behind cancels the active edit so nothing is applied blindly.
+  useEffect(() => {
+    setEditMode(null);
+    setEditValue("");
+  }, [selectedLineId]);
+
+  // USB/Bluetooth scanners work anywhere on the register screen, but stand down
+  // while a value is being edited so scanned digits never land in a price.
   useHardwareScanner((code) => {
     const product = addByBarcode(code);
     if (product) toast.success(`${product.name} added`);
     else toast.error(`No product matches barcode ${code}`);
-  }, !scanning);
+  }, !scanning && !editing);
+
+  const applyValue = (raw: string) => {
+    if (!selectedLineId || !editMode) return;
+    const num = Number(raw);
+    if (raw === "" || Number.isNaN(num)) return;
+    if (editMode === "qty") updateLine(selectedLineId, { qty: Math.max(1, Math.round(num)) });
+    if (editMode === "price") updateLine(selectedLineId, { unitPrice: Math.max(0, num) });
+    if (editMode === "percent")
+      updateLine(selectedLineId, { discount: Math.max(0, Math.min(100, num)) });
+  };
+
+  const onKey = (key: string) => {
+    if (key === "qty" || key === "price" || key === "percent") {
+      if (!selectedLineId) {
+        toast("Select a line first to edit it");
+        return;
+      }
+      setEditMode(key);
+      setEditValue("");
+      return;
+    }
+    if (!selectedLineId) {
+      toast("Select a line first to use the keypad");
+      return;
+    }
+    if (!editMode) {
+      toast("Choose Qty, Price or % to start editing");
+      return;
+    }
+    const next = applyNumericKey(editValue, key, editMode === "qty" ? 0 : 2);
+    setEditValue(next);
+    applyValue(next);
+  };
+
+  useNumericKeyboard({
+    enabled: editing,
+    onKey,
+    onEnter: () => {
+      setEditMode(null);
+      setEditValue("");
+    },
+    onEscape: () => {
+      setEditMode(null);
+      setEditValue("");
+    },
+  });
 
   const pricelist = pricelists.find((p) => p.id === activeOrder?.pricelistId) ?? pricelists[0]!;
   const { subtotal, taxes, total } = orderTotals(activeOrder, pricelist.discount);
@@ -78,33 +140,6 @@ function Till() {
     return list;
   }, [category, search]);
 
-  const onKey = (key: string) => {
-    if (key === "qty" || key === "price" || key === "percent") {
-      setKeypadMode(key);
-      setKeypadValue("");
-      return;
-    }
-    if (!selectedLineId) {
-      toast("Select a line first to use the keypad");
-      return;
-    }
-    if (key === "backspace") {
-      setKeypadValue("");
-      return;
-    }
-    if (key === "+/-") {
-      setKeypadValue((v) => (v.startsWith("-") ? v.slice(1) : v ? "-" + v : ""));
-      return;
-    }
-    const next = keypadValue + key;
-    setKeypadValue(next);
-    const num = Number(next);
-    if (Number.isNaN(num)) return;
-    if (keypadMode === "qty") updateLine(selectedLineId, { qty: Math.max(1, num) });
-    if (keypadMode === "price") updateLine(selectedLineId, { unitPrice: Math.max(0, num) });
-    if (keypadMode === "percent")
-      updateLine(selectedLineId, { discount: Math.max(0, Math.min(100, num)) });
-  };
   const handleAddProduct = (product: Product) => {
     addProduct(product);
     const line = activeOrder?.lines.find((l) => l.productId === product.id);
@@ -125,13 +160,16 @@ function Till() {
       />
       <main className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden lg:flex-row">
         <section className="flex min-h-0 flex-col border-r border-border bg-card lg:w-[26rem] lg:shrink-0 xl:w-[30rem]">
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
             {activeOrder && activeOrder.lines.length > 0 ? (
               activeOrder.lines.map((line) => (
                 <CartLineItem
                   key={line.id}
                   line={line}
                   selected={line.id === selectedLineId}
+                  editingLabel={
+                    line.id === selectedLineId && editMode ? editLabels[editMode] : null
+                  }
                   onClick={() => setSelectedLineId(line.id)}
                   onRemove={() => removeLine(line.id)}
                 />
@@ -158,8 +196,13 @@ function Till() {
               </button>
               <button
                 type="button"
-                onClick={() => setActionsOpen(true)}
-                className="flex min-h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors"
+                onClick={() => setNoteOpen(true)}
+                className={cn(
+                  "flex min-h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors",
+                  activeOrder?.note || (activeOrder?.noteTags.length ?? 0) > 0
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-card",
+                )}
               >
                 <StickyNote className="h-4 w-4" /> Note
               </button>
@@ -203,12 +246,23 @@ function Till() {
               <Link to="/payment">Payment</Link>
             </Button>
 
+            {editing && (
+              <div className="mb-2 flex items-center justify-between rounded-lg border-2 border-primary bg-accent px-3 py-2 shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_18%,transparent)]">
+                <span className="text-sm font-semibold text-accent-foreground">
+                  Editing {editLabels[editMode]}
+                </span>
+                <span className="text-lg font-bold tabular-nums text-accent-foreground">
+                  {editValue === "" ? "—" : editValue}
+                </span>
+              </div>
+            )}
+
             <Keypad
               onKey={onKey}
-              rightColumn={[
-                { label: "Qty", value: "qty", active: keypadMode === "qty" },
-                { label: "Price", value: "price", active: keypadMode === "price" },
-                { label: "%", value: "percent", active: keypadMode === "percent" },
+              modes={[
+                { label: "Qty", value: "qty", active: editMode === "qty" },
+                { label: "Price", value: "price", active: editMode === "price" },
+                { label: "%", value: "percent", active: editMode === "percent" },
               ]}
             />
           </div>
@@ -260,6 +314,7 @@ function Till() {
           toast.success(`${c.name} assigned`);
         }}
       />
+      <CustomerNoteModal open={noteOpen} onOpenChange={setNoteOpen} />
       <OrderActionsModal open={actionsOpen} onOpenChange={setActionsOpen} />
     </div>
   );
@@ -268,11 +323,13 @@ function Till() {
 function CartLineItem({
   line,
   selected,
+  editingLabel,
   onClick,
   onRemove,
 }: {
   line: CartLine;
   selected: boolean;
+  editingLabel: string | null;
   onClick: () => void;
   onRemove: () => void;
 }) {
@@ -280,13 +337,17 @@ function CartLineItem({
     <div
       onClick={onClick}
       className={cn(
-        "flex cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 transition-colors",
-        selected ? "border-primary bg-accent" : "border-border bg-card",
+        "flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 p-3 transition-all",
+        editingLabel
+          ? "border-primary bg-accent shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_22%,transparent)]"
+          : selected
+            ? "border-primary bg-accent"
+            : "border-border bg-card",
       )}
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="grid h-7 min-w-7 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+          <span className="grid h-7 min-w-7 place-items-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
             {line.qty}
           </span>
           <span className="truncate font-medium">{line.name}</span>
@@ -294,6 +355,11 @@ function CartLineItem({
         <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
           <span>{formatRs(line.unitPrice)}</span>
           {line.discount > 0 && <span className="text-success">-{line.discount}%</span>}
+          {editingLabel && (
+            <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
+              Editing {editingLabel}
+            </span>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2">
