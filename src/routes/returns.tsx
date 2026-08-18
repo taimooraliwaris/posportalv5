@@ -19,6 +19,7 @@ import { TAX_RATE, categories, formatRs, toneClass } from "@/lib/pos-data";
 import { returnReasons } from "@/lib/backend-data";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/backend-context";
+import { useHardwareScanner } from "@/lib/use-hardware-scanner";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/returns")({
@@ -111,6 +112,28 @@ function ReturnExchange() {
     selectOrder(random);
   };
 
+  // Focus-free scanning: receipt barcodes during lookup, product barcodes while
+  // picking exchange replacements.
+  useHardwareScanner((code) => {
+    if (stage === "exchange") {
+      const product = productList.find((p) => p.barcode === code);
+      if (!product) return toast.error(`No product matches barcode ${code}`);
+      setReplacements((prev) => ({ ...prev, [product.id]: (prev[product.id] ?? 0) + 1 }));
+      toast.success(`${product.name} added as replacement`);
+      return;
+    }
+    const match = orders.find(
+      (o) => o.receipt === code || o.number === code || o.id === code,
+    );
+    if (!match) {
+      setQuery(code);
+      toast.error(`No receipt matches ${code}`);
+      return;
+    }
+    toast.success(`Receipt ${match.receipt} scanned`);
+    selectOrder(match);
+  }, stage === "search" || stage === "exchange");
+
   const confirm = (kind: "return" | "exchange") => {
     if (!order || returnLines.length === 0) return;
     const record = processReturn({
@@ -165,6 +188,11 @@ function ReturnExchange() {
                 <QrCode className="h-5 w-5" />
               </Button>
             </div>
+
+            <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
+              Scanner ready — scan the receipt barcode from anywhere on this screen.
+            </p>
 
             <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
               {matches.map((o) => (
