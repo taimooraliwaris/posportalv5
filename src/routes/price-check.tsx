@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductIcon } from "@/components/pos/ProductTile";
 import { usePos } from "@/lib/pos-context";
+import { useHardwareScanner } from "@/lib/use-hardware-scanner";
+import { toast } from "sonner";
 import { TAX_RATE, formatRs, categories, toneClass, type Product } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +40,19 @@ function PriceCheck() {
     if (!q) return productList.slice(0, 12);
     return productList.filter((p) => p.name.toLowerCase().includes(q) || p.barcode.includes(q));
   }, [productList, query]);
+
+  // Focus-free: a scanner burst is picked up anywhere on this screen.
+  useHardwareScanner((code) => {
+    const match = productList.find((p) => p.barcode === code);
+    if (match) {
+      setSelected(match);
+      setQuery(match.barcode);
+    } else {
+      setQuery(code);
+      setSelected(null);
+      toast.error(`No product matches barcode ${code}`);
+    }
+  });
 
   const categoryName = selected
     ? (categories.find((c) => c.id === selected.category)?.name ?? "Uncategorised")
@@ -83,6 +98,11 @@ function PriceCheck() {
             <Barcode className="h-5 w-5" />
           </Button>
         </div>
+
+        <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
+          Scanner ready — just scan, no need to click the search box.
+        </p>
 
         {selected && (
           <section className="mt-4 overflow-hidden rounded-md border border-border bg-card">
