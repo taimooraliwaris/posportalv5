@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { ArrowLeft, Check, Mail, Receipt, User, X } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Check, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Keypad } from "@/components/pos/Keypad";
 import { PrintModal, SendReceiptModal } from "@/components/pos/ReceiptModals";
-import { usePos, orderTotals } from "@/lib/pos-context";
+import { usePos, orderTotals, type PaymentLine } from "@/lib/pos-context";
 import { formatRs } from "@/lib/pos-data";
+import { useNumericEntry } from "@/lib/use-numeric-entry";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -23,31 +24,33 @@ export const Route = createFileRoute("/payment")({
   component: Payment,
 });
 
+const methods: PaymentLine["method"][] = ["Cash", "Card", "Customer Account"];
+
 function Payment() {
   const { activeOrder, addPayment, removePayment, validateOrder, lastPaidOrder } = usePos();
   const navigate = useNavigate();
   const [printOpen, setPrintOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [method, setMethod] = useState<PaymentLine["method"]>("Cash");
 
   const { total } = orderTotals(activeOrder);
-  const paid = activeOrder?.payments.reduce((s, p) => s + p.amount, 0) ?? 0;
-  const remaining = Math.max(0, total - paid);
-  const covered = paid >= total;
+  const payments = activeOrder?.payments ?? [];
+  const tendered = payments.reduce((sum, p) => sum + p.amount, 0);
+  const remaining = Math.max(0, total - tendered);
+  const change = Math.max(0, tendered - total);
+  const covered = tendered >= total && total > 0;
 
-  const onKey = (key: string) => {
-    if (key === "backspace") return;
-    const num = Number(key);
-    if (!Number.isNaN(num) && activeOrder) {
-      addPayment("Cash", num);
-    } else if (key === "+10" || key === "+20" || key === "+50") {
-      const add = Number(key.slice(1));
-      addPayment("Cash", Math.min(remaining, add));
-    }
-  };
+  const entry = useNumericEntry({
+    enabled: !showSuccess,
+    onEnter: () => submit(),
+    onEscape: () => undefined,
+  });
 
-  const quickAdd = (method: "Cash" | "Card" | "Customer Account") => {
-    addPayment(method, remaining);
+  const addTender = (amount: number) => {
+    if (!activeOrder || amount <= 0) return;
+    addPayment(method, amount);
+    entry.setValue("");
   };
 
   const handleValidate = () => {
@@ -55,10 +58,21 @@ function Payment() {
     setShowSuccess(true);
   };
 
+  /** Enter adds the typed tender, or completes the sale when nothing is typed. */
+  const submit = () => {
+    if (entry.numeric > 0) {
+      addTender(entry.numeric);
+      return;
+    }
+    if (tendered >= total && total > 0) handleValidate();
+    else toast("Enter an amount to tender");
+  };
+
   if (showSuccess && lastPaidOrder) {
     return (
       <SuccessScreen
         order={lastPaidOrder}
+        change={change}
         onPrint={() => setPrintOpen(true)}
         onSend={() => setSendOpen(true)}
         onContinue={() => {
@@ -83,92 +97,127 @@ function Payment() {
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 p-4 lg:flex-row">
         <section className="flex flex-1 flex-col gap-4">
-          <div className="rounded-2xl border border-border bg-card p-6 text-center shadow-soft">
-            <p className="text-sm text-muted-foreground">Amount due</p>
-            <p className="mt-1 text-5xl font-semibold">{formatRs(total)}</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Paid {formatRs(paid)} · Remaining {formatRs(remaining)}
-            </p>
-          </div>
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+            <div className="text-center">
+              <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                Amount due
+              </p>
+              <p className="mt-1 text-5xl font-semibold tabular-nums">{formatRs(total)}</p>
+            </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <PaymentMethodButton
-              label="Cash"
-              onClick={() => quickAdd("Cash")}
-              active={activeOrder?.payments.some((p) => p.method === "Cash")}
-            />
-            <PaymentMethodButton
-              label="Card"
-              onClick={() => quickAdd("Card")}
-              active={activeOrder?.payments.some((p) => p.method === "Card")}
-            />
-            <PaymentMethodButton
-              label="Customer Account"
-              onClick={() => quickAdd("Customer Account")}
-              active={activeOrder?.payments.some((p) => p.method === "Customer Account")}
-            />
-          </div>
-
-          <div className="space-y-2">
-            {(activeOrder?.payments ?? []).map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{p.method}</span>
-                  <span className="text-sm text-muted-foreground">{formatRs(p.amount)}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removePayment(p.id)}
-                  className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+            <dl className="mt-5 space-y-2 border-t border-border pt-4 text-base">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Amount tendered</dt>
+                <dd className="font-semibold tabular-nums">{formatRs(tendered)}</dd>
               </div>
-            ))}
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Remaining</dt>
+                <dd
+                  className={cn(
+                    "font-semibold tabular-nums",
+                    remaining > 0 ? "text-destructive" : "text-success",
+                  )}
+                >
+                  {formatRs(remaining)}
+                </dd>
+              </div>
+            </dl>
+
+            {change > 0 && (
+              <div className="mt-4 rounded-xl border-2 border-success bg-success-soft p-4 text-center">
+                <p className="text-sm font-semibold uppercase tracking-wide">Change due</p>
+                <p className="mt-1 text-4xl font-bold tabular-nums text-success">
+                  {formatRs(change)}
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium"
-            >
-              <User className="h-4 w-4" /> Customer
-            </button>
-            <button
-              type="button"
-              className="flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium"
-            >
-              <Receipt className="h-4 w-4" /> Invoice
-            </button>
-            <button
-              type="button"
-              className="flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium"
-            >
-              <Mail className="h-4 w-4" /> Email
-            </button>
+          <div>
+            <p className="mb-2 text-sm font-medium">Payment method</p>
+            <div className="grid grid-cols-3 gap-2">
+              {methods.map((m) => (
+                <PaymentMethodButton
+                  key={m}
+                  label={m}
+                  onClick={() => setMethod(m)}
+                  active={method === m}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-sm font-medium">
+              Payments {payments.length > 0 && `(${payments.length})`}
+            </p>
+            <div className="space-y-2">
+              {payments.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
+                >
+                  <span className="font-medium">{p.method}</span>
+                  <span className="flex items-center gap-3">
+                    <span className="font-semibold tabular-nums">{formatRs(p.amount)}</span>
+                    <button
+                      type="button"
+                      onClick={() => removePayment(p.id)}
+                      aria-label={`Remove ${p.method} payment`}
+                      className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </span>
+                </div>
+              ))}
+              {payments.length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                  No payments yet. Type an amount and add it as a tender. Split payments by adding
+                  more than one.
+                </p>
+              )}
+            </div>
           </div>
         </section>
 
         <section className="flex flex-col gap-3 lg:w-80">
-          <Keypad
-            onKey={onKey}
-            rightColumn={[
-              { label: "+10", value: "+10", tone: "green" },
-              { label: "+20", value: "+20", tone: "green" },
-              { label: "+50", value: "+50", tone: "green" },
-            ]}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="secondary" className="h-14" asChild>
-              <Link to="/till">Back</Link>
-            </Button>
-            <Button className="h-14 text-base" disabled={!covered} onClick={handleValidate}>
-              Validate
-            </Button>
+          <div className="rounded-xl border-2 border-primary bg-card p-3 shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_18%,transparent)]">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {method} tender
+            </p>
+            <p className="mt-1 truncate text-right text-3xl font-semibold tabular-nums">
+              {entry.value === "" ? formatRs(0) : `Rs. ${entry.value}`}
+            </p>
           </div>
+
+          <Keypad onKey={entry.press} />
+
+          <Button
+            variant="secondary"
+            className="h-12 text-base"
+            disabled={entry.numeric <= 0}
+            onClick={() => addTender(entry.numeric)}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Add {method} tender
+          </Button>
+
+          <Button
+            className="h-16 text-lg font-semibold"
+            disabled={!covered}
+            onClick={handleValidate}
+          >
+            <Check className="mr-2 h-5 w-5" /> Validate
+          </Button>
+
+          <Button variant="ghost" className="h-11" asChild>
+            <Link to="/till">Back to till</Link>
+          </Button>
+
+          <p className="text-center text-xs text-muted-foreground">
+            Type on the keyboard or the keypad. Enter adds the tender, or completes the sale when
+            the order is covered. Escape clears.
+          </p>
         </section>
       </main>
 
@@ -181,19 +230,22 @@ function Payment() {
 function PaymentMethodButton({
   label,
   onClick,
-  active = false,
+  active,
 }: {
   label: string;
   onClick: () => void;
-  active: boolean | undefined;
+  active: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
-        "min-h-16 rounded-xl border border-border px-4 text-sm font-medium transition-transform duration-150 active:scale-[0.97]",
-        active ? "bg-primary text-primary-foreground" : "bg-card",
+        "min-h-16 rounded-xl border-2 px-3 text-sm font-semibold transition-transform duration-150 active:scale-[0.97]",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground",
       )}
     >
       {label}
@@ -203,11 +255,13 @@ function PaymentMethodButton({
 
 function SuccessScreen({
   order,
+  change,
   onPrint,
   onSend,
   onContinue,
 }: {
   order: ReturnType<typeof usePos>["lastPaidOrder"];
+  change: number;
   onPrint: () => void;
   onSend: () => void;
   onContinue: () => void;
@@ -219,7 +273,13 @@ function SuccessScreen({
         <Check className="h-12 w-12" strokeWidth={3} />
       </div>
       <h1 className="text-2xl font-semibold">Payment successful</h1>
-      <p className="text-3xl font-semibold">{formatRs(total)}</p>
+      <p className="text-3xl font-semibold tabular-nums">{formatRs(total)}</p>
+      {change > 0 && (
+        <div className="rounded-xl border-2 border-success bg-success-soft px-8 py-4 text-center">
+          <p className="text-sm font-semibold uppercase tracking-wide">Change due</p>
+          <p className="mt-1 text-4xl font-bold tabular-nums text-success">{formatRs(change)}</p>
+        </div>
+      )}
       <div className="flex w-full max-w-md gap-2">
         <Button variant="secondary" className="h-12 flex-1" onClick={onPrint}>
           Print
