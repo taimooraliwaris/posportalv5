@@ -23,7 +23,6 @@ export function OrderActionsModal({
   onOpenChange: (o: boolean) => void;
 }) {
   const { activeOrder, updateOrder, deleteOrder } = usePos();
-  const [noteOpen, setNoteOpen] = useState(false);
   const [pricelistOpen, setPricelistOpen] = useState(false);
 
   return (
@@ -33,15 +32,7 @@ export function OrderActionsModal({
           <DialogHeader>
             <DialogTitle>Order Actions</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <ActionTile
-              icon={<StickyNote className="h-7 w-7" />}
-              label="Customer Note"
-              onClick={() => {
-                onOpenChange(false);
-                setNoteOpen(true);
-              }}
-            />
+          <div className="grid grid-cols-1 gap-3">
             <ActionTile
               icon={<ListChecks className="h-7 w-7" />}
               label="Pricelist"
@@ -67,11 +58,11 @@ export function OrderActionsModal({
           </Button>
         </DialogContent>
       </Dialog>
-      <CustomerNoteModal open={noteOpen} onOpenChange={setNoteOpen} />
       <PricelistModal open={pricelistOpen} onOpenChange={setPricelistOpen} />
     </>
   );
 }
+
 
 function ActionTile({
   icon,
