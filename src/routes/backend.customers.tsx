@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BackendLayout } from "@/components/backend/backend-layout";
 import { DataCard, DetailDrawer, Field } from "@/components/backend/backend-ui";
+import { DataTable, type Column } from "@/components/backend/data-table";
 import { CreatePartnerModal } from "@/components/pos/CustomerModals";
 import { usePos } from "@/lib/pos-context";
 import { formatRs, type Customer } from "@/lib/pos-data";
@@ -32,6 +33,7 @@ function CustomersPage() {
 
   const balanceFor = (index: number) => [0, -4200, 1500, -18750][index % 4] ?? 0;
 
+
   return (
     <BackendLayout
       title="Customers"
@@ -41,41 +43,16 @@ function CustomersPage() {
         </Button>
       }
     >
-      <DataCard>
-        <div className="hidden grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-3 border-b border-border px-4 py-2 text-sm font-medium text-muted-foreground md:grid">
-          <span>Name</span>
-          <span>Phone</span>
-          <span>Orders</span>
-          <span>Lifetime spend</span>
-          <span>Account balance</span>
-        </div>
-        {customers.map((c, index) => {
-          const customerOrders = orders.filter((o) => o.customerId === c.id);
-          const spend = customerOrders.reduce(
-            (sum, o) => sum + o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0),
-            0,
-          );
-          const balance = balanceFor(index);
-          return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setSelected(c)}
-              className="grid w-full grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 text-left last:border-0 hover:bg-muted md:grid-cols-[2fr_1fr_1fr_1fr_1fr]"
-            >
-              <span className="font-medium">{c.name}</span>
-              <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>
-              <span>{customerOrders.length}</span>
-              <span>{formatRs(spend)}</span>
-              <span
-                className={cn("font-medium", balance < 0 ? "text-destructive" : "text-success")}
-              >
-                {formatRs(Math.abs(balance))}
-              </span>
-            </button>
-          );
-        })}
-      </DataCard>
+      <DataTable
+        columns={customerColumns(
+          (id) => orders.filter((o) => o.customerId === id),
+          balanceFor,
+        )}
+        rows={customers}
+        getKey={(c) => c.id}
+        onRowClick={setSelected}
+        empty="No customers yet."
+      />
 
       <DetailDrawer
         open={!!selected}
@@ -116,4 +93,41 @@ function CustomersPage() {
       />
     </BackendLayout>
   );
+}
+
+function customerColumns(
+  ordersFor: (customerId: string) => { lines: { qty: number; unitPrice: number }[] }[],
+  balanceFor: (index: number) => number,
+): Column<Customer>[] {
+  return [
+    { header: "Name", width: "2fr", cell: (c) => <span className="font-medium">{c.name}</span> },
+    {
+      header: "Phone",
+      cell: (c) => <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>,
+    },
+    { header: "Orders", align: "right", cell: (c) => ordersFor(c.id).length },
+    {
+      header: "Lifetime spend",
+      align: "right",
+      cell: (c) =>
+        formatRs(
+          ordersFor(c.id).reduce(
+            (sum, o) => sum + o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0),
+            0,
+          ),
+        ),
+    },
+    {
+      header: "Account balance",
+      align: "right",
+      cell: (c) => {
+        const balance = balanceFor(Number(c.id.replace(/\D/g, "")) || c.name.length);
+        return (
+          <span className={cn("font-medium", balance < 0 ? "text-destructive" : "text-success")}>
+            {formatRs(Math.abs(balance))}
+          </span>
+        );
+      },
+    },
+  ];
 }

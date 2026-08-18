@@ -4,7 +4,7 @@ import { Store, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePos } from "@/lib/pos-context";
-import { STORE } from "@/lib/pos-data";
+import { useStore } from "@/lib/backend-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -25,6 +25,7 @@ export const Route = createFileRoute("/")({
 });
 
 function OpenRegister() {
+  const store = useStore();
   const { registerOpen, openingCash, openRegister } = usePos();
   const [modalOpen, setModalOpen] = useState(false);
   const [amount, setAmount] = useState("500.00");
@@ -65,8 +66,8 @@ function OpenRegister() {
         V
       </div>
       <div className="text-center">
-        <h1 className="text-3xl font-semibold tracking-tight">{STORE.name}</h1>
-        <p className="mt-1 text-muted-foreground">{STORE.tagline}</p>
+        <h1 className="text-3xl font-semibold tracking-tight">{store.name}</h1>
+        <p className="mt-1 text-muted-foreground">{store.tagline}</p>
       </div>
       <div className="text-center">
         <p className="text-5xl font-light tabular-nums">{time}</p>

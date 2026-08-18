@@ -5,8 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BackendLayout } from "@/components/backend/backend-layout";
 import { DataCard, MoneyKeypadField, StatCard, StatusPill } from "@/components/backend/backend-ui";
+import { DataTable, type Column } from "@/components/backend/data-table";
 import { useBackend } from "@/lib/backend-context";
-import { stockAdjustReasons, stockStatus } from "@/lib/backend-data";
+import { stockAdjustReasons, stockStatus, type StockItem } from "@/lib/backend-data";
 import { usePos } from "@/lib/pos-context";
 import { formatRs } from "@/lib/pos-data";
 import { toast } from "sonner";
@@ -57,41 +58,14 @@ function InventoryPage() {
           <TabsTrigger value="transfer">Stock transfer</TabsTrigger>
         </TabsList>
         <TabsContent value="stock">
-          <DataCard>
-            <div className="hidden grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-3 border-b border-border px-4 py-2 text-sm font-medium text-muted-foreground md:grid">
-              <span>Product</span>
-              <span>On hand</span>
-              <span>Reserved</span>
-              <span>Available</span>
-              <span>Reorder point</span>
-              <span>Status</span>
-            </div>
-            {stock.map((s) => (
-              <div
-                key={s.productId}
-                className="grid grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 last:border-0 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]"
-              >
-                <span className="font-medium">{nameFor(s.productId)}</span>
-                <span>{s.onHand}</span>
-                <span>{s.reserved}</span>
-                <span>{s.onHand - s.reserved}</span>
-                <span>{s.reorderPoint}</span>
-                <span className="flex items-center gap-2">
-                  <StatusPill status={stockStatus(s)} />
-                  <Button
-                    variant="secondary"
-                    className="h-9"
-                    onClick={() => {
-                      setAdjusting(s.productId);
-                      setValue(String(s.onHand));
-                    }}
-                  >
-                    Adjust
-                  </Button>
-                </span>
-              </div>
-            ))}
-          </DataCard>
+          <DataTable
+            columns={stockColumns(nameFor, (item) => {
+              setAdjusting(item.productId);
+              setValue(String(item.onHand));
+            })}
+            rows={stock}
+            getKey={(s) => s.productId}
+          />
         </TabsContent>
         <TabsContent value="transfer">
           <DataCard className="space-y-3 p-4 text-sm">
@@ -149,4 +123,33 @@ function InventoryPage() {
       </Dialog>
     </BackendLayout>
   );
+}
+
+function stockColumns(
+  nameFor: (id: string) => string,
+  onAdjust: (item: StockItem) => void,
+): Column<StockItem>[] {
+  return [
+    {
+      header: "Product",
+      width: "2fr",
+      cell: (s) => <span className="font-medium">{nameFor(s.productId)}</span>,
+    },
+    { header: "On hand", align: "right", cell: (s) => s.onHand },
+    { header: "Reserved", align: "right", cell: (s) => s.reserved },
+    { header: "Available", align: "right", cell: (s) => s.onHand - s.reserved },
+    { header: "Reorder point", align: "right", cell: (s) => s.reorderPoint },
+    {
+      header: "Status",
+      width: "1.4fr",
+      cell: (s) => (
+        <span className="flex items-center justify-end gap-2">
+          <StatusPill status={stockStatus(s)} />
+          <Button variant="secondary" className="h-9" onClick={() => onAdjust(s)}>
+            Adjust
+          </Button>
+        </span>
+      ),
+    },
+  ];
 }

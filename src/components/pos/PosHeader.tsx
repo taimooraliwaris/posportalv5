@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   Barcode,
   Banknote,
   LogOut,
@@ -25,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { usePos } from "@/lib/pos-context";
 import { useTheme } from "@/lib/theme";
-import { STORE } from "@/lib/pos-data";
+import { useBackend, useStore } from "@/lib/backend-context";
 import { cn } from "@/lib/utils";
 import { CashInOutModal, NewProductModal } from "./MenuModals";
 import { toast } from "sonner";
@@ -41,7 +42,9 @@ export function PosHeader({
   onSearch?: (v: string) => void;
   onScan?: () => void;
 }) {
-  const { orders, activeOrderId, setActiveOrderId, newOrder } = usePos();
+  const { orders, activeOrderId, setActiveOrderId, newOrder, productList } = usePos();
+  const store = useStore();
+  const { lowStock } = useBackend();
   const { dark, toggle } = useTheme();
   const navigate = useNavigate();
   const [cashOpen, setCashOpen] = useState(false);
@@ -132,11 +135,47 @@ export function PosHeader({
             <Barcode className="h-6 w-6" />
           </Button>
         )}
+        {lowStock.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="hidden shrink-0 items-center gap-1.5 rounded-full bg-warning/40 px-3 py-1.5 text-xs font-medium md:flex"
+                aria-label={`${lowStock.length} products low on stock`}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" /> {lowStock.length} low stock
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              {lowStock.slice(0, 6).map((item) => (
+                <DropdownMenuItem
+                  key={item.productId}
+                  onSelect={() => navigate({ to: "/backend/inventory" })}
+                >
+                  <span className="truncate">
+                    {productList.find((p) => p.id === item.productId)?.name ?? item.productId}
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {item.onHand - item.reserved} left
+                  </span>
+                </DropdownMenuItem>
+              ))}
+              {lowStock.length > 6 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => navigate({ to: "/backend/inventory" })}>
+                    View all {lowStock.length} low-stock products
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 text-xs font-medium sm:flex">
-          <Wifi className="h-3.5 w-3.5" /> {STORE.network}
+          <Wifi className="h-3.5 w-3.5" /> {store.network}
         </span>
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-foreground text-sm font-semibold text-background">
-          R
+          {store.cashier.charAt(0)}
         </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

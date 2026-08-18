@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   ArrowLeft,
   BarChart3,
   Boxes,
@@ -18,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/lib/theme";
-import { STORE } from "@/lib/pos-data";
+import { useBackend, useStore } from "@/lib/backend-context";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -46,22 +47,24 @@ export function BackendLayout({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const store = useStore();
+  const { lowStock } = useBackend();
 
   return (
     <div className="flex min-h-screen bg-background">
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-60 shrink-0 border-r border-border bg-card transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-card transition-transform lg:sticky lg:top-0 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-14 items-center gap-2 border-b border-border px-4">
+        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
           <span className="grid h-8 w-8 place-items-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
-            V
+            {store.brand.charAt(0)}
           </span>
-          <span className="font-semibold">{STORE.brand}</span>
+          <span className="truncate font-semibold">{store.brand}</span>
         </div>
-        <nav className="space-y-1 p-2">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
           {navItems.map((item) => {
             const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
             return (
@@ -75,6 +78,11 @@ export function BackendLayout({
                 )}
               >
                 <item.icon className="h-4 w-4" /> {item.label}
+                {item.to === "/backend/inventory" && lowStock.length > 0 && (
+                  <span className="ml-auto rounded-full bg-warning px-2 py-0.5 text-xs font-semibold text-foreground">
+                    {lowStock.length}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -112,9 +120,20 @@ export function BackendLayout({
           </div>
           <div className="ml-auto flex items-center gap-2">
             {actions}
-            <span className="hidden text-sm font-medium sm:inline">{STORE.name}</span>
+            {lowStock.length > 0 && (
+              <Button variant="secondary" className="h-11 gap-2" asChild>
+                <Link to="/backend/inventory">
+                  <AlertTriangle className="h-4 w-4 text-warning-foreground" />
+                  <span className="hidden sm:inline">Low stock</span>
+                  <span className="rounded-full bg-warning px-2 py-0.5 text-xs font-semibold text-foreground">
+                    {lowStock.length}
+                  </span>
+                </Link>
+              </Button>
+            )}
+            <span className="hidden text-sm font-medium sm:inline">{store.name}</span>
             <span className="grid h-11 w-11 place-items-center rounded-md bg-foreground text-sm font-semibold text-background">
-              R
+              {store.cashier.charAt(0)}
             </span>
             <Button
               variant="ghost"

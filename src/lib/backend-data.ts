@@ -35,11 +35,20 @@ export type PurchaseOrder = {
   lines: PoLine[];
 };
 
+export type RuleScopeKind = "store" | "category" | "product";
+
 export type PricelistRule = {
   id: string;
   scope: string;
   type: "percentage" | "fixed" | "buy-x-get-y";
   value: number;
+  /** Advanced rule-builder fields. */
+  scopeKind?: RuleScopeKind;
+  scopeId?: string;
+  minQty?: number;
+  freeQty?: number;
+  startDate?: string;
+  endDate?: string;
 };
 
 export type PricelistDetail = {
@@ -61,6 +70,15 @@ export type StaffRole = "Cashier" | "Manager" | "Admin";
 
 export type StaffUser = { id: string; name: string; email: string; role: StaffRole };
 
+/** Audit trail entry shown in Settings → Security. */
+export type SecurityEvent = {
+  id: string;
+  action: string;
+  detail: string;
+  actor: string;
+  at: string;
+};
+
 export type StoreSettings = {
   name: string;
   brand: string;
@@ -71,6 +89,8 @@ export type StoreSettings = {
   currency: string;
   receiptFooter: string;
   logoName: string;
+  cashier: string;
+  network: string;
 };
 
 export type SessionRecord = {
@@ -316,6 +336,8 @@ export const seedStoreSettings: StoreSettings = {
   currency: "Rs.",
   receiptFooter: "Thank you for shopping at Velora Mart. Exchanges accepted within 14 days.",
   logoName: "velora-logo.png",
+  cashier: "Rida A.",
+  network: "VeloraNet",
 };
 
 const cashiers = ["Rida A.", "Hamza Qureshi", "Usman Tariq"];

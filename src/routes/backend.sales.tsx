@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BackendLayout } from "@/components/backend/backend-layout";
 import { DataCard, DetailDrawer, Field, StatusPill } from "@/components/backend/backend-ui";
-import { useBackend } from "@/lib/backend-context";
+import { DataTable, type Column } from "@/components/backend/data-table";
+import { useBackend, useStore } from "@/lib/backend-context";
 import { formatDate, type HistoricalSale } from "@/lib/backend-data";
-import { usePos } from "@/lib/pos-context";
-import { formatRs, STORE } from "@/lib/pos-data";
+import { usePos, type ReturnRecord } from "@/lib/pos-context";
+import { formatRs } from "@/lib/pos-data";
 import { useHydrated } from "@/lib/use-hydrated";
 
 export const Route = createFileRoute("/backend/sales")({
@@ -34,6 +35,7 @@ function SalesPage() {
   const hydrated = useHydrated();
   const { sales } = useBackend();
   const { returns } = usePos();
+  const store = useStore();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [selected, setSelected] = useState<HistoricalSale | null>(null);
@@ -72,52 +74,21 @@ function SalesPage() {
           <TabsTrigger value="returns">Returns &amp; exchanges</TabsTrigger>
         </TabsList>
         <TabsContent value="orders">
-          <DataCard>
-            <div className="hidden grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] gap-3 border-b border-border px-4 py-2 text-sm font-medium text-muted-foreground md:grid">
-              <span>Date</span>
-              <span>Receipt</span>
-              <span>Cashier</span>
-              <span>Items</span>
-              <span>Payment</span>
-              <span>Total</span>
-            </div>
-            {rows.map((sale) => (
-              <button
-                key={sale.id}
-                type="button"
-                onClick={() => setSelected(sale)}
-                className="grid w-full grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 text-left last:border-0 hover:bg-muted md:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]"
-              >
-                <span>{formatDate(sale.date)}</span>
-                <span className="text-sm text-muted-foreground">{sale.receipt}</span>
-                <span className="text-sm">{sale.cashier}</span>
-                <span>{sale.lines.reduce((s, l) => s + l.qty, 0)}</span>
-                <span className="text-sm">{sale.method}</span>
-                <span className="font-medium">{formatRs(sale.total)}</span>
-              </button>
-            ))}
-          </DataCard>
+          <DataTable
+            columns={saleColumns}
+            rows={rows}
+            getKey={(sale) => sale.id}
+            onRowClick={setSelected}
+            empty="No sales in this period."
+          />
         </TabsContent>
         <TabsContent value="returns">
-          <DataCard>
-            {returns.map((r) => (
-              <div
-                key={r.id}
-                className="grid grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 last:border-0 md:grid-cols-[1fr_1fr_1fr_1fr_auto]"
-              >
-                <span>{formatDate(r.date)}</span>
-                <span className="text-sm text-muted-foreground">Order {r.originalNumber}</span>
-                <span>{formatRs(Math.abs(r.difference))}</span>
-                <span className="text-sm">{r.processedBy}</span>
-                <StatusPill status={r.kind === "return" ? "returned" : "exchanged"} />
-              </div>
-            ))}
-            {returns.length === 0 && (
-              <p className="p-8 text-center text-sm text-muted-foreground">
-                No returns or exchanges processed yet.
-              </p>
-            )}
-          </DataCard>
+          <DataTable
+            columns={returnColumns}
+            rows={returns}
+            getKey={(r) => r.id}
+            empty="No returns or exchanges processed yet."
+          />
         </TabsContent>
       </Tabs>
 
@@ -129,7 +100,7 @@ function SalesPage() {
       >
         {selected && (
           <DataCard className="space-y-2 p-4 text-sm">
-            <p className="text-center font-semibold">{STORE.name}</p>
+            <p className="text-center font-semibold">{store.name}</p>
             <Field label="Date" value={`${formatDate(selected.date)} ${selected.time}`} />
             <Field label="Cashier" value={selected.cashier} />
             <div className="border-t border-dashed border-border pt-2">
@@ -151,3 +122,37 @@ function SalesPage() {
     </BackendLayout>
   );
 }
+
+const saleColumns: Column<HistoricalSale>[] = [
+  { header: "Date", cell: (sale) => formatDate(sale.date) },
+  {
+    header: "Receipt",
+    cell: (sale) => <span className="text-sm text-muted-foreground">{sale.receipt}</span>,
+  },
+  { header: "Cashier", cell: (sale) => <span className="text-sm">{sale.cashier}</span> },
+  {
+    header: "Items",
+    align: "right",
+    cell: (sale) => sale.lines.reduce((s, l) => s + l.qty, 0),
+  },
+  { header: "Payment", cell: (sale) => <span className="text-sm">{sale.method}</span> },
+  {
+    header: "Total",
+    align: "right",
+    cell: (sale) => <span className="font-medium">{formatRs(sale.total)}</span>,
+  },
+];
+
+const returnColumns: Column<ReturnRecord>[] = [
+  { header: "Date", cell: (r) => formatDate(r.date) },
+  {
+    header: "Original order",
+    cell: (r) => <span className="text-sm text-muted-foreground">{r.originalNumber}</span>,
+  },
+  { header: "Amount", align: "right", cell: (r) => formatRs(Math.abs(r.difference)) },
+  { header: "Processed by", cell: (r) => <span className="text-sm">{r.processedBy}</span> },
+  {
+    header: "Type",
+    cell: (r) => <StatusPill status={r.kind === "return" ? "returned" : "exchanged"} />,
+  },
+];
