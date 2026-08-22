@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductIcon } from "@/components/pos/ProductTile";
 import { usePos } from "@/lib/pos-context";
-import { useHardwareScanner } from "@/lib/use-hardware-scanner";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
 import { TAX_RATE, formatRs, categories, toneClass, type Product } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
@@ -42,16 +42,17 @@ function PriceCheck() {
   }, [productList, query]);
 
   // Focus-free: a scanner burst is picked up anywhere on this screen.
-  useHardwareScanner((code) => {
+  useScanTarget("price-check", ({ code }) => {
     const match = productList.find((p) => p.barcode === code);
     if (match) {
       setSelected(match);
       setQuery(match.barcode);
-    } else {
-      setQuery(code);
-      setSelected(null);
-      toast.error(`No product matches barcode ${code}`);
+      return "info";
     }
+    setQuery(code);
+    setSelected(null);
+    toast.error(`No product matches barcode ${code}`);
+    return "unknown";
   });
 
   const categoryName = selected

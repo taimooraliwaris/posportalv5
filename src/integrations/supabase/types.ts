@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      cash_moves: {
+        Row: {
+          amount: number
+          cashier: string
+          created_at: string
+          id: string
+          move_type: string
+          reason: string
+        }
+        Insert: {
+          amount?: number
+          cashier?: string
+          created_at?: string
+          id: string
+          move_type?: string
+          reason?: string
+        }
+        Update: {
+          amount?: number
+          cashier?: string
+          created_at?: string
+          id?: string
+          move_type?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -67,6 +94,60 @@ export type Database = {
           location?: string | null
           name?: string
           phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          cashier: string
+          created_at: string
+          customer_id: string | null
+          id: string
+          lines: Json
+          note: string
+          note_tags: string[]
+          number: string
+          order_date: string
+          order_time: string
+          payments: Json
+          pricelist_id: string
+          receipt: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cashier?: string
+          created_at?: string
+          customer_id?: string | null
+          id: string
+          lines?: Json
+          note?: string
+          note_tags?: string[]
+          number: string
+          order_date?: string
+          order_time?: string
+          payments?: Json
+          pricelist_id?: string
+          receipt: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cashier?: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          lines?: Json
+          note?: string
+          note_tags?: string[]
+          number?: string
+          order_date?: string
+          order_time?: string
+          payments?: Json
+          pricelist_id?: string
+          receipt?: string
+          status?: string
           updated_at?: string
         }
         Relationships: []
@@ -224,6 +305,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      return_records: {
+        Row: {
+          created_at: string
+          difference: number
+          id: string
+          kind: string
+          lines: Json
+          method: string
+          number: string
+          original_number: string
+          original_order_id: string
+          processed_by: string
+          refund_amount: number
+          replacements: Json
+          return_date: string
+          return_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          difference?: number
+          id: string
+          kind?: string
+          lines?: Json
+          method?: string
+          number: string
+          original_number?: string
+          original_order_id?: string
+          processed_by?: string
+          refund_amount?: number
+          replacements?: Json
+          return_date?: string
+          return_time?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          difference?: number
+          id?: string
+          kind?: string
+          lines?: Json
+          method?: string
+          number?: string
+          original_number?: string
+          original_order_id?: string
+          processed_by?: string
+          refund_amount?: number
+          replacements?: Json
+          return_date?: string
+          return_time?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       security_events: {
         Row: {
@@ -502,6 +637,7 @@ export type Database = {
       }
       is_manager: { Args: { _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      staff_exists: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "Cashier" | "Manager" | "Admin"

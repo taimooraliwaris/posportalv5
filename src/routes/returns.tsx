@@ -19,7 +19,7 @@ import { TAX_RATE, categories, formatRs, toneClass } from "@/lib/pos-data";
 import { returnReasons } from "@/lib/backend-data";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/backend-context";
-import { useHardwareScanner } from "@/lib/use-hardware-scanner";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/returns")({
@@ -114,28 +114,31 @@ function ReturnExchange() {
 
   // Focus-free scanning: receipt barcodes during lookup, product barcodes while
   // picking exchange replacements.
-  useHardwareScanner((code) => {
-    if (stage === "exchange") {
-      const product = productList.find((p) => p.barcode === code);
-      if (!product) {
-        toast.error(`No product matches barcode ${code}`);
-        return;
+  useScanTarget(
+    "return",
+    ({ code }) => {
+      if (stage === "exchange") {
+        const product = productList.find((p) => p.barcode === code);
+        if (!product) {
+          toast.error(`No product matches barcode ${code}`);
+          return "unknown";
+        }
+        setReplacements((prev) => ({ ...prev, [product.id]: (prev[product.id] ?? 0) + 1 }));
+        toast.success(`${product.name} added as replacement`);
+        return "added";
       }
-      setReplacements((prev) => ({ ...prev, [product.id]: (prev[product.id] ?? 0) + 1 }));
-      toast.success(`${product.name} added as replacement`);
-      return;
-    }
-    const match = orders.find(
-      (o) => o.receipt === code || o.number === code || o.id === code,
-    );
-    if (!match) {
-      setQuery(code);
-      toast.error(`No receipt matches ${code}`);
-      return;
-    }
-    toast.success(`Receipt ${match.receipt} scanned`);
-    selectOrder(match);
-  }, stage === "search" || stage === "exchange");
+      const match = orders.find((o) => o.receipt === code || o.number === code || o.id === code);
+      if (!match) {
+        setQuery(code);
+        toast.error(`No receipt matches ${code}`);
+        return "unknown";
+      }
+      toast.success(`Receipt ${match.receipt} scanned`);
+      selectOrder(match);
+      return "info";
+    },
+    stage === "search" || stage === "exchange",
+  );
 
   const confirm = (kind: "return" | "exchange") => {
     if (!order || returnLines.length === 0) return;

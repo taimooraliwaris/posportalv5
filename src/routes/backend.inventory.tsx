@@ -10,7 +10,7 @@ import { useBackend } from "@/lib/backend-context";
 import { stockAdjustReasons, stockStatus, type StockItem } from "@/lib/backend-data";
 import { usePos } from "@/lib/pos-context";
 import { formatRs } from "@/lib/pos-data";
-import { useHardwareScanner } from "@/lib/use-hardware-scanner";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/backend/inventory")({
@@ -55,14 +55,19 @@ function InventoryPage() {
   };
 
   // Focus-free restocking: scan a product anywhere on the page to count it in.
-  useHardwareScanner((code) => {
-    const product = productList.find((p) => p.barcode === code);
-    if (!product) {
-      toast.error(`No product matches barcode ${code}`);
-      return;
-    }
-    openAdjust(product.id);
-  }, !adjusting);
+  useScanTarget(
+    "inventory",
+    ({ code }) => {
+      const product = productList.find((p) => p.barcode === code);
+      if (!product) {
+        toast.error(`No product matches barcode ${code}`);
+        return "unknown";
+      }
+      openAdjust(product.id);
+      return "added";
+    },
+    !adjusting,
+  );
 
   const atCost = stock.reduce((sum, s) => sum + s.onHand * s.cost, 0);
   const atRetail = stock.reduce((sum, s) => sum + s.onHand * priceFor(s.productId), 0);
