@@ -9,7 +9,7 @@ import { ScannerOverlay } from "@/components/pos/ScannerOverlay";
 import { ChooseCustomerModal } from "@/components/pos/CustomerModals";
 import { CustomerNoteModal, OrderActionsModal } from "@/components/pos/OrderActionModals";
 import { usePos, orderTotals, type CartLine } from "@/lib/pos-context";
-import { useHardwareScanner } from "@/lib/use-hardware-scanner";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { applyNumericKey, useNumericKeyboard } from "@/lib/use-numeric-entry";
 import {
   categories,
@@ -75,11 +75,19 @@ function Till() {
 
   // USB/Bluetooth scanners work anywhere on the register screen, but stand down
   // while a value is being edited so scanned digits never land in a price.
-  useHardwareScanner((code) => {
-    const product = addByBarcode(code);
-    if (product) toast.success(`${product.name} added`);
-    else toast.error(`No product matches barcode ${code}`);
-  }, !scanning && !editing);
+  useScanTarget(
+    "till",
+    ({ code }) => {
+      const product = addByBarcode(code);
+      if (product) {
+        toast.success(`${product.name} added`);
+        return "added";
+      }
+      toast.error(`No product matches barcode ${code}`);
+      return "unknown";
+    },
+    !scanning && !editing,
+  );
 
   const applyValue = (raw: string) => {
     if (!selectedLineId || !editMode) return;

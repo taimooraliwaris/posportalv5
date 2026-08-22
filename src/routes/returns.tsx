@@ -19,7 +19,7 @@ import { TAX_RATE, categories, formatRs, toneClass } from "@/lib/pos-data";
 import { returnReasons } from "@/lib/backend-data";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/backend-context";
-import { useHardwareScanner } from "@/lib/use-hardware-scanner";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/returns")({
@@ -114,8 +114,10 @@ function ReturnExchange() {
 
   // Focus-free scanning: receipt barcodes during lookup, product barcodes while
   // picking exchange replacements.
-  useHardwareScanner((code) => {
-    if (stage === "exchange") {
+  useScanTarget(
+    "return",
+    ({ code }) => {
+      if (stage === "exchange") {
       const product = productList.find((p) => p.barcode === code);
       if (!product) {
         toast.error(`No product matches barcode ${code}`);
