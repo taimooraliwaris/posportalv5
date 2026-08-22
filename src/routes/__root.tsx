@@ -15,6 +15,7 @@ import { PosProvider } from "@/lib/pos-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { BackendProvider } from "@/lib/backend-context";
 import { AuthGate } from "@/components/auth/auth-gate";
+import { ScanModeProvider } from "@/lib/scan-mode-context";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 
