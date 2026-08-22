@@ -130,10 +130,12 @@ function RootComponent() {
         <AuthProvider>
           <BackendProvider>
             <PosProvider>
-              <AuthGate>
-                <Outlet />
-              </AuthGate>
-              <Toaster />
+              <ScanModeProvider>
+                <AuthGate>
+                  <Outlet />
+                </AuthGate>
+                <Toaster />
+              </ScanModeProvider>
             </PosProvider>
           </BackendProvider>
         </AuthProvider>
