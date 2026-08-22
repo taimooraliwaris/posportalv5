@@ -118,26 +118,27 @@ function ReturnExchange() {
     "return",
     ({ code }) => {
       if (stage === "exchange") {
-      const product = productList.find((p) => p.barcode === code);
-      if (!product) {
-        toast.error(`No product matches barcode ${code}`);
-        return;
+        const product = productList.find((p) => p.barcode === code);
+        if (!product) {
+          toast.error(`No product matches barcode ${code}`);
+          return "unknown";
+        }
+        setReplacements((prev) => ({ ...prev, [product.id]: (prev[product.id] ?? 0) + 1 }));
+        toast.success(`${product.name} added as replacement`);
+        return "added";
       }
-      setReplacements((prev) => ({ ...prev, [product.id]: (prev[product.id] ?? 0) + 1 }));
-      toast.success(`${product.name} added as replacement`);
-      return;
-    }
-    const match = orders.find(
-      (o) => o.receipt === code || o.number === code || o.id === code,
-    );
-    if (!match) {
-      setQuery(code);
-      toast.error(`No receipt matches ${code}`);
-      return;
-    }
-    toast.success(`Receipt ${match.receipt} scanned`);
-    selectOrder(match);
-  }, stage === "search" || stage === "exchange");
+      const match = orders.find((o) => o.receipt === code || o.number === code || o.id === code);
+      if (!match) {
+        setQuery(code);
+        toast.error(`No receipt matches ${code}`);
+        return "unknown";
+      }
+      toast.success(`Receipt ${match.receipt} scanned`);
+      selectOrder(match);
+      return "info";
+    },
+    stage === "search" || stage === "exchange",
+  );
 
   const confirm = (kind: "return" | "exchange") => {
     if (!order || returnLines.length === 0) return;
