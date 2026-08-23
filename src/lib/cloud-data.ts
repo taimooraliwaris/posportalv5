@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 import type { Category, Customer, Product } from "./pos-data";
 import type {
   PricelistDetail,
@@ -140,8 +140,8 @@ export const fromOrder = (order: Order, cashier = ""): Tables["orders"]["Insert"
   receipt: order.receipt,
   order_time: order.time,
   status: order.status,
-  lines: order.lines as unknown as Tables["orders"]["Insert"]["lines"],
-  payments: order.payments as unknown as Tables["orders"]["Insert"]["payments"],
+  lines: order.lines as unknown as Json,
+  payments: order.payments as unknown as Json,
   customer_id: order.customerId ?? null,
   note: order.note ?? "",
   note_tags: order.noteTags,
@@ -175,8 +175,8 @@ export const fromReturnRecord = (
   return_time: record.time,
   original_order_id: record.originalOrderId,
   original_number: record.originalNumber,
-  lines: record.lines as unknown as Tables["return_records"]["Insert"]["lines"],
-  replacements: record.replacements as unknown as Tables["return_records"]["Insert"]["replacements"],
+  lines: record.lines as unknown as Json,
+  replacements: record.replacements as unknown as Json,
   refund_amount: record.refundAmount,
   difference: record.difference,
   method: record.method,
