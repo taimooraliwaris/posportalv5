@@ -1,8 +1,14 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { usePersistentState } from "./use-persistent-state";
-import { seedStaff, type StaffRole, type StaffUser } from "./backend-data";
+import { cloudKeys, fetchStaff } from "./cloud-data";
+import type { StaffRole, StaffUser } from "./backend-data";
+import { inviteStaffMember } from "./staff.functions";
 
-export type AppUser = StaffUser & { password: string; active: boolean };
+export type AppUser = StaffUser & { active: boolean };
 
 export type SecurityEvent = {
   id: string;
@@ -14,96 +20,205 @@ export type SecurityEvent = {
   detail?: string;
 };
 
-const seedUsers: AppUser[] = seedStaff.map((u) => ({
-  ...u,
-  password:
-    u.role === "Admin" ? "admin123" : u.role === "Manager" ? "manager123" : "cashier123",
-  active: true,
-}));
-
-const mockLocations = [
-  "Karachi, PK - Till 1",
-  "Karachi, PK - Back Office",
-  "Lahore, PK - Remote",
-];
-
-function mockLocation() {
-  return mockLocations[Math.floor(Math.random() * mockLocations.length)]!;
-}
+export type AuthResult = { ok: boolean; error?: string };
 
 type AuthState = {
   users: AppUser[];
   currentUser: AppUser | null;
-  signIn: (email: string, password: string) => { ok: boolean; error?: string };
-  signOut: () => void;
+  session: Session | null;
+  /** True until the first session check settles — gates redirects. */
+  authLoading: boolean;
+
+  signIn: (email: string, password: string) => Promise<AuthResult>;
+  signUp: (name: string, email: string, password: string) => Promise<AuthResult>;
+  signInWithGoogle: () => Promise<AuthResult>;
+  sendPasswordReset: (email: string) => Promise<AuthResult>;
+  signOut: () => Promise<void>;
 
   backendUnlocked: boolean;
   backendPasscode: string;
-  unlockBackend: (code: string) => { ok: boolean; error?: string };
+  unlockBackend: (code: string) => AuthResult;
   lockBackend: () => void;
   lockedUntil: number | null;
 
   securityLog: SecurityEvent[];
   clearSecurityLog: () => void;
 
-  createUser: (input: { name: string; email: string; role: StaffRole; password: string }) => void;
+  createUser: (input: {
+    name: string;
+    email: string;
+    role: StaffRole;
+    password: string;
+  }) => Promise<AuthResult>;
   updateUser: (id: string, patch: Partial<AppUser>) => void;
 
-  changePassword: (userId: string, next: string) => void;
+  changePassword: (userId: string, next: string) => Promise<AuthResult>;
   changePasscode: (next: string) => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
+const kindFor = (value: string): SecurityEvent["kind"] =>
+  (
+    ["failed-passcode", "unlocked", "failed-login", "signed-in", "credential-change"] as const
+  ).includes(value as SecurityEvent["kind"])
+    ? (value as SecurityEvent["kind"])
+    : "signed-in";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers] = usePersistentState<AppUser[]>("velora.users", seedUsers);
-  const [currentUserId, setCurrentUserId] = usePersistentState<string | null>(
-    "velora.session",
-    null,
-  );
+  const queryClient = useQueryClient();
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const [backendPasscode, setBackendPasscode] = usePersistentState<string>(
     "velora.passcode",
     "246810",
-  );
-  const [securityLog, setSecurityLog] = usePersistentState<SecurityEvent[]>(
-    "velora.security-log",
-    [],
   );
   const [backendUnlocked, setBackendUnlocked] = useState(false);
   const [failures, setFailures] = useState(0);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
 
-  const currentUser = users.find((u) => u.id === currentUserId) ?? null;
+  useEffect(() => {
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setSession(data.session);
+      setAuthLoading(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next);
+      setAuthLoading(false);
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
-  const log = (event: Omit<SecurityEvent, "id" | "timestamp" | "location">) =>
-    setSecurityLog((prev) =>
-      [
-        {
-          ...event,
-          id: `sec-${Math.random().toString(36).slice(2, 9)}`,
-          timestamp: new Date().toISOString(),
-          location: mockLocation(),
-        },
-        ...prev,
-      ].slice(0, 200),
-    );
+  const staffQuery = useQuery({
+    queryKey: cloudKeys.staff,
+    queryFn: fetchStaff,
+    enabled: Boolean(session),
+  });
+
+  const eventsQuery = useQuery({
+    queryKey: cloudKeys.securityEvents,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("security_events")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) return [] as SecurityEvent[];
+      return (data ?? []).map<SecurityEvent>((row) => ({
+        id: row.id,
+        kind: kindFor(row.kind),
+        user: row.actor,
+        timestamp: row.created_at,
+        attempt: row.attempt,
+        location: row.location,
+        ...(row.detail ? { detail: row.detail } : {}),
+      }));
+    },
+    enabled: Boolean(session),
+  });
+
+  const users: AppUser[] = (staffQuery.data ?? []).map((u) => ({ ...u, active: true }));
+  const currentUser =
+    users.find((u) => u.id === session?.user.id) ??
+    (session
+      ? {
+          id: session.user.id,
+          name:
+            (session.user.user_metadata["name"] as string | undefined) ??
+            session.user.email?.split("@")[0] ??
+            "Staff",
+          email: session.user.email ?? "",
+          role: "Cashier" as StaffRole,
+          active: true,
+        }
+      : null);
+
+  const log = useCallback(
+    (event: Omit<SecurityEvent, "id" | "timestamp" | "location">) => {
+      void supabase.from("security_events").insert({
+        kind: event.kind,
+        actor: event.user,
+        detail: event.detail ?? "",
+        location: typeof window === "undefined" ? "" : window.location.host,
+        attempt: event.attempt,
+      });
+      void queryClient.invalidateQueries({ queryKey: cloudKeys.securityEvents });
+    },
+    [queryClient],
+  );
+
+  const invite = useMutation({
+    mutationFn: (input: { name: string; email: string; role: StaffRole; password: string }) =>
+      inviteStaffMember({ data: input }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: cloudKeys.staff }),
+  });
 
   const value: AuthState = {
     users,
     currentUser,
-    signIn: (email, password) => {
-      const user = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
-      if (!user || !user.active || user.password !== password) {
-        log({ kind: "failed-login", user: email || "unknown", attempt: 1 });
-        return { ok: false, error: "Incorrect email or password." };
+    session,
+    authLoading,
+
+    signIn: async (email, password) => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) {
+        log({ kind: "failed-login", user: email.trim() || "unknown", attempt: 1 });
+        return { ok: false, error: error.message };
       }
-      setCurrentUserId(user.id);
-      log({ kind: "signed-in", user: user.name, attempt: 0 });
+      log({
+        kind: "signed-in",
+        user: data.user?.email ?? email.trim(),
+        attempt: 0,
+      });
       return { ok: true };
     },
-    signOut: () => {
-      setCurrentUserId(null);
+
+    signUp: async (name, email, password) => {
+      const { error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { name: name.trim() },
+          emailRedirectTo: `${window.location.origin}/auth`,
+        },
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    },
+
+    signInWithGoogle: async () => {
+      try {
+        await lovable.auth.signInWithOAuth("google", {
+          redirect_uri: window.location.origin,
+        });
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : "Google sign-in failed" };
+      }
+    },
+
+    sendPasswordReset: async (email) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    },
+
+    signOut: async () => {
+      await queryClient.cancelQueries();
+      queryClient.clear();
       setBackendUnlocked(false);
+      await supabase.auth.signOut();
     },
 
     backendUnlocked,
@@ -137,26 +252,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     lockBackend: () => setBackendUnlocked(false),
     lockedUntil,
 
-    securityLog,
-    clearSecurityLog: () => setSecurityLog([]),
+    securityLog: eventsQuery.data ?? [],
+    clearSecurityLog: () => {
+      // The audit trail is append-only in the cloud; clearing only hides it locally.
+      queryClient.setQueryData<SecurityEvent[]>(cloudKeys.securityEvents, []);
+    },
 
-    createUser: (input) =>
-      setUsers((prev) => [
-        ...prev,
-        { ...input, id: `u-${Math.random().toString(36).slice(2, 8)}`, active: true },
-      ]),
-    updateUser: (id, patch) =>
-      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u))),
+    createUser: async (input) => {
+      try {
+        await invite.mutateAsync(input);
+        log({
+          kind: "credential-change",
+          user: currentUser?.name ?? "Unknown",
+          attempt: 0,
+          detail: `Invited ${input.email} as ${input.role}`,
+        });
+        return { ok: true };
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : "Could not invite staff member",
+        };
+      }
+    },
 
-    changePassword: (userId, next) => {
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, password: next } : u)));
+    updateUser: (id, patch) => {
+      queryClient.setQueryData<StaffUser[]>(cloudKeys.staff, (prev) =>
+        (prev ?? []).map((u) => (u.id === id ? { ...u, ...patch } : u)),
+      );
+      if (patch.name) void supabase.from("profiles").update({ name: patch.name }).eq("id", id);
+      if (patch.role)
+        void supabase
+          .from("user_roles")
+          .upsert({ user_id: id, role: patch.role }, { onConflict: "user_id,role" });
+    },
+
+    changePassword: async (userId, next) => {
+      if (userId !== session?.user.id) {
+        return { ok: false, error: "You can only change your own password." };
+      }
+      const { error } = await supabase.auth.updateUser({ password: next });
+      if (error) return { ok: false, error: error.message };
       log({
         kind: "credential-change",
-        user: users.find((u) => u.id === userId)?.name ?? "Unknown",
+        user: currentUser?.name ?? "Unknown",
         attempt: 0,
         detail: "Login password changed",
       });
+      return { ok: true };
     },
+
     changePasscode: (next) => {
       setBackendPasscode(next);
       log({
