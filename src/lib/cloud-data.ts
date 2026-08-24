@@ -8,6 +8,8 @@ import type {
   PurchaseOrderStatus,
   PoLine,
   StockItem,
+  StaffRole,
+  StaffUser,
   StoreSettings,
   Supplier,
   TaxRate,
@@ -264,3 +266,111 @@ export async function expectOk(promise: PromiseLike<{ error: { message: string }
   const { error } = await promise;
   if (error) throw new Error(error.message);
 }
+
+/* ------------------------------------------------- adjustments & staff */
+
+export type CloudAdjustment = {
+  id: string;
+  productId: string;
+  from: number;
+  to: number;
+  reason: string;
+  date: string;
+};
+
+export const fetchStockAdjustments = async (): Promise<CloudAdjustment[]> =>
+  (
+    await rows(
+      supabase
+        .from("stock_adjustments")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200),
+    )
+  ).map((row) => ({
+    id: row.id,
+    productId: row.product_id,
+    from: row.from_qty,
+    to: row.to_qty,
+    reason: row.reason,
+    date: row.created_at.slice(0, 10),
+  }));
+
+export const fetchStaff = async (): Promise<StaffUser[]> => {
+  const profiles = await rows(supabase.from("profiles").select("*").order("name"));
+  const roles = await rows(supabase.from("user_roles").select("user_id, role"));
+  return profiles.map((p) => ({
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    role: (roles.find((r) => r.user_id === p.id)?.role ?? "Cashier") as StaffRole,
+  }));
+};
+
+/* ------------------------------------------------------------- writers */
+
+export const fromStockItem = (item: StockItem): Tables["stock_items"]["Insert"] => ({
+  product_id: item.productId,
+  on_hand: item.onHand,
+  reserved: item.reserved,
+  reorder_point: item.reorderPoint,
+  cost: item.cost,
+  supplier_id: item.supplierId || null,
+  description: item.description,
+  active: item.active,
+  sku: item.sku ?? null,
+  history: item.history as unknown as Json,
+});
+
+export const fromSupplier = (s: Supplier): Tables["suppliers"]["Insert"] => ({
+  id: s.id,
+  name: s.name,
+  contact: s.contact,
+  phone: s.phone,
+  product_ids: s.productIds,
+  open_balance: s.openBalance,
+});
+
+export const fromPurchaseOrder = (po: PurchaseOrder): Tables["purchase_orders"]["Insert"] => ({
+  id: po.id,
+  number: po.number,
+  supplier_id: po.supplierId || null,
+  order_date: po.date,
+  status: po.status,
+  lines: po.lines as unknown as Json,
+});
+
+export const fromPricelist = (p: PricelistDetail): Tables["pricelists"]["Insert"] => ({
+  id: p.id,
+  name: p.name,
+  rule_type: p.ruleType,
+  applies_to: p.appliesTo,
+  start_date: p.startDate ?? null,
+  end_date: p.endDate ?? null,
+  customer_tag: p.customerTag ?? null,
+  product_count: p.productCount,
+  customer_count: p.customerCount,
+  rules: p.rules as unknown as Json,
+});
+
+export const fromTaxRate = (t: TaxRate): Tables["tax_rates"]["Insert"] => ({
+  id: t.id,
+  name: t.name,
+  percentage: t.percentage,
+  applies_to: t.appliesTo,
+});
+
+export const fromStoreSettings = (s: StoreSettings): Tables["store_settings"]["Insert"] => ({
+  id: "default",
+  name: s.name,
+  brand: s.brand,
+  tagline: s.tagline,
+  address: s.address,
+  phone: s.phone,
+  email: s.email,
+  currency: s.currency,
+  receipt_footer: s.receiptFooter,
+  logo_name: s.logoName,
+  cashier: s.cashier,
+  network: s.network,
+});

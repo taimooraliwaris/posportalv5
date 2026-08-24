@@ -1,9 +1,28 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { usePersistentState } from "./use-persistent-state";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  cloudKeys,
+  fetchPricelists,
+  fetchPurchaseOrders,
+  fetchStaff,
+  fetchStock,
+  fetchStockAdjustments,
+  fetchStoreSettings,
+  fetchSuppliers,
+  fetchTaxes,
+  fromPricelist,
+  fromPurchaseOrder,
+  fromStockItem,
+  fromStoreSettings,
+  fromSupplier,
+  fromTaxRate,
+  randomId,
+} from "./cloud-data";
 import {
   generateHistory,
   seedPricelists,
-  seedPurchaseOrders,
   seedStaff,
   seedStock,
   seedStoreSettings,
@@ -65,118 +84,225 @@ type BackendState = {
   sales: HistoricalSale[];
 
   lowStock: StockItem[];
+
+  /** True until the first cloud read for inventory data settles. */
+  loading: boolean;
 };
 
 const BackendContext = createContext<BackendState | null>(null);
 
 export function BackendProvider({ children }: { children: ReactNode }) {
-  const [stock, setStock] = useState<StockItem[]>(() => seedStock());
-  const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(seedSuppliers);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(seedPurchaseOrders);
-  const [pricelists, setPricelists] = usePersistentState<PricelistDetail[]>(
-    "velora.pricelists",
-    seedPricelists,
-  );
-  const [taxes, setTaxes] = usePersistentState<TaxRate[]>("velora.taxes", seedTaxes);
-  const [staff, setStaff] = usePersistentState<StaffUser[]>("velora.staff", seedStaff);
-  const [storeSettings, setStoreSettings] = usePersistentState<StoreSettings>(
-    "velora.store-settings",
-    seedStoreSettings,
-  );
+  const queryClient = useQueryClient();
+
+  const stockQuery = useQuery({ queryKey: cloudKeys.stock, queryFn: fetchStock });
+  const adjustmentsQuery = useQuery({
+    queryKey: cloudKeys.adjustments,
+    queryFn: fetchStockAdjustments,
+  });
+  const suppliersQuery = useQuery({ queryKey: cloudKeys.suppliers, queryFn: fetchSuppliers });
+  const poQuery = useQuery({ queryKey: cloudKeys.purchaseOrders, queryFn: fetchPurchaseOrders });
+  const pricelistsQuery = useQuery({ queryKey: cloudKeys.pricelists, queryFn: fetchPricelists });
+  const taxesQuery = useQuery({ queryKey: cloudKeys.taxes, queryFn: fetchTaxes });
+  const settingsQuery = useQuery({
+    queryKey: cloudKeys.storeSettings,
+    queryFn: fetchStoreSettings,
+  });
+  const staffQuery = useQuery({ queryKey: cloudKeys.staff, queryFn: fetchStaff });
+
+  const seededStock = useMemo(() => seedStock(), []);
+  const stock = stockQuery.data ?? seededStock;
+  const adjustments = adjustmentsQuery.data ?? [];
+  const suppliers = suppliersQuery.data ?? seedSuppliers;
+  const purchaseOrders = poQuery.data ?? [];
+  const pricelists = pricelistsQuery.data ?? seedPricelists;
+  const taxes = taxesQuery.data ?? seedTaxes;
+  const storeSettings = { ...seedStoreSettings, ...(settingsQuery.data ?? {}) };
+  const staff = staffQuery.data?.length ? staffQuery.data : seedStaff;
+
   const history = useMemo(() => generateHistory(new Date()), []);
+
+  const write = useMutation({
+    mutationFn: async (run: () => PromiseLike<{ error: { message: string } | null }>) => {
+      const { error } = await run();
+      if (error) throw new Error(error.message);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+      void queryClient.invalidateQueries({ queryKey: ["cloud"] });
+    },
+  });
+
+  /** Optimistically patch a cached list, then push the change to the cloud. */
+  function patchCache<T>(key: readonly unknown[], fallback: T[], updater: (list: T[]) => T[]) {
+    queryClient.setQueryData<T[]>(key, (prev) => updater(prev ?? fallback));
+  }
 
   const value: BackendState = {
     stock,
     stockFor: (productId) => stock.find((s) => s.productId === productId),
     adjustStock: (productId, to, reason) => {
-      setStock((prev) =>
-        prev.map((s) => {
-          if (s.productId !== productId) return s;
-          setAdjustments((list) => [
-            {
-              id: `adj-${Math.random().toString(36).slice(2, 8)}`,
-              productId,
-              from: s.onHand,
-              to,
-              reason,
-              date: new Date().toISOString().slice(0, 10),
-            },
-            ...list,
-          ]);
-          return { ...s, onHand: to, history: [...s.history.slice(1), to] };
+      const current = stock.find((s) => s.productId === productId);
+      if (!current) return;
+      const next: StockItem = { ...current, onHand: to, history: [...current.history.slice(1), to] };
+      patchCache<StockItem>(cloudKeys.stock, stock, (list) =>
+        list.map((s) => (s.productId === productId ? next : s)),
+      );
+      patchCache<StockAdjustment>(cloudKeys.adjustments, adjustments, (list) => [
+        {
+          id: randomId("adj"),
+          productId,
+          from: current.onHand,
+          to,
+          reason,
+          date: new Date().toISOString().slice(0, 10),
+        },
+        ...list,
+      ]);
+      write.mutate(() => supabase.from("stock_items").upsert(fromStockItem(next)));
+      write.mutate(() =>
+        supabase.from("stock_adjustments").insert({
+          product_id: productId,
+          from_qty: current.onHand,
+          to_qty: to,
+          reason,
         }),
       );
     },
     setProductMeta: (productId, patch) => {
-      setStock((prev) => prev.map((s) => (s.productId === productId ? { ...s, ...patch } : s)));
-    },
-    addStockItem: (item) => setStock((prev) => [item, ...prev]),
-    adjustments,
-    suppliers,
-    addSupplier: (s) =>
-      setSuppliers((prev) => [
-        { ...s, id: `s-${Math.random().toString(36).slice(2, 8)}` },
-        ...prev,
-      ]),
-    updateSupplier: (id, patch) =>
-      setSuppliers((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s))),
-    purchaseOrders,
-    addPurchaseOrder: (po) =>
-      setPurchaseOrders((prev) => [
-        {
-          ...po,
-          id: `po-${Math.random().toString(36).slice(2, 8)}`,
-          number: `PO/${String(prev.length + 1).padStart(4, "0")}`,
-        },
-        ...prev,
-      ]),
-    setPurchaseOrderStatus: (id, status) => {
-      setPurchaseOrders((prev) =>
-        prev.map((po) => {
-          if (po.id !== id) return po;
-          if (status === "received" && po.status !== "received") {
-            setStock((items) =>
-              items.map((item) => {
-                const line = po.lines.find((l) => l.productId === item.productId);
-                return line ? { ...item, onHand: item.onHand + line.qty } : item;
-              }),
-            );
-          }
-          return { ...po, status };
-        }),
+      const current = stock.find((s) => s.productId === productId);
+      if (!current) return;
+      const next = { ...current, ...patch };
+      patchCache<StockItem>(cloudKeys.stock, stock, (list) =>
+        list.map((s) => (s.productId === productId ? next : s)),
       );
+      write.mutate(() => supabase.from("stock_items").upsert(fromStockItem(next)));
     },
+    addStockItem: (item) => {
+      patchCache<StockItem>(cloudKeys.stock, stock, (list) => [item, ...list]);
+      write.mutate(() => supabase.from("stock_items").upsert(fromStockItem(item)));
+    },
+    adjustments,
+
+    suppliers,
+    addSupplier: (s) => {
+      const supplier: Supplier = { ...s, id: randomId("s") };
+      patchCache<Supplier>(cloudKeys.suppliers, suppliers, (list) => [supplier, ...list]);
+      write.mutate(() => supabase.from("suppliers").insert(fromSupplier(supplier)));
+    },
+    updateSupplier: (id, patch) => {
+      const current = suppliers.find((s) => s.id === id);
+      if (!current) return;
+      const next = { ...current, ...patch };
+      patchCache<Supplier>(cloudKeys.suppliers, suppliers, (list) =>
+        list.map((s) => (s.id === id ? next : s)),
+      );
+      write.mutate(() => supabase.from("suppliers").upsert(fromSupplier(next)));
+    },
+
+    purchaseOrders,
+    addPurchaseOrder: (po) => {
+      const order: PurchaseOrder = {
+        ...po,
+        id: crypto.randomUUID(),
+        number: `PO/${String(purchaseOrders.length + 1).padStart(4, "0")}`,
+      };
+      patchCache<PurchaseOrder>(cloudKeys.purchaseOrders, purchaseOrders, (list) => [
+        order,
+        ...list,
+      ]);
+      write.mutate(() => supabase.from("purchase_orders").insert(fromPurchaseOrder(order)));
+    },
+    setPurchaseOrderStatus: (id, status) => {
+      const po = purchaseOrders.find((p) => p.id === id);
+      if (!po) return;
+      const next = { ...po, status };
+      patchCache<PurchaseOrder>(cloudKeys.purchaseOrders, purchaseOrders, (list) =>
+        list.map((p) => (p.id === id ? next : p)),
+      );
+      write.mutate(() => supabase.from("purchase_orders").upsert(fromPurchaseOrder(next)));
+
+      // Receiving a PO rolls its quantities into on-hand stock.
+      if (status === "received" && po.status !== "received") {
+        const received = stock.map((item) => {
+          const line = po.lines.find((l) => l.productId === item.productId);
+          return line ? { ...item, onHand: item.onHand + line.qty } : item;
+        });
+        patchCache<StockItem>(cloudKeys.stock, stock, () => received);
+        const touched = received.filter((item) =>
+          po.lines.some((l) => l.productId === item.productId),
+        );
+        if (touched.length)
+          write.mutate(() => supabase.from("stock_items").upsert(touched.map(fromStockItem)));
+      }
+    },
+
     pricelists,
-    addPricelist: (p) =>
-      setPricelists((prev) => [
-        ...prev,
-        { ...p, id: `pl-${Math.random().toString(36).slice(2, 8)}` },
-      ]),
-    updatePricelist: (id, patch) =>
-      setPricelists((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p))),
-    removePricelist: (id) => setPricelists((prev) => prev.filter((p) => p.id !== id)),
+    addPricelist: (p) => {
+      const list: PricelistDetail = { ...p, id: randomId("pl") };
+      patchCache<PricelistDetail>(cloudKeys.pricelists, pricelists, (prev) => [...prev, list]);
+      write.mutate(() => supabase.from("pricelists").insert(fromPricelist(list)));
+    },
+    updatePricelist: (id, patch) => {
+      const current = pricelists.find((p) => p.id === id);
+      if (!current) return;
+      const next = { ...current, ...patch };
+      patchCache<PricelistDetail>(cloudKeys.pricelists, pricelists, (prev) =>
+        prev.map((p) => (p.id === id ? next : p)),
+      );
+      write.mutate(() => supabase.from("pricelists").upsert(fromPricelist(next)));
+    },
+    removePricelist: (id) => {
+      patchCache<PricelistDetail>(cloudKeys.pricelists, pricelists, (prev) =>
+        prev.filter((p) => p.id !== id),
+      );
+      write.mutate(() => supabase.from("pricelists").delete().eq("id", id));
+    },
+
     taxes,
-    saveTax: (tax) =>
-      setTaxes((prev) =>
+    saveTax: (tax) => {
+      patchCache<TaxRate>(cloudKeys.taxes, taxes, (prev) =>
         prev.some((t) => t.id === tax.id)
           ? prev.map((t) => (t.id === tax.id ? tax : t))
           : [...prev, tax],
-      ),
-    removeTax: (id) => setTaxes((prev) => prev.filter((t) => t.id !== id)),
+      );
+      write.mutate(() => supabase.from("tax_rates").upsert(fromTaxRate(tax)));
+    },
+    removeTax: (id) => {
+      patchCache<TaxRate>(cloudKeys.taxes, taxes, (prev) => prev.filter((t) => t.id !== id));
+      write.mutate(() => supabase.from("tax_rates").delete().eq("id", id));
+    },
+
     staff,
-    saveStaff: (user) =>
-      setStaff((prev) =>
+    saveStaff: (user) => {
+      patchCache<StaffUser>(cloudKeys.staff, staff, (prev) =>
         prev.some((u) => u.id === user.id)
           ? prev.map((u) => (u.id === user.id ? user : u))
           : [...prev, user],
-      ),
-    removeStaff: (id) => setStaff((prev) => prev.filter((u) => u.id !== id)),
-    storeSettings: { ...seedStoreSettings, ...storeSettings },
-    updateStoreSettings: (patch) => setStoreSettings((prev) => ({ ...prev, ...patch })),
+      );
+      write.mutate(() => supabase.from("profiles").update({ name: user.name }).eq("id", user.id));
+      write.mutate(() =>
+        supabase.from("user_roles").upsert(
+          { user_id: user.id, role: user.role },
+          { onConflict: "user_id,role" },
+        ),
+      );
+    },
+    removeStaff: (id) => {
+      patchCache<StaffUser>(cloudKeys.staff, staff, (prev) => prev.filter((u) => u.id !== id));
+      write.mutate(() => supabase.from("user_roles").delete().eq("user_id", id));
+    },
+
+    storeSettings,
+    updateStoreSettings: (patch) => {
+      const next = { ...storeSettings, ...patch };
+      queryClient.setQueryData<StoreSettings>(cloudKeys.storeSettings, next);
+      write.mutate(() => supabase.from("store_settings").upsert(fromStoreSettings(next)));
+    },
+
     sessions: history.sessions,
     sales: history.sales,
     lowStock: stock.filter((s) => s.active && s.onHand - s.reserved <= s.reorderPoint),
+    loading: stockQuery.isLoading || suppliersQuery.isLoading,
   };
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>;
