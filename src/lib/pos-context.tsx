@@ -564,7 +564,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
         (prev ?? productList).map((p) => (p.id === id ? { ...p, ...patch } : p)),
       );
-      const row: Record<string, unknown> = {};
+      const row: Database["public"]["Tables"]["products"]["Update"] = {};
       if (patch.name !== undefined) row["name"] = patch.name;
       if (patch.price !== undefined) row["price"] = patch.price;
       if (patch.category !== undefined) row["category_id"] = patch.category;
