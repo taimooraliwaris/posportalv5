@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   cloudKeys,
+  fetchOrders,
   fetchPricelists,
   fetchPurchaseOrders,
   fetchStaff,
@@ -21,7 +22,6 @@ import {
   randomId,
 } from "./cloud-data";
 import {
-  generateHistory,
   seedPricelists,
   seedStaff,
   seedStock,
@@ -29,6 +29,7 @@ import {
   seedTaxes,
   suppliers as seedSuppliers,
   type HistoricalSale,
+  type HistoricalSaleLine,
   type PricelistDetail,
   type PurchaseOrder,
   type SessionRecord,
@@ -108,6 +109,8 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     queryFn: fetchStoreSettings,
   });
   const staffQuery = useQuery({ queryKey: cloudKeys.staff, queryFn: fetchStaff });
+  // Shares the React Query cache with PosProvider — no extra network round-trip.
+  const ordersQuery = useQuery({ queryKey: cloudKeys.orders, queryFn: fetchOrders });
 
   const seededStock = useMemo(() => seedStock(), []);
   const stock = stockQuery.data ?? seededStock;
@@ -119,7 +122,106 @@ export function BackendProvider({ children }: { children: ReactNode }) {
   const storeSettings = { ...seedStoreSettings, ...(settingsQuery.data ?? {}) };
   const staff = staffQuery.data?.length ? staffQuery.data : seedStaff;
 
-  const history = useMemo(() => generateHistory(new Date()), []);
+  /** Derive sessions and sales from real persisted orders in the cloud. */
+  const { sessions, sales } = useMemo<{
+    sessions: SessionRecord[];
+    sales: HistoricalSale[];
+  }>(() => {
+    const allOrders = ordersQuery.data ?? [];
+    // Only settled orders feed reports; skip ongoing / payment-in-progress.
+    const completedOrders = allOrders.filter(
+      (o) => o.status === "paid" || o.status === "returned" || o.status === "exchanged",
+    );
+
+    const cashierFallback =
+      settingsQuery.data?.cashier ?? seedStoreSettings.cashier;
+
+    // ── Convert each completed order into a HistoricalSale ─────────────────
+    const sales: HistoricalSale[] = completedOrders.map((order) => {
+      // Determine dominant payment method by amount collected
+      const methodTotals: Record<string, number> = {};
+      for (const p of order.payments) {
+        methodTotals[p.method] = (methodTotals[p.method] ?? 0) + p.amount;
+      }
+      const paymentMethods = ["Cash", "Card", "Customer Account"] as const;
+      const method: HistoricalSale["method"] = paymentMethods.reduce(
+        (best, m) => ((methodTotals[m] ?? 0) >= (methodTotals[best] ?? 0) ? m : best),
+        "Cash" as HistoricalSale["method"],
+      );
+
+      // Use actual payments sum; fall back to 0 for edge cases
+      const total =
+        Math.round(
+          order.payments.reduce((s, p) => s + p.amount, 0) * 100,
+        ) / 100;
+
+      const date = order.date ?? new Date().toISOString().slice(0, 10);
+      const cashier = order.cashier || cashierFallback;
+
+      const lines: HistoricalSaleLine[] = order.lines.map((l) => ({
+        productId: l.productId,
+        name: l.name,
+        qty: l.qty,
+        unitPrice: l.unitPrice,
+      }));
+
+      return {
+        id: order.id,
+        number: order.number,
+        receipt: order.receipt,
+        date,
+        time: order.time,
+        sessionId: `sess-${date}`,
+        cashier,
+        method,
+        lines,
+        total,
+      };
+    });
+
+    // ── Group sales by date to synthesise SessionRecords ───────────────────
+    const byDate = new Map<string, HistoricalSale[]>();
+    for (const s of sales) {
+      const bucket = byDate.get(s.date) ?? [];
+      bucket.push(s);
+      byDate.set(s.date, bucket);
+    }
+
+    const sessions: SessionRecord[] = Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, dateSales]) => {
+        const cashSales =
+          Math.round(
+            dateSales
+              .filter((s) => s.method === "Cash")
+              .reduce((sum, s) => sum + s.total, 0) * 100,
+          ) / 100;
+        const cardSales =
+          Math.round(
+            dateSales
+              .filter((s) => s.method === "Card")
+              .reduce((sum, s) => sum + s.total, 0) * 100,
+          ) / 100;
+        const totalSales =
+          Math.round(dateSales.reduce((sum, s) => sum + s.total, 0) * 100) / 100;
+
+        return {
+          id: `sess-${date}`,
+          date,
+          cashier: dateSales[0]?.cashier ?? cashierFallback,
+          openedAt: "09:00",
+          closedAt: "21:00",
+          openingFloat: 500,
+          totalSales,
+          cashSales,
+          cardSales,
+          variance: 0,
+          orderCount: dateSales.length,
+        };
+      });
+
+    return { sessions, sales };
+  }, [ordersQuery.data, settingsQuery.data]);
 
   const write = useMutation({
     mutationFn: async (run: () => PromiseLike<{ error: { message: string } | null }>) => {
@@ -299,8 +401,8 @@ export function BackendProvider({ children }: { children: ReactNode }) {
       write.mutate(() => supabase.from("store_settings").upsert(fromStoreSettings(next)));
     },
 
-    sessions: history.sessions,
-    sales: history.sales,
+    sessions,
+    sales,
     lowStock: stock.filter((s) => s.active && s.onHand - s.reserved <= s.reorderPoint),
     loading: stockQuery.isLoading || suppliersQuery.isLoading,
   };
