@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BackendRouteImport } from './routes/backend'
 import { Route as CloseRegisterRouteImport } from './routes/close-register'
 import { Route as OrdersRouteImport } from './routes/orders'
@@ -31,6 +32,11 @@ import { Route as BackendSettingsRouteImport } from './routes/backend.settings'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BackendRoute = BackendRouteImport.update({
@@ -121,6 +127,7 @@ const BackendSettingsRoute = BackendSettingsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/backend': typeof BackendRouteWithChildren
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
@@ -161,6 +169,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/backend': typeof BackendRouteWithChildren
   '/close-register': typeof CloseRegisterRoute
   '/orders': typeof OrdersRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/backend'
     | '/close-register'
     | '/orders'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/close-register'
     | '/orders'
     | '/payment'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/auth'
     | '/backend'
     | '/close-register'
     | '/orders'
@@ -243,6 +255,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   BackendRoute: typeof BackendRouteWithChildren
   CloseRegisterRoute: typeof CloseRegisterRoute
   OrdersRoute: typeof OrdersRoute
@@ -260,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/backend': {
@@ -413,6 +433,7 @@ const BackendRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   BackendRoute: BackendRouteWithChildren,
   CloseRegisterRoute: CloseRegisterRoute,
   OrdersRoute: OrdersRoute,
