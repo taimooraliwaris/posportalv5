@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BackendRouteImport } from './routes/backend'
 import { Route as CloseRegisterRouteImport } from './routes/close-register'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as PriceCheckRouteImport } from './routes/price-check'
@@ -42,11 +41,6 @@ const BackendRoute = BackendRouteImport.update({
 const CloseRegisterRoute = CloseRegisterRouteImport.update({
   id: '/close-register',
   path: '/close-register',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -129,7 +123,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/backend': typeof BackendRouteWithChildren
   '/close-register': typeof CloseRegisterRoute
-  '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
@@ -149,7 +142,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/close-register': typeof CloseRegisterRoute
-  '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
@@ -171,7 +163,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/backend': typeof BackendRouteWithChildren
   '/close-register': typeof CloseRegisterRoute
-  '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
@@ -194,7 +185,6 @@ export interface FileRouteTypes {
     | '/'
     | '/backend'
     | '/close-register'
-    | '/login'
     | '/orders'
     | '/payment'
     | '/price-check'
@@ -214,7 +204,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/close-register'
-    | '/login'
     | '/orders'
     | '/payment'
     | '/price-check'
@@ -235,7 +224,6 @@ export interface FileRouteTypes {
     | '/'
     | '/backend'
     | '/close-register'
-    | '/login'
     | '/orders'
     | '/payment'
     | '/price-check'
@@ -257,7 +245,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BackendRoute: typeof BackendRouteWithChildren
   CloseRegisterRoute: typeof CloseRegisterRoute
-  LoginRoute: typeof LoginRoute
   OrdersRoute: typeof OrdersRoute
   PaymentRoute: typeof PaymentRoute
   PriceCheckRoute: typeof PriceCheckRoute
@@ -287,13 +274,6 @@ declare module '@tanstack/react-router' {
       path: '/close-register'
       fullPath: '/close-register'
       preLoaderRoute: typeof CloseRegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -435,7 +415,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BackendRoute: BackendRouteWithChildren,
   CloseRegisterRoute: CloseRegisterRoute,
-  LoginRoute: LoginRoute,
   OrdersRoute: OrdersRoute,
   PaymentRoute: PaymentRoute,
   PriceCheckRoute: PriceCheckRoute,
