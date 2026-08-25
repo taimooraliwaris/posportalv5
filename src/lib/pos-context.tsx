@@ -251,7 +251,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
           .from("orders")
           .upsert(fromOrder(order))
           .then(({ error }) => {
-            if (error) toast.error(`Could not save order ${order.number}`);
+            if (error) toast.error(`Could not save order ${order.number}: ${error.message}`);
           });
       }, 400),
     );
