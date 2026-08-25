@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -14,11 +14,21 @@ import {
   ShoppingCart,
   Sun,
   Tags,
+  UserRound,
   Users,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth-context";
 import { useBackend, useStore } from "@/lib/backend-context";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +59,8 @@ export function BackendLayout({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const store = useStore();
   const { lowStock } = useBackend();
+  const { currentUser, signOut } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -132,9 +144,37 @@ export function BackendLayout({
               </Button>
             )}
             <span className="hidden text-sm font-medium sm:inline">{store.name}</span>
-            <span className="grid h-11 w-11 place-items-center rounded-md bg-foreground text-sm font-semibold text-background">
-              {store.cashier.charAt(0)}
-            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-foreground text-sm font-semibold text-background"
+                  aria-label={currentUser ? `Account: ${currentUser.name}` : "Account"}
+                >
+                  {(currentUser?.name ?? store.cashier).charAt(0).toUpperCase()}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem disabled className="flex-col items-start gap-0.5">
+                  <span className="text-sm font-medium">{currentUser?.name ?? store.cashier}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {currentUser ? `${currentUser.email} - ${currentUser.role}` : "Not signed in"}
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => {
+                    void (async () => {
+                      await signOut();
+                      toast.success("Signed out");
+                      navigate({ to: "/auth", replace: true });
+                    })();
+                  }}
+                >
+                  <UserRound className="h-4 w-4" /> Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="ghost"
               size="icon"
