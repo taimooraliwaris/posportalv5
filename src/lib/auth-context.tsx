@@ -196,14 +196,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     signInWithGoogle: async () => {
-      try {
-        await lovable.auth.signInWithOAuth("google", {
-          redirect_uri: window.location.origin,
-        });
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : "Google sign-in failed" };
-      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
     },
 
     sendPasswordReset: async (email) => {
