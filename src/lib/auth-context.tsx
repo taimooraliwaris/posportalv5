@@ -200,7 +200,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         provider: "google",
         options: { redirectTo: window.location.origin },
       });
-      if (error) return { ok: false, error: error.message };
+      if (error) {
+        // Supabase returns "Unsupported provider: google" (or similar) when
+        // Google OAuth is not yet enabled in the Supabase dashboard.  Translate
+        // that into an actionable message rather than surfacing the raw SDK text.
+        const isUnconfigured =
+          /unsupported.+provider|provider.+not.+enabled|not.+configured/i.test(error.message);
+        return {
+          ok: false,
+          error: isUnconfigured
+            ? "Google sign-in is not enabled yet. Please sign in with email and password. (Administrators: enable the Google provider in the Supabase dashboard → Authentication → Providers.)"
+            : error.message,
+        };
+      }
+      // Reaching here means the OAuth redirect was triggered successfully —
+      // the browser is on its way to Google and this window will reload.
       return { ok: true };
     },
 
