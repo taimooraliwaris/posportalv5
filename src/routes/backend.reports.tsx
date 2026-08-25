@@ -19,7 +19,8 @@ import { BackendLayout } from "@/components/backend/backend-layout";
 import { DataCard, Field, StatCard } from "@/components/backend/backend-ui";
 import { useBackend, useStore } from "@/lib/backend-context";
 import { formatDate, toDateKey, type SessionRecord } from "@/lib/backend-data";
-import { categories, formatRs, products, TAX_RATE } from "@/lib/pos-data";
+import { formatRs, TAX_RATE } from "@/lib/pos-data";
+import { usePos } from "@/lib/pos-context";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,6 +54,7 @@ function ReportsPage() {
   const store = useStore();
   const hydrated = useHydrated();
   const { sessions, sales, stock } = useBackend();
+  const { productList, categoryList } = usePos();
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<SessionRecord | null>(null);
@@ -81,12 +83,12 @@ function ReportsPage() {
   );
   const grossProfit = revenue - cogs;
 
-  const byCategory = categories.map((c) => {
+  const byCategory = categoryList.map((c) => {
     const catRevenue = sales.reduce(
       (sum, s) =>
         sum +
         s.lines
-          .filter((l) => products.find((p) => p.id === l.productId)?.category === c.id)
+          .filter((l) => productList.find((p) => p.id === l.productId)?.category === c.id)
           .reduce((ls, l) => ls + l.qty * l.unitPrice, 0),
       0,
     );
@@ -94,7 +96,7 @@ function ReportsPage() {
       (sum, s) =>
         sum +
         s.lines
-          .filter((l) => products.find((p) => p.id === l.productId)?.category === c.id)
+          .filter((l) => productList.find((p) => p.id === l.productId)?.category === c.id)
           .reduce((ls, l) => ls + l.qty * costFor(l.productId), 0),
       0,
     );
@@ -107,7 +109,7 @@ function ReportsPage() {
     fill: chartColors[i]!,
   }));
 
-  const bestSellers = [...products]
+  const bestSellers = [...productList]
     .map((p) => ({
       name: p.name,
       units: sales.reduce(
@@ -116,6 +118,7 @@ function ReportsPage() {
         0,
       ),
     }))
+    .filter((p) => p.units > 0)
     .sort((a, b) => b.units - a.units)
     .slice(0, 6);
 
