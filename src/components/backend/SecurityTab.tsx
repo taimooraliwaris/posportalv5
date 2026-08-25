@@ -81,14 +81,22 @@ export function SecurityTab() {
     sendCode("passcode", passcode);
   };
 
-  const verify = () => {
+  const verify = async () => {
     if (!pending) return;
     if (entered.trim() !== pending.code) {
       toast.error("Incorrect verification code");
       return;
     }
     if (pending.kind === "password") {
-      if (currentUser) changePassword(currentUser.id, pending.value);
+      if (!currentUser) {
+        toast.error("Sign in to change your password");
+        return;
+      }
+      const result = await changePassword(currentUser.id, pending.value);
+      if (!result.ok) {
+        toast.error(result.error ?? "Could not update password");
+        return;
+      }
       setPassword("");
       setConfirm("");
       toast.success("Password updated");
@@ -168,7 +176,7 @@ export function SecurityTab() {
               aria-label="Verification code"
               className="h-11 w-40"
             />
-            <Button className="h-11" onClick={verify}>
+            <Button className="h-11" onClick={() => void verify()}>
               Confirm change
             </Button>
             <Button variant="ghost" className="h-11" onClick={() => setPending(null)}>
@@ -216,14 +224,21 @@ function AddUserModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (input: { name: string; email: string; role: StaffRole; password: string }) => void;
+  onCreate: (input: {
+    name: string;
+    email: string;
+    role: StaffRole;
+    password: string;
+  }) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<StaffRole>("Cashier");
   const [password, setPassword] = useState("");
 
-  const save = () => {
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
     if (!name.trim() || !email.trim()) {
       toast("Name and email are required");
       return;
@@ -232,8 +247,14 @@ function AddUserModal({
       toast("Password must be at least 8 characters");
       return;
     }
-    onCreate({ name: name.trim(), email: email.trim(), role, password });
-    toast.success(`${name.trim()} added as ${role}`);
+    setBusy(true);
+    const result = await onCreate({ name: name.trim(), email: email.trim(), role, password });
+    setBusy(false);
+    if (!result.ok) {
+      toast.error(result.error ?? "Could not invite staff member");
+      return;
+    }
+    toast.success(`${name.trim()} invited as ${role}`);
     setName("");
     setEmail("");
     setPassword("");
@@ -292,8 +313,8 @@ function AddUserModal({
               className="h-11"
             />
           </div>
-          <Button className="h-11 w-full" onClick={save}>
-            Create user
+          <Button className="h-11 w-full" onClick={() => void save()} disabled={busy}>
+            Invite user
           </Button>
         </div>
       </DialogContent>

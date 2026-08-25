@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LoginScreen } from "@/components/auth/login-screen";
+import { AuthScreen } from "@/components/auth/auth-screen";
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Sign in - Velora POS" },
@@ -15,5 +15,5 @@ export const Route = createFileRoute("/login")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: LoginScreen,
+  component: AuthScreen,
 });

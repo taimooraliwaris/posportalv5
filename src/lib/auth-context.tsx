@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { Session } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+
 import { usePersistentState } from "./use-persistent-state";
 import { cloudKeys, fetchStaff } from "./cloud-data";
 import type { StaffRole, StaffUser } from "./backend-data";
@@ -196,14 +196,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     signInWithGoogle: async () => {
-      try {
-        await lovable.auth.signInWithOAuth("google", {
-          redirect_uri: window.location.origin,
-        });
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : "Google sign-in failed" };
-      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
     },
 
     sendPasswordReset: async (email) => {

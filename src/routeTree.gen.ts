@@ -10,12 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BackendRouteImport } from './routes/backend'
 import { Route as CloseRegisterRouteImport } from './routes/close-register'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as PriceCheckRouteImport } from './routes/price-check'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReturnsRouteImport } from './routes/returns'
 import { Route as TillRouteImport } from './routes/till'
 import { Route as ZReportRouteImport } from './routes/z-report'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BackendRoute = BackendRouteImport.update({
   id: '/backend',
   path: '/backend',
@@ -42,11 +48,6 @@ const BackendRoute = BackendRouteImport.update({
 const CloseRegisterRoute = CloseRegisterRouteImport.update({
   id: '/close-register',
   path: '/close-register',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -62,6 +63,11 @@ const PaymentRoute = PaymentRouteImport.update({
 const PriceCheckRoute = PriceCheckRouteImport.update({
   id: '/price-check',
   path: '/price-check',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReturnsRoute = ReturnsRouteImport.update({
@@ -127,12 +133,13 @@ const BackendSettingsRoute = BackendSettingsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/backend': typeof BackendRouteWithChildren
   '/close-register': typeof CloseRegisterRoute
-  '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
@@ -148,11 +155,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/close-register': typeof CloseRegisterRoute
-  '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
@@ -169,12 +177,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/backend': typeof BackendRouteWithChildren
   '/close-register': typeof CloseRegisterRoute
-  '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
   '/price-check': typeof PriceCheckRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/returns': typeof ReturnsRoute
   '/till': typeof TillRoute
   '/z-report': typeof ZReportRoute
@@ -192,12 +201,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/backend'
     | '/close-register'
-    | '/login'
     | '/orders'
     | '/payment'
     | '/price-check'
+    | '/reset-password'
     | '/returns'
     | '/till'
     | '/z-report'
@@ -213,11 +223,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/close-register'
-    | '/login'
     | '/orders'
     | '/payment'
     | '/price-check'
+    | '/reset-password'
     | '/returns'
     | '/till'
     | '/z-report'
@@ -233,12 +244,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/auth'
     | '/backend'
     | '/close-register'
-    | '/login'
     | '/orders'
     | '/payment'
     | '/price-check'
+    | '/reset-password'
     | '/returns'
     | '/till'
     | '/z-report'
@@ -255,12 +267,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   BackendRoute: typeof BackendRouteWithChildren
   CloseRegisterRoute: typeof CloseRegisterRoute
-  LoginRoute: typeof LoginRoute
   OrdersRoute: typeof OrdersRoute
   PaymentRoute: typeof PaymentRoute
   PriceCheckRoute: typeof PriceCheckRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ReturnsRoute: typeof ReturnsRoute
   TillRoute: typeof TillRoute
   ZReportRoute: typeof ZReportRoute
@@ -275,6 +288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/backend': {
       id: '/backend'
       path: '/backend'
@@ -287,13 +307,6 @@ declare module '@tanstack/react-router' {
       path: '/close-register'
       fullPath: '/close-register'
       preLoaderRoute: typeof CloseRegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -315,6 +328,13 @@ declare module '@tanstack/react-router' {
       path: '/price-check'
       fullPath: '/price-check'
       preLoaderRoute: typeof PriceCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/returns': {
@@ -433,12 +453,13 @@ const BackendRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   BackendRoute: BackendRouteWithChildren,
   CloseRegisterRoute: CloseRegisterRoute,
-  LoginRoute: LoginRoute,
   OrdersRoute: OrdersRoute,
   PaymentRoute: PaymentRoute,
   PriceCheckRoute: PriceCheckRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ReturnsRoute: ReturnsRoute,
   TillRoute: TillRoute,
   ZReportRoute: ZReportRoute,
