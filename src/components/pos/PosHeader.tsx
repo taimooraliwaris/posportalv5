@@ -12,6 +12,7 @@ import {
   Server,
   Sun,
   Tag,
+  UserRound,
   Undo2,
   Wifi,
 } from "lucide-react";
@@ -25,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { usePos } from "@/lib/pos-context";
+import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme";
 import { useBackend, useStore } from "@/lib/backend-context";
 import { cn } from "@/lib/utils";
@@ -46,6 +48,7 @@ export function PosHeader({
   const store = useStore();
   const { lowStock } = useBackend();
   const { dark, toggle } = useTheme();
+  const { currentUser, signOut } = useAuth();
   const navigate = useNavigate();
   const [cashOpen, setCashOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
@@ -174,9 +177,37 @@ export function PosHeader({
         <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 text-xs font-medium sm:flex">
           <Wifi className="h-3.5 w-3.5" /> {store.network}
         </span>
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-foreground text-sm font-semibold text-background">
-          {store.cashier.charAt(0)}
-        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-foreground text-sm font-semibold text-background"
+              aria-label={currentUser ? `Account: ${currentUser.name}` : "Account"}
+            >
+              {(currentUser?.name ?? store.cashier).charAt(0).toUpperCase()}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem disabled className="flex-col items-start gap-0.5">
+              <span className="text-sm font-medium">{currentUser?.name ?? store.cashier}</span>
+              <span className="text-xs text-muted-foreground">
+                {currentUser ? `${currentUser.email} - ${currentUser.role}` : "Not signed in"}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => {
+                void (async () => {
+                  await signOut();
+                  toast.success("Signed out");
+                  navigate({ to: "/auth", replace: true });
+                })();
+              }}
+            >
+              <UserRound className="h-4 w-4" /> Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label="Menu">
