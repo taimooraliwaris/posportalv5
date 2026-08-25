@@ -12,10 +12,8 @@ import { usePos, orderTotals, type CartLine } from "@/lib/pos-context";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { applyNumericKey, useNumericKeyboard } from "@/lib/use-numeric-entry";
 import {
-  categories,
   formatRs,
   pricelists,
-  products,
   toneClass,
   type Product,
 } from "@/lib/pos-data";
@@ -55,6 +53,9 @@ function Till() {
     updateOrder,
     customers,
     addByBarcode,
+    productList,
+    categoryList,
+    loading,
   } = usePos();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
@@ -139,14 +140,14 @@ function Till() {
   const { subtotal, taxes, total } = orderTotals(activeOrder, pricelist.discount);
 
   const filteredProducts = useMemo(() => {
-    let list = products;
+    let list = productList;
     if (category) list = list.filter((p) => p.category === category);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((p) => p.name.toLowerCase().includes(q) || p.barcode.includes(q));
     }
     return list;
-  }, [category, search]);
+  }, [productList, category, search]);
 
   const handleAddProduct = (product: Product) => {
     addProduct(product);
@@ -288,7 +289,7 @@ function Till() {
             >
               All
             </button>
-            {categories.map((c) => (
+            {categoryList.map((c) => (
               <button
                 key={c.id}
                 type="button"
@@ -303,12 +304,24 @@ function Till() {
             ))}
           </div>
           <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-3 overflow-y-auto p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProducts.map((p) => {
-              const qty = activeOrder?.lines.find((l) => l.productId === p.id)?.qty ?? 0;
-              return (
-                <ProductTile key={p.id} product={p} qty={qty} onAdd={() => handleAddProduct(p)} />
-              );
-            })}
+            {loading
+              ? Array.from({ length: 12 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-24 animate-pulse rounded-xl border border-border bg-muted"
+                  />
+                ))
+              : filteredProducts.map((p) => {
+                  const qty = activeOrder?.lines.find((l) => l.productId === p.id)?.qty ?? 0;
+                  return (
+                    <ProductTile
+                      key={p.id}
+                      product={p}
+                      qty={qty}
+                      onAdd={() => handleAddProduct(p)}
+                    />
+                  );
+                })}
           </div>
         </section>
       </main>
