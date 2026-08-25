@@ -127,6 +127,8 @@ export const toOrder = (row: Row<"orders">): Order => ({
   number: row.number,
   receipt: row.receipt,
   time: row.order_time,
+  date: row.order_date,
+  cashier: row.cashier || undefined,
   status: row.status as OrderStatus,
   lines: (Array.isArray(row.lines) ? row.lines : []) as unknown as CartLine[],
   payments: (Array.isArray(row.payments) ? row.payments : []) as unknown as PaymentLine[],
@@ -141,6 +143,7 @@ export const fromOrder = (order: Order, cashier = ""): Tables["orders"]["Insert"
   number: order.number,
   receipt: order.receipt,
   order_time: order.time,
+  order_date: order.date ?? new Date().toISOString().slice(0, 10),
   status: order.status,
   lines: order.lines as unknown as Json,
   payments: order.payments as unknown as Json,
@@ -148,7 +151,7 @@ export const fromOrder = (order: Order, cashier = ""): Tables["orders"]["Insert"
   note: order.note ?? "",
   note_tags: order.noteTags,
   pricelist_id: order.pricelistId,
-  cashier,
+  cashier: order.cashier || cashier,
 });
 
 export const toReturnRecord = (row: Row<"return_records">): ReturnRecord => ({
