@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { Session } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+
 import { usePersistentState } from "./use-persistent-state";
 import { cloudKeys, fetchStaff } from "./cloud-data";
 import type { StaffRole, StaffUser } from "./backend-data";
