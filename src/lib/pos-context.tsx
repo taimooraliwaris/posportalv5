@@ -86,6 +86,10 @@ export type Order = {
   number: string;
   receipt: string;
   time: string;
+  /** ISO date string YYYY-MM-DD from the orders table. */
+  date?: string;
+  /** Name of the cashier who created the order, stored on the DB row. */
+  cashier?: string;
   status: OrderStatus;
   lines: CartLine[];
   payments: PaymentLine[];
@@ -107,6 +111,7 @@ function makeOrder(number: string): Order {
     number,
     receipt: `RCP/${number}`,
     time: now(),
+    date: new Date().toISOString().slice(0, 10),
     status: "ongoing",
     lines: [],
     payments: [],
