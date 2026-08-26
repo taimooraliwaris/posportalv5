@@ -65,6 +65,7 @@ function Till() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [editMode, setEditMode] = useState<EditMode | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [pendingSelectProductId, setPendingSelectProductId] = useState<string | null>(null);
 
   const editing = editMode !== null && selectedLineId !== null;
 
@@ -73,6 +74,15 @@ function Till() {
     setEditMode(null);
     setEditValue("");
   }, [selectedLineId]);
+
+  useEffect(() => {
+  if (!pendingSelectProductId || !activeOrder) return;
+  const line = activeOrder.lines.find((l) => l.productId === pendingSelectProductId);
+  if (line) {
+    setSelectedLineId(line.id);
+    setPendingSelectProductId(null);
+  }
+}, [pendingSelectProductId, activeOrder, setSelectedLineId]);
 
   // USB/Bluetooth scanners work anywhere on the register screen, but stand down
   // while a value is being edited so scanned digits never land in a price.
@@ -149,11 +159,12 @@ function Till() {
     return list;
   }, [productList, category, search]);
 
+
   const handleAddProduct = (product: Product) => {
-  addProduct(product);
-  const line = activeOrder?.lines.find((l) => l.productId === product.id);
-  if (line) setSelectedLineId(line.id);
-};
+    addProduct(product);
+    setPendingSelectProductId(product.id);
+    toast.success(`${product.name} added`);
+  };
 
   const customer = activeOrder?.customerId
     ? customers.find((c) => c.id === activeOrder.customerId)
@@ -249,7 +260,7 @@ function Till() {
 
             <Button
               className="mb-3 h-14 w-full text-base"
-              disabled={activeOrder?.lines.length === 0}
+              disabled={!activeOrder?.lines.length}
               asChild
             >
               <Link to="/payment">Payment</Link>
