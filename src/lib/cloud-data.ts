@@ -128,7 +128,7 @@ export const toOrder = (row: Row<"orders">): Order => ({
   receipt: row.receipt,
   time: row.order_time,
   date: row.order_date,
-  cashier: row.cashier || undefined,
+  cashier: row.cashier || "",
   status: row.status as OrderStatus,
   lines: (Array.isArray(row.lines) ? row.lines : []) as unknown as CartLine[],
   payments: (Array.isArray(row.payments) ? row.payments : []) as unknown as PaymentLine[],
