@@ -188,27 +188,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
     signInWithGoogle: async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin },
+      // Routed through the Lovable auth broker so it also works inside the
+      // editor preview iframe (a raw OAuth redirect is blocked there).
+      const { lovable } = await import("@/integrations/lovable");
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
       });
-      if (error) {
-        // Supabase returns "Unsupported provider: google" (or similar) when
-        // Google OAuth is not yet enabled in the Supabase dashboard.  Translate
-        // that into an actionable message rather than surfacing the raw SDK text.
+      if (result.error) {
+        const message = result.error.message ?? "Google sign-in failed";
         const isUnconfigured =
-          /unsupported.+provider|provider.+not.+enabled|not.+configured/i.test(error.message);
+          /unsupported.+provider|missing oauth|provider.+not.+enabled|not.+configured/i.test(
+            message,
+          );
         return {
           ok: false,
           error: isUnconfigured
-            ? "Google sign-in is not enabled yet. Please sign in with email and password. (Administrators: enable the Google provider in the Supabase dashboard → Authentication → Providers.)"
-            : error.message,
+            ? "Google sign-in isn't available yet. Please sign in with email and password."
+            : message,
         };
       }
-      // Reaching here means the OAuth redirect was triggered successfully —
-      // the browser is on its way to Google and this window will reload.
+      // Either the browser is on its way to Google, or the broker already set
+      // the session in place.
       return { ok: true };
     },
+
 
     sendPasswordReset: async (email) => {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {

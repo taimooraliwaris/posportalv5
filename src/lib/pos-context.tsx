@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { useAuth } from "./auth-context";
 import {
   TAX_RATE,
   categories as seedCategories,
@@ -187,13 +188,42 @@ const tonePalette = ["pink", "sand", "sage", "sky"] as const;
 
 export function PosProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  // Catalog and order data is staff-only: hold every read (and every write)
+  // until a session exists, otherwise the sign-in screen would try to create
+  // and save an order as an anonymous visitor.
+  const { session } = useAuth();
+  const signedIn = Boolean(session);
 
-  const productsQuery = useQuery({ queryKey: cloudKeys.products, queryFn: fetchProducts });
-  const categoriesQuery = useQuery({ queryKey: cloudKeys.categories, queryFn: fetchCategories });
-  const customersQuery = useQuery({ queryKey: cloudKeys.customers, queryFn: fetchCustomers });
-  const ordersQuery = useQuery({ queryKey: cloudKeys.orders, queryFn: fetchOrders });
-  const returnsQuery = useQuery({ queryKey: cloudKeys.returns, queryFn: fetchReturns });
-  const cashQuery = useQuery({ queryKey: cloudKeys.cashMoves, queryFn: fetchCashMoves });
+  const productsQuery = useQuery({
+    queryKey: cloudKeys.products,
+    queryFn: fetchProducts,
+    enabled: signedIn,
+  });
+  const categoriesQuery = useQuery({
+    queryKey: cloudKeys.categories,
+    queryFn: fetchCategories,
+    enabled: signedIn,
+  });
+  const customersQuery = useQuery({
+    queryKey: cloudKeys.customers,
+    queryFn: fetchCustomers,
+    enabled: signedIn,
+  });
+  const ordersQuery = useQuery({
+    queryKey: cloudKeys.orders,
+    queryFn: fetchOrders,
+    enabled: signedIn,
+  });
+  const returnsQuery = useQuery({
+    queryKey: cloudKeys.returns,
+    queryFn: fetchReturns,
+    enabled: signedIn,
+  });
+  const cashQuery = useQuery({
+    queryKey: cloudKeys.cashMoves,
+    queryFn: fetchCashMoves,
+    enabled: signedIn,
+  });
 
   const productList = productsQuery.data ?? seedProducts;
   const categoryList = categoriesQuery.data ?? seedCategories;
@@ -216,9 +246,10 @@ export function PosProvider({ children }: { children: ReactNode }) {
   const returns = returnsQuery.data ?? [];
   const orders = localOrders ?? ordersQuery.data ?? [];
 
-  // Seed local order state from the cloud once, then own it locally.
+  // Seed local order state from the cloud once, then own it locally. Waits for
+  // an authenticated read so we never invent an order the backend will reject.
   useEffect(() => {
-    if (localOrders || !ordersQuery.data) return;
+    if (!signedIn || localOrders || !ordersQuery.data) return;
     const cloudOrders = ordersQuery.data;
     const ongoing = cloudOrders.find((o) => o.status === "ongoing" || o.status === "payment");
     if (ongoing) {
@@ -232,11 +263,13 @@ export function PosProvider({ children }: { children: ReactNode }) {
     setActiveOrderId(fresh.id);
     void persist(fresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ordersQuery.data, localOrders]);
+  }, [signedIn, ordersQuery.data, localOrders]);
 
   const activeOrder = orders.find((o) => o.id === activeOrderId);
 
   const pendingWrites = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const signedInRef = useRef(signedIn);
+  signedInRef.current = signedIn;
 
   /** Debounced upsert so a burst of cart edits becomes one write. */
   const persist = useCallback((order: Order) => {
@@ -247,6 +280,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
       order.id,
       setTimeout(() => {
         timers.delete(order.id);
+        // Signed out (or signing in): keep the cart local instead of firing a
+        // write the backend will reject.
+        if (!signedInRef.current) return;
         void supabase
           .from("orders")
           .upsert(fromOrder(order))

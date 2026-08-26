@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./auth-context";
 import {
   cloudKeys,
   fetchOrders,
@@ -94,23 +95,57 @@ const BackendContext = createContext<BackendState | null>(null);
 
 export function BackendProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  // Every cloud read below is staff-only, so nothing is fetched until a real
+  // session exists. Pre-auth renders fall back to the seed data.
+  const { session } = useAuth();
+  const signedIn = Boolean(session);
 
-  const stockQuery = useQuery({ queryKey: cloudKeys.stock, queryFn: fetchStock });
+  const stockQuery = useQuery({
+    queryKey: cloudKeys.stock,
+    queryFn: fetchStock,
+    enabled: signedIn,
+  });
   const adjustmentsQuery = useQuery({
     queryKey: cloudKeys.adjustments,
     queryFn: fetchStockAdjustments,
+    enabled: signedIn,
   });
-  const suppliersQuery = useQuery({ queryKey: cloudKeys.suppliers, queryFn: fetchSuppliers });
-  const poQuery = useQuery({ queryKey: cloudKeys.purchaseOrders, queryFn: fetchPurchaseOrders });
-  const pricelistsQuery = useQuery({ queryKey: cloudKeys.pricelists, queryFn: fetchPricelists });
-  const taxesQuery = useQuery({ queryKey: cloudKeys.taxes, queryFn: fetchTaxes });
+  const suppliersQuery = useQuery({
+    queryKey: cloudKeys.suppliers,
+    queryFn: fetchSuppliers,
+    enabled: signedIn,
+  });
+  const poQuery = useQuery({
+    queryKey: cloudKeys.purchaseOrders,
+    queryFn: fetchPurchaseOrders,
+    enabled: signedIn,
+  });
+  const pricelistsQuery = useQuery({
+    queryKey: cloudKeys.pricelists,
+    queryFn: fetchPricelists,
+    enabled: signedIn,
+  });
+  const taxesQuery = useQuery({
+    queryKey: cloudKeys.taxes,
+    queryFn: fetchTaxes,
+    enabled: signedIn,
+  });
   const settingsQuery = useQuery({
     queryKey: cloudKeys.storeSettings,
     queryFn: fetchStoreSettings,
   });
-  const staffQuery = useQuery({ queryKey: cloudKeys.staff, queryFn: fetchStaff });
+  const staffQuery = useQuery({
+    queryKey: cloudKeys.staff,
+    queryFn: fetchStaff,
+    enabled: signedIn,
+  });
   // Shares the React Query cache with PosProvider — no extra network round-trip.
-  const ordersQuery = useQuery({ queryKey: cloudKeys.orders, queryFn: fetchOrders });
+  const ordersQuery = useQuery({
+    queryKey: cloudKeys.orders,
+    queryFn: fetchOrders,
+    enabled: signedIn,
+  });
+
 
   const seededStock = useMemo(() => seedStock(), []);
   const stock = stockQuery.data ?? seededStock;
