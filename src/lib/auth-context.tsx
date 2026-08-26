@@ -30,7 +30,7 @@ type AuthState = {
   authLoading: boolean;
 
   signIn: (email: string, password: string) => Promise<AuthResult>;
-  signUp: (name: string, email: string, password: string) => Promise<AuthResult>;
+  
   signInWithGoogle: () => Promise<AuthResult>;
   sendPasswordReset: (email: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
