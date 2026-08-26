@@ -30,7 +30,7 @@ type AuthState = {
   authLoading: boolean;
 
   signIn: (email: string, password: string) => Promise<AuthResult>;
-  signUp: (name: string, email: string, password: string) => Promise<AuthResult>;
+  
   signInWithGoogle: () => Promise<AuthResult>;
   sendPasswordReset: (email: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
@@ -182,18 +182,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: true };
     },
 
-    signUp: async (name, email, password) => {
-      const { error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: { name: name.trim() },
-          emailRedirectTo: `${window.location.origin}/auth`,
-        },
-      });
-      if (error) return { ok: false, error: error.message };
-      return { ok: true };
-    },
+    // Public self-service sign-up is intentionally unavailable: staff accounts
+    // are created by a Manager through inviteStaffMember().
+
+
 
     signInWithGoogle: async () => {
       const { error } = await supabase.auth.signInWithOAuth({
