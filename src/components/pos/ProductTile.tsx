@@ -4,6 +4,7 @@ import { useBackend } from "@/lib/backend-context";
 import { stockStatus } from "@/lib/backend-data";
 import { formatRs, toneClass, type Product } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export function ProductIcon({ name, className }: { name: string; className?: string }) {
   const Cmp = (Icons as unknown as Record<string, Icons.LucideIcon>)[name] ?? Icons.Package;
@@ -27,11 +28,17 @@ export function ProductTile({
   return (
     <button
       type="button"
-      onClick={onAdd}
+      onClick={() => {
+        if (status === "out") {
+          toast.error(`${product.name} is out of stock`);
+          return;
+        }
+        onAdd();
+      }}
       className={cn(
         "group relative flex min-h-[9.5rem] flex-col overflow-hidden rounded-xl border bg-card text-left shadow-soft transition-transform duration-150 active:scale-[0.97]",
         status === "out"
-          ? "border-destructive"
+          ? "border-destructive opacity-70"
           : status === "low"
             ? "border-warning"
             : "border-border",
