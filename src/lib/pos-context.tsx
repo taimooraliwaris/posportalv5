@@ -203,10 +203,26 @@ export function PosProvider({ children }: { children: ReactNode }) {
     queryFn: fetchCategories,
     enabled: signedIn,
   });
-  const customersQuery = useQuery({ queryKey: cloudKeys.customers, queryFn: fetchCustomers });
-  const ordersQuery = useQuery({ queryKey: cloudKeys.orders, queryFn: fetchOrders });
-  const returnsQuery = useQuery({ queryKey: cloudKeys.returns, queryFn: fetchReturns });
-  const cashQuery = useQuery({ queryKey: cloudKeys.cashMoves, queryFn: fetchCashMoves });
+  const customersQuery = useQuery({
+    queryKey: cloudKeys.customers,
+    queryFn: fetchCustomers,
+    enabled: signedIn,
+  });
+  const ordersQuery = useQuery({
+    queryKey: cloudKeys.orders,
+    queryFn: fetchOrders,
+    enabled: signedIn,
+  });
+  const returnsQuery = useQuery({
+    queryKey: cloudKeys.returns,
+    queryFn: fetchReturns,
+    enabled: signedIn,
+  });
+  const cashQuery = useQuery({
+    queryKey: cloudKeys.cashMoves,
+    queryFn: fetchCashMoves,
+    enabled: signedIn,
+  });
 
   const productList = productsQuery.data ?? seedProducts;
   const categoryList = categoriesQuery.data ?? seedCategories;
