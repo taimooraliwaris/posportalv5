@@ -93,7 +93,7 @@ export function Receipt({ order, simple }: { order: Order | null; simple?: boole
       <div className="my-3 border-t border-dashed border-border pt-3">
         <Row label="Ticket" value={order?.receipt ?? "RCP/0000"} />
         <Row label="Date" value={new Date().toLocaleString()} />
-        <Row label="Served by" value={store.cashier} />
+        <Row label="Served by" value={currentUser?.name ?? store.cashier} />
       </div>
       {!simple && (
         <div className="border-t border-dashed border-border pt-3">
