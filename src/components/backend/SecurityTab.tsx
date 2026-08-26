@@ -9,9 +9,11 @@ import { DataTable, type Column } from "./data-table";
 import { useAuth, type AppUser, type SecurityEvent } from "@/lib/auth-context";
 import { useStore } from "@/lib/backend-context";
 import { rolePermissions, type StaffRole } from "@/lib/backend-data";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type Pending = { kind: "password" | "passcode"; value: string; code: string } | null;
+// Pending omits `code` — the real OTP is sent via Supabase email, not stored here.
+type Pending = { kind: "password" | "passcode"; value: string } | null;
 
 const roles: StaffRole[] = ["Cashier", "Manager", "Admin"];
 const selectClass = "h-11 w-full rounded-md border border-border bg-card px-3 text-sm";
@@ -25,7 +27,7 @@ const eventLabels: Record<SecurityEvent["kind"], string> = {
 };
 
 /**
- * Password/passcode changes are confirmed with a simulated verification email,
+ * Password/passcode changes are confirmed with a real OTP sent by Supabase,
  * then applied through the auth context so the security log stays accurate.
  */
 export function SecurityTab() {
@@ -46,15 +48,34 @@ export function SecurityTab() {
   const [passcode, setPasscode] = useState("");
   const [pending, setPending] = useState<Pending>(null);
   const [entered, setEntered] = useState("");
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
   const email = currentUser?.email ?? store.email;
 
-  const sendCode = (kind: "password" | "passcode", value: string) => {
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    setPending({ kind, value, code });
+  /** Send a real OTP to the user's email via Supabase — no code in the UI. */
+  const sendCode = async (kind: "password" | "passcode", value: string) => {
+    if (!email) {
+      toast.error("No email address on file — cannot send verification code");
+      return;
+    }
+    setSending(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+    setSending(false);
+    if (error) {
+      toast.error("Could not send verification email: " + error.message);
+      return;
+    }
+    setPending({ kind, value });
     setEntered("");
-    toast.success(`Verification code sent to ${email}`, { description: `Code: ${code}` });
+    // Toast confirms dispatch — code is NOT shown here.
+    toast.success("Verification code sent", {
+      description: `Check your inbox at ${email}`,
+    });
   };
 
   const startPassword = () => {
@@ -70,7 +91,7 @@ export function SecurityTab() {
       toast("Passwords do not match");
       return;
     }
-    sendCode("password", password);
+    void sendCode("password", password);
   };
 
   const startPasscode = () => {
@@ -78,15 +99,26 @@ export function SecurityTab() {
       toast("The backend passcode must be 6 digits");
       return;
     }
-    sendCode("passcode", passcode);
+    void sendCode("passcode", passcode);
   };
 
   const verify = async () => {
     if (!pending) return;
-    if (entered.trim() !== pending.code) {
-      toast.error("Incorrect verification code");
+    setVerifying(true);
+
+    // Verify the OTP against Supabase — this is the real email OTP check.
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: entered.trim(),
+      type: "email",
+    });
+    setVerifying(false);
+
+    if (error) {
+      toast.error("Incorrect or expired verification code");
       return;
     }
+
     if (pending.kind === "password") {
       if (!currentUser) {
         toast.error("Sign in to change your password");
@@ -135,8 +167,8 @@ export function SecurityTab() {
               className="h-11"
             />
           </div>
-          <Button className="h-11 w-full" onClick={startPassword}>
-            Send verification email
+          <Button className="h-11 w-full" onClick={startPassword} disabled={sending}>
+            {sending ? "Sending…" : "Send verification email"}
           </Button>
         </DataCard>
 
@@ -157,8 +189,8 @@ export function SecurityTab() {
           <p className="text-xs text-muted-foreground">
             Required whenever the back office is opened from the register.
           </p>
-          <Button className="h-11 w-full" onClick={startPasscode}>
-            Send verification email
+          <Button className="h-11 w-full" onClick={startPasscode} disabled={sending}>
+            {sending ? "Sending…" : "Send verification email"}
           </Button>
         </DataCard>
       </div>
@@ -166,7 +198,7 @@ export function SecurityTab() {
       {pending && (
         <DataCard className="space-y-3 p-4">
           <p className="flex items-center gap-2 text-sm font-medium">
-            <MailCheck className="h-4 w-4" /> Enter the code we emailed to {email}
+            <MailCheck className="h-4 w-4" /> Enter the 6-digit code emailed to {email}
           </p>
           <div className="flex flex-wrap gap-2">
             <Input
@@ -176,8 +208,8 @@ export function SecurityTab() {
               aria-label="Verification code"
               className="h-11 w-40"
             />
-            <Button className="h-11" onClick={() => void verify()}>
-              Confirm change
+            <Button className="h-11" onClick={() => void verify()} disabled={verifying}>
+              {verifying ? "Confirming…" : "Confirm change"}
             </Button>
             <Button variant="ghost" className="h-11" onClick={() => setPending(null)}>
               Cancel
