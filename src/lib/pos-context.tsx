@@ -87,9 +87,7 @@ export type Order = {
   number: string;
   receipt: string;
   time: string;
-  /** ISO date string YYYY-MM-DD from the orders table. */
   date?: string;
-  /** Name of the cashier who created the order, stored on the DB row. */
   cashier?: string;
   status: OrderStatus;
   lines: CartLine[];
@@ -122,7 +120,6 @@ function makeOrder(number: string, cashierName = ""): Order {
   };
 }
 
-
 export function orderTotals(order: Order | undefined, discountRate = 0) {
   const lines = order?.lines ?? [];
   const gross = lines.reduce((sum, l) => sum + l.unitPrice * l.qty * (1 - l.discount / 100), 0);
@@ -137,7 +134,6 @@ type PosState = {
   openRegister: (amount: number) => void;
   closeRegister: (counted: number, note: string) => void;
   closedSummary: { counted: number; note: string } | null;
-
   orders: Order[];
   activeOrderId: string;
   activeOrder: Order | undefined;
@@ -145,7 +141,6 @@ type PosState = {
   newOrder: () => void;
   deleteOrder: (id: string) => void;
   updateOrder: (id: string, patch: Partial<Order>) => void;
-
   selectedLineId: string | null;
   setSelectedLineId: (id: string | null) => void;
   addProduct: (product: Product) => void;
@@ -154,32 +149,24 @@ type PosState = {
   findByBarcode: (code: string) => Product | null;
   updateLine: (lineId: string, patch: Partial<CartLine>) => void;
   removeLine: (lineId: string) => void;
-
   addPayment: (method: PaymentLine["method"], amount: number) => void;
   updatePayment: (id: string, amount: number) => void;
   removePayment: (id: string) => void;
   validateOrder: () => void;
-
   customers: Customer[];
   addCustomer: (c: Omit<Customer, "id">) => Customer;
-
   productList: Product[];
   addProductToCatalog: (p: Omit<Product, "id">) => Product;
-
   categoryList: Category[];
   addCategory: (name: string) => Category;
-
   cashMoves: CashMove[];
   addCashMove: (m: Omit<CashMove, "id">) => void;
-
   lastPaidOrder: Order | null;
-
   returns: ReturnRecord[];
   processReturn: (
     input: Omit<ReturnRecord, "id" | "number" | "date" | "time">,
   ) => ReturnRecord;
   updateProductInCatalog: (id: string, patch: Partial<Product>) => void;
-
   /** True until the first cloud read for catalog data settles. */
   loading: boolean;
 };
@@ -287,13 +274,13 @@ export function PosProvider({ children }: { children: ReactNode }) {
         if (!signedInRef.current) return;
         void supabase
           .from("orders")
-          .upsert(fromOrder(order))
+          .upsert(fromOrder(order, currentUser?.name ?? ""))
           .then(({ error }) => {
             if (error) toast.error(`Could not save order ${order.number}: ${error.message}`);
           });
       }, 400),
     );
-  }, []);
+  }, [currentUser?.name]);
 
   const mutateOrders = useCallback(
     (updater: (list: Order[]) => Order[], persistIds?: string[]) => {
