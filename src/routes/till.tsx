@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { MoreVertical, Plus, StickyNote, Trash2, Upload, User } from "lucide-react";
+import { MoreVertical, Plus, StickyNote, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PosHeader } from "@/components/pos/PosHeader";
 import { ProductTile } from "@/components/pos/ProductTile";
@@ -228,13 +228,6 @@ function Till() {
               </button>
               <button
                 type="button"
-                onClick={() => toast("Upload not implemented in prototype")}
-                className="flex min-h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors"
-              >
-                <Upload className="h-4 w-4" /> Upload
-              </button>
-              <button
-                type="button"
                 onClick={() => setActionsOpen(true)}
                 className="grid h-11 w-11 place-items-center rounded-md border border-border"
                 aria-label="Order actions"
@@ -267,7 +260,11 @@ function Till() {
             </Button>
 
             {editing && (
-              <div className="mb-2 flex items-center justify-between rounded-lg border-2 border-primary bg-accent px-3 py-2 shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_18%,transparent)]">
+              <div
+                role="status"
+                aria-live="polite"
+                className="mb-2 flex items-center justify-between rounded-lg border-2 border-primary bg-accent px-3 py-2 shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_18%,transparent)]"
+              >
                 <span className="text-sm font-semibold text-accent-foreground">
                   Editing {editLabels[editMode]}
                 </span>
@@ -366,17 +363,26 @@ function CartLineItem({
   onRemove: () => void;
 }) {
   return (
-    <div
-      onClick={onClick}
-      className={cn(
-        "flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 p-3 transition-all",
-        editingLabel
-          ? "border-primary bg-accent shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_22%,transparent)]"
-          : selected
-            ? "border-primary bg-accent"
-            : "border-border bg-card",
-      )}
-    >
+  <div
+    role="button"
+    tabIndex={0}
+    onClick={onClick}
+    onKeyDown={(e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onClick();
+      }
+    }}
+    className={cn(
+      "flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 p-3 transition-all",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      editingLabel
+        ? "border-primary bg-accent shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_22%,transparent)]"
+        : selected
+          ? "border-primary bg-accent"
+          : "border-border bg-card",
+    )}
+  >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="grid h-7 min-w-7 place-items-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
