@@ -187,9 +187,22 @@ const tonePalette = ["pink", "sand", "sage", "sky"] as const;
 
 export function PosProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  // Catalog and order data is staff-only: hold every read (and every write)
+  // until a session exists, otherwise the sign-in screen would try to create
+  // and save an order as an anonymous visitor.
+  const { session } = useAuth();
+  const signedIn = Boolean(session);
 
-  const productsQuery = useQuery({ queryKey: cloudKeys.products, queryFn: fetchProducts });
-  const categoriesQuery = useQuery({ queryKey: cloudKeys.categories, queryFn: fetchCategories });
+  const productsQuery = useQuery({
+    queryKey: cloudKeys.products,
+    queryFn: fetchProducts,
+    enabled: signedIn,
+  });
+  const categoriesQuery = useQuery({
+    queryKey: cloudKeys.categories,
+    queryFn: fetchCategories,
+    enabled: signedIn,
+  });
   const customersQuery = useQuery({ queryKey: cloudKeys.customers, queryFn: fetchCustomers });
   const ordersQuery = useQuery({ queryKey: cloudKeys.orders, queryFn: fetchOrders });
   const returnsQuery = useQuery({ queryKey: cloudKeys.returns, queryFn: fetchReturns });
