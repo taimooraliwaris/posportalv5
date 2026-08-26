@@ -119,10 +119,10 @@ function makeOrder(number: string, cashierName = ""): Order {
     payments: [],
     noteTags: [],
     pricelistId: "pl1",
-    cashier: cashierName,   // ← add this
+    cashier: cashierName,
   };
 }
-}
+
 
 export function orderTotals(order: Order | undefined, discountRate = 0) {
   const lines = order?.lines ?? [];
