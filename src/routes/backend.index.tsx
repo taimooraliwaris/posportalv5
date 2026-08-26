@@ -7,6 +7,8 @@ import { useBackend } from "@/lib/backend-context";
 import { formatDate, stockStatus, toDateKey } from "@/lib/backend-data";
 import { formatRs, products } from "@/lib/pos-data";
 import { useHydrated } from "@/lib/use-hydrated";
+import { usePos } from "@/lib/pos-context";
+
 
 export const Route = createFileRoute("/backend/")({
   head: () => ({
@@ -26,6 +28,7 @@ export const Route = createFileRoute("/backend/")({
 });
 
 function Dashboard() {
+  const { productList } = usePos();
   const hydrated = useHydrated();
   const { sessions, sales, stock } = useBackend();
 
@@ -58,7 +61,7 @@ function Dashboard() {
   const top = [...unitsByProduct.entries()]
     .sort((a, b) => b[1].units - a[1].units)
     .slice(0, 5)
-    .map(([id, v]) => ({ name: products.find((p) => p.id === id)?.name ?? id, ...v }));
+    .map(([id, v]) => ({ name: productList.find((p) => p.id === id)?.name ?? id, ...v }));
 
   return (
     <BackendLayout title="Dashboard">
