@@ -11,13 +11,14 @@ import { CustomerNoteModal, OrderActionsModal } from "@/components/pos/OrderActi
 import { usePos, orderTotals, type CartLine } from "@/lib/pos-context";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { applyNumericKey, useNumericKeyboard } from "@/lib/use-numeric-entry";
-import { formatRs, toneClass, type Product } from "@/lib/pos-data";
-import { useBackend } from "@/lib/backend-context";
+import {
+  formatRs,
+  pricelists,
+  toneClass,
+  type Product,
+} from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-
-const { pricelists } = useBackend();
-const { subtotal, taxes, total } = orderTotals(activeOrder, 0);
 
 export const Route = createFileRoute("/till")({
   head: () => ({
