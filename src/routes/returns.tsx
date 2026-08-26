@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/backend-context";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
+
 
 export const Route = createFileRoute("/returns")({
   head: () => ({
@@ -47,6 +49,7 @@ type Draft = { qty: number; reason: string };
 type Stage = "search" | "lines" | "refund" | "exchange" | "done";
 
 function ReturnExchange() {
+  const { currentUser } = useAuth(); // <-- Add it here
   const store = useStore();
   const { orders, productList, processReturn } = usePos();
   const navigate = useNavigate();
@@ -151,7 +154,7 @@ function ReturnExchange() {
       refundAmount: refundTotal,
       difference: kind === "exchange" ? difference : -refundTotal,
       method,
-      processedBy: store.cashier,
+      processedBy: currentUser?.name ?? store.cashier,
     });
     setResult({ kind, number: record.number });
     setStage("done");
@@ -463,7 +466,7 @@ function ReturnExchange() {
                   </span>
                 </div>
                 <p className="pt-2 text-center text-xs text-muted-foreground">
-                  {store.name} · processed by {store.cashier}
+                  {store.name} · processed by {currentUser?.name ?? store.cashier}
                 </p>
               </div>
 
