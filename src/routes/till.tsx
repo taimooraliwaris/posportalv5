@@ -251,7 +251,12 @@ function Till() {
               </button>
             </div>
 
-            <div className="mb-3 space-y-1 rounded-xl bg-muted p-3 text-sm">
+           <div
+              className={cn(
+                "mb-3 space-y-1 rounded-xl bg-muted text-sm",
+                editing ? "p-2" : "p-3",
+              )}
+            >
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-medium">{formatRs(subtotal)}</span>
@@ -267,23 +272,23 @@ function Till() {
             </div>
 
             <Button
-              className="mb-3 h-14 w-full text-base"
+              className={cn("mb-3 w-full text-base", editing ? "h-12" : "h-14")}
               disabled={!activeOrder?.lines.length}
               asChild
             >
               <Link to="/payment">Payment</Link>
             </Button>
 
-            {editing && (
+            {editing && editMode && (
               <div
                 role="status"
                 aria-live="polite"
-                className="mb-2 flex items-center justify-between rounded-lg border-2 border-primary bg-accent px-3 py-2 shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_18%,transparent)]"
+                className="mb-2 flex h-11 items-center justify-between gap-3 rounded-lg border border-primary bg-accent px-3"
               >
-                <span className="text-sm font-semibold text-accent-foreground">
-                  Editing {editLabels[editMode]}
+                <span className="truncate text-sm font-medium text-accent-foreground">
+                  {editLabels[editMode]}
                 </span>
-                <span className="text-lg font-bold tabular-nums text-accent-foreground">
+                <span className="text-base font-bold tabular-nums text-accent-foreground">
                   {editValue === "" ? "—" : editValue}
                 </span>
               </div>
@@ -408,11 +413,6 @@ function CartLineItem({
         <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
           <span>{formatRs(line.unitPrice)}</span>
           {line.discount > 0 && <span className="text-success">-{line.discount}%</span>}
-          {editingLabel && (
-            <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
-              Editing {editingLabel}
-            </span>
-          )}
         </div>
       </div>
       <div className="flex items-center gap-2">
