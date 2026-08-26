@@ -362,6 +362,10 @@ function Till() {
           if (activeOrder) updateOrder(activeOrder.id, { customerId: c.id });
           toast.success(`${c.name} assigned`);
         }}
+        onClear={() => {
+          if (activeOrder) updateOrder(activeOrder.id, { customerId: undefined });
+          toast.success("Customer cleared");
+        }}
       />
       <CustomerNoteModal open={noteOpen} onOpenChange={setNoteOpen} />
       <OrderActionsModal open={actionsOpen} onOpenChange={setActionsOpen} />
