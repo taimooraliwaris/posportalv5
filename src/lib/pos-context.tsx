@@ -314,7 +314,16 @@ export function PosProvider({ children }: { children: ReactNode }) {
 
   const updateOrder = useCallback(
     (id: string, patch: Partial<Order>) => {
-      mutateOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)), [id]);
+      mutateOrders((prev) =>
+        prev.map((o) => {
+          if (o.id !== id) return o;
+          const next = { ...o, ...patch };
+          if ("customerId" in patch && !patch.customerId) {
+            delete next.customerId;
+          }
+          return next;
+        }),
+      [id]);
     },
     [mutateOrders],
   );
