@@ -150,10 +150,10 @@ function Till() {
   }, [productList, category, search]);
 
   const handleAddProduct = (product: Product) => {
-    addProduct(product);
-    const line = activeOrder?.lines.find((l) => l.productId === product.id);
-    if (line) setSelectedLineId(line.id);
-  };
+  addProduct(product);
+  const line = activeOrder?.lines.find((l) => l.productId === product.id);
+  if (line) setSelectedLineId(line.id);
+};
 
   const customer = activeOrder?.customerId
     ? customers.find((c) => c.id === activeOrder.customerId)
