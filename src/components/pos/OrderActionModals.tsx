@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, ListChecks, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,17 @@ export function OrderActionsModal({
 }) {
   const { activeOrder, updateOrder, deleteOrder } = usePos();
   const [pricelistOpen, setPricelistOpen] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          if (!o) setConfirmCancel(false);
+          onOpenChange(o);
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Order Actions</DialogTitle>
@@ -42,20 +49,45 @@ export function OrderActionsModal({
               }}
             />
           </div>
-          <Button
-            variant="destructive"
-            className="h-12 w-full"
-            onClick={() => {
-              if (activeOrder) {
-                updateOrder(activeOrder.id, { status: "cancelled", lines: [] });
-                deleteOrder(activeOrder.id);
-              }
-              onOpenChange(false);
-              toast.success("Order cancelled");
-            }}
-          >
-            <Trash2 className="h-4 w-4" /> Cancel Order
-          </Button>
+          {!confirmCancel ? (
+              <Button
+                variant="destructive"
+                className="h-12 w-full"
+                onClick={() => setConfirmCancel(true)}
+              >
+                <Trash2 className="h-4 w-4" /> Cancel Order
+              </Button>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="text-center text-sm text-muted-foreground">
+                  Cancel this order? Cart will be cleared.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    className="h-12 flex-1"
+                    onClick={() => {
+                      if (activeOrder) {
+                        updateOrder(activeOrder.id, { status: "cancelled", lines: [] });
+                        deleteOrder(activeOrder.id);
+                      }
+                      setConfirmCancel(false);
+                      onOpenChange(false);
+                      toast.success("Order cancelled");
+                    }}
+                  >
+                    Yes, cancel
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="h-12 flex-1"
+                    onClick={() => setConfirmCancel(false)}
+                  >
+                    Keep order
+                  </Button>
+                </div>
+              </div>
+            )}
         </DialogContent>
       </Dialog>
       <PricelistModal open={pricelistOpen} onOpenChange={setPricelistOpen} />
@@ -93,8 +125,15 @@ export function CustomerNoteModal({
   onOpenChange: (o: boolean) => void;
 }) {
   const { activeOrder, updateOrder } = usePos();
-  const [tags, setTags] = useState<string[]>(activeOrder?.noteTags ?? []);
-  const [text, setText] = useState(activeOrder?.note ?? "");
+  const [tags, setTags] = useState<string[]>([]);
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setTags(activeOrder?.noteTags ?? []);
+      setText(activeOrder?.note ?? "");
+    }
+  }, [open, activeOrder?.id, activeOrder?.note, activeOrder?.noteTags]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
