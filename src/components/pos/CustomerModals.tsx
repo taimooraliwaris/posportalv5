@@ -7,15 +7,16 @@ import { usePos } from "@/lib/pos-context";
 import type { Customer } from "@/lib/pos-data";
 
 export function ChooseCustomerModal({
-  open,
-  onOpenChange,
-  onSelect,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  onSelect: (c: Customer) => void;
-  onClear?: () => void;
-}) {
+    open,
+    onOpenChange,
+    onSelect,
+    onClear,
+  }: {
+    open: boolean;
+    onOpenChange: (o: boolean) => void;
+    onSelect: (c: Customer) => void;
+    onClear?: () => void;
+  }) {
   const { customers } = usePos();
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
