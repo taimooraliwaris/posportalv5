@@ -106,7 +106,6 @@ function now() {
   return new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-// Line ~109: change makeOrder to accept cashier name:
 function makeOrder(number: string, cashierName = ""): Order {
   return {
     id: `o-${number}-${Math.random().toString(36).slice(2, 6)}`,
@@ -314,16 +313,18 @@ export function PosProvider({ children }: { children: ReactNode }) {
 
   const updateOrder = useCallback(
     (id: string, patch: Partial<Order>) => {
-      mutateOrders((prev) =>
-        prev.map((o) => {
-          if (o.id !== id) return o;
-          const next = { ...o, ...patch };
-          if ("customerId" in patch && !patch.customerId) {
-            delete next.customerId;
-          }
-          return next;
-        }),
-      [id]);
+      mutateOrders(
+        (prev) =>
+          prev.map((o) => {
+            if (o.id !== id) return o;
+            const next = { ...o, ...patch };
+            if ("customerId" in patch && !patch.customerId) {
+              delete next.customerId;
+            }
+            return next;
+          }),
+        [id],
+      );
     },
     [mutateOrders],
   );
@@ -415,14 +416,14 @@ export function PosProvider({ children }: { children: ReactNode }) {
     activeOrder,
     setActiveOrderId,
     newOrder: () => {
-      const order = makeOrder(nextOrderNumber(orders));
+      const order = makeOrder(nextOrderNumber(orders), currentUser?.name ?? "");
       mutateOrders((prev) => [order, ...prev], [order.id]);
       setActiveOrderId(order.id);
     },
     deleteOrder: (id) => {
       const remaining = orders.filter((o) => o.id !== id);
       if (remaining.length === 0) {
-        const order = makeOrder(nextOrderNumber(orders));
+        const order = makeOrder(nextOrderNumber(orders), currentUser?.name ?? "");
         setLocalOrders([order]);
         setActiveOrderId(order.id);
         persist(order);
