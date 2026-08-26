@@ -261,7 +261,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
       return;
     }
     const next = nextOrderNumber(cloudOrders);
-    const fresh = makeOrder(next);
+    const fresh = makeOrder(next, currentUser?.name ?? "");
     setLocalOrders([fresh, ...cloudOrders]);
     setActiveOrderId(fresh.id);
     void persist(fresh);
