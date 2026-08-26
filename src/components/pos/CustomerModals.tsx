@@ -14,6 +14,7 @@ export function ChooseCustomerModal({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onSelect: (c: Customer) => void;
+  onClear?: () => void;
 }) {
   const { customers } = usePos();
   const [query, setQuery] = useState("");
