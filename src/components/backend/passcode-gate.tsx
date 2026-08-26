@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Delete, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
+import { useNumericKeyboard } from "@/lib/use-numeric-entry";
 import { cn } from "@/lib/utils";
 
 const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
@@ -11,25 +12,56 @@ export function PasscodeGate({ children }: { children: ReactNode }) {
   const { backendUnlocked, unlockBackend, currentUser, lockedUntil } = useAuth();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const locked = Boolean(lockedUntil && Date.now() < lockedUntil);
 
-  if (backendUnlocked) return <>{children}</>;
-
-  const press = (key: string) => {
-    setError(null);
-    if (key === "del") {
-      setCode((c) => c.slice(0, -1));
-      return;
-    }
-    const next = (code + key).slice(0, 6);
-    setCode(next);
-    if (next.length === 6) {
-      const result = unlockBackend(next);
+  const submit = useCallback(
+    (value: string) => {
+      const result = unlockBackend(value);
       if (!result.ok) {
         setError(result.error ?? "Incorrect passcode");
         setCode("");
       }
-    }
-  };
+    },
+    [unlockBackend],
+  );
+
+  const press = useCallback(
+    (key: string) => {
+      if (locked) return;
+      setError(null);
+      if (key === "del" || key === "backspace") {
+        setCode((c) => c.slice(0, -1));
+        return;
+      }
+      if (key === "clear") {
+        setCode("");
+        return;
+      }
+      if (!/^[0-9]$/.test(key)) return;
+      setCode((current) => {
+        const next = (current + key).slice(0, 6);
+        if (next.length === 6) submit(next);
+        return next;
+      });
+    },
+    [locked, submit],
+  );
+
+  // Physical keyboards work exactly like the on-screen pad.
+  useNumericKeyboard({
+    enabled: !backendUnlocked,
+    onKey: press,
+    onEnter: () => {
+      if (code.length === 6) submit(code);
+    },
+    onEscape: () => {
+      setError(null);
+      setCode("");
+    },
+  });
+
+  if (backendUnlocked) return <>{children}</>;
+
 
   const locked = Boolean(lockedUntil && Date.now() < lockedUntil);
 
