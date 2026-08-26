@@ -63,7 +63,6 @@ export function PasscodeGate({ children }: { children: ReactNode }) {
   if (backendUnlocked) return <>{children}</>;
 
 
-  const locked = Boolean(lockedUntil && Date.now() < lockedUntil);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6">
