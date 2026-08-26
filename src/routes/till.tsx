@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { MoreVertical, Plus, StickyNote, Trash2, User } from "lucide-react";
+import { MoreVertical, Plus, StickyNote, Trash2, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PosHeader } from "@/components/pos/PosHeader";
 import { ProductTile } from "@/components/pos/ProductTile";
@@ -204,16 +204,31 @@ function Till() {
 
           <div className="shrink-0 border-t border-border p-3">
             <div className="mb-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setCustomerOpen(true)}
-                className={cn(
-                  "flex min-h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors",
-                  customer ? "bg-accent text-accent-foreground" : "bg-card",
+              <div className="flex min-h-11 items-stretch overflow-hidden rounded-md border border-border">
+                <button
+                  type="button"
+                  onClick={() => setCustomerOpen(true)}
+                  className={cn(
+                    "flex min-h-11 flex-1 items-center gap-2 px-4 text-sm font-medium transition-colors",
+                    customer ? "bg-accent text-accent-foreground" : "bg-card",
+                  )}
+                >
+                  <User className="h-4 w-4" /> {customer ? customer.name : "Customer"}
+                </button>
+                {customer && (
+                  <button
+                    type="button"
+                    aria-label="Clear customer"
+                    onClick={() => {
+                      if (activeOrder) updateOrder(activeOrder.id, { customerId: undefined });
+                      toast.success("Customer cleared");
+                    }}
+                    className="grid w-11 place-items-center border-l border-border bg-card text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="h-4 w-4" />  {/* add X to lucide import */}
+                  </button>
                 )}
-              >
-                <User className="h-4 w-4" /> {customer ? customer.name : "Customer"}
-              </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setNoteOpen(true)}
