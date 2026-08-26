@@ -246,9 +246,10 @@ export function PosProvider({ children }: { children: ReactNode }) {
   const returns = returnsQuery.data ?? [];
   const orders = localOrders ?? ordersQuery.data ?? [];
 
-  // Seed local order state from the cloud once, then own it locally.
+  // Seed local order state from the cloud once, then own it locally. Waits for
+  // an authenticated read so we never invent an order the backend will reject.
   useEffect(() => {
-    if (localOrders || !ordersQuery.data) return;
+    if (!signedIn || localOrders || !ordersQuery.data) return;
     const cloudOrders = ordersQuery.data;
     const ongoing = cloudOrders.find((o) => o.status === "ongoing" || o.status === "payment");
     if (ongoing) {
@@ -262,11 +263,13 @@ export function PosProvider({ children }: { children: ReactNode }) {
     setActiveOrderId(fresh.id);
     void persist(fresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ordersQuery.data, localOrders]);
+  }, [signedIn, ordersQuery.data, localOrders]);
 
   const activeOrder = orders.find((o) => o.id === activeOrderId);
 
   const pendingWrites = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const signedInRef = useRef(signedIn);
+  signedInRef.current = signedIn;
 
   /** Debounced upsert so a burst of cart edits becomes one write. */
   const persist = useCallback((order: Order) => {
@@ -277,6 +280,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
       order.id,
       setTimeout(() => {
         timers.delete(order.id);
+        // Signed out (or signing in): keep the cart local instead of firing a
+        // write the backend will reject.
+        if (!signedInRef.current) return;
         void supabase
           .from("orders")
           .upsert(fromOrder(order))
