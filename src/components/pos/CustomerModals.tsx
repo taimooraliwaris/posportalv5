@@ -45,6 +45,20 @@ export function ChooseCustomerModal({
             </div>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto">
+            {onClear && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClear();
+                  onOpenChange(false);
+                }}
+                className="grid w-full grid-cols-[1fr_auto] items-center gap-3 border-b border-border px-5 py-4 text-left transition-colors hover:bg-muted sm:grid-cols-3"
+              >
+                <span className="font-semibold text-muted-foreground">No customer</span>
+                <span className="hidden text-sm text-muted-foreground sm:block">Walk-in</span>
+                <span className="text-sm text-muted-foreground">Clear assignment</span>
+              </button>
+            )}
             {filtered.map((c) => (
               <button
                 key={c.id}
