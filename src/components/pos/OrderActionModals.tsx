@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { usePos } from "@/lib/pos-context";
-import { noteTags, pricelists } from "@/lib/pos-data";
+import { noteTags } from "@/lib/pos-data";
+import { useBackend } from "@/lib/backend-context";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -196,6 +197,7 @@ export function PricelistModal({
   onOpenChange: (o: boolean) => void;
 }) {
   const { activeOrder, updateOrder } = usePos();
+  const { pricelists } = useBackend();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -223,7 +225,7 @@ export function PricelistModal({
                 <span className="min-w-0">
                   <span className="block font-medium">{p.name}</span>
                   <span className="block truncate text-sm text-muted-foreground">
-                    {p.description}
+                    {p.ruleType}
                   </span>
                 </span>
                 {selected && <Check className="h-5 w-5 shrink-0 text-primary" />}
