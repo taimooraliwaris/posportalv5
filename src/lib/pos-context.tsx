@@ -106,7 +106,8 @@ function now() {
   return new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-function makeOrder(number: string): Order {
+// Line ~109: change makeOrder to accept cashier name:
+function makeOrder(number: string, cashierName = ""): Order {
   return {
     id: `o-${number}-${Math.random().toString(36).slice(2, 6)}`,
     number,
@@ -118,7 +119,9 @@ function makeOrder(number: string): Order {
     payments: [],
     noteTags: [],
     pricelistId: "pl1",
+    cashier: cashierName,   // ← add this
   };
+}
 }
 
 export function orderTotals(order: Order | undefined, discountRate = 0) {
@@ -191,7 +194,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
   // Catalog and order data is staff-only: hold every read (and every write)
   // until a session exists, otherwise the sign-in screen would try to create
   // and save an order as an anonymous visitor.
-  const { session } = useAuth();
+  const { session, currentUser } = useAuth();
   const signedIn = Boolean(session);
 
   const productsQuery = useQuery({
