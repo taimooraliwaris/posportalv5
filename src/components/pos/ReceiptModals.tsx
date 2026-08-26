@@ -7,6 +7,7 @@ import { useStore } from "@/lib/backend-context";
 import type { Order } from "@/lib/pos-context";
 import { orderTotals } from "@/lib/pos-context";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 export function PrintModal({
   open,
@@ -17,8 +18,9 @@ export function PrintModal({
   onOpenChange: (o: boolean) => void;
   order: Order | null;
 }) {
+  const { currentUser } = useAuth(); // <-- Add it here
   const [mode, setMode] = useState<"full" | "simple" | null>(null);
-
+  
   return (
     <Dialog
       open={open}
@@ -76,6 +78,7 @@ export function PrintModal({
 }
 
 export function Receipt({ order, simple }: { order: Order | null; simple?: boolean }) {
+  const { currentUser } = useAuth(); // <-- Add it here
   const store = useStore();
   const { subtotal, taxes, total } = orderTotals(order ?? undefined);
   return (
