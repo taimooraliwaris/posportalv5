@@ -24,11 +24,14 @@ import { Route as BackendIndexRouteImport } from './routes/backend.index'
 import { Route as BackendCustomersRouteImport } from './routes/backend.customers'
 import { Route as BackendInventoryRouteImport } from './routes/backend.inventory'
 import { Route as BackendPricelistsRouteImport } from './routes/backend.pricelists'
-import { Route as BackendProductsRouteImport } from './routes/backend.products'
 import { Route as BackendPurchasesRouteImport } from './routes/backend.purchases'
 import { Route as BackendReportsRouteImport } from './routes/backend.reports'
 import { Route as BackendSalesRouteImport } from './routes/backend.sales'
 import { Route as BackendSettingsRouteImport } from './routes/backend.settings'
+import { Route as BackendProductsIndexRouteImport } from './routes/backend.products.index'
+import { Route as BackendProductsSparePartsRouteImport } from './routes/backend.products.spare-parts'
+import { Route as BackendProductsTubesRouteImport } from './routes/backend.products.tubes'
+import { Route as BackendProductsTyresRouteImport } from './routes/backend.products.tyres'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -105,11 +108,6 @@ const BackendPricelistsRoute = BackendPricelistsRouteImport.update({
   path: '/pricelists',
   getParentRoute: () => BackendRoute,
 } as any)
-const BackendProductsRoute = BackendProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => BackendRoute,
-} as any)
 const BackendPurchasesRoute = BackendPurchasesRouteImport.update({
   id: '/purchases',
   path: '/purchases',
@@ -130,6 +128,27 @@ const BackendSettingsRoute = BackendSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => BackendRoute,
 } as any)
+const BackendProductsIndexRoute = BackendProductsIndexRouteImport.update({
+  id: '/products/',
+  path: '/products/',
+  getParentRoute: () => BackendRoute,
+} as any)
+const BackendProductsSparePartsRoute =
+  BackendProductsSparePartsRouteImport.update({
+    id: '/products/spare-parts',
+    path: '/products/spare-parts',
+    getParentRoute: () => BackendRoute,
+  } as any)
+const BackendProductsTubesRoute = BackendProductsTubesRouteImport.update({
+  id: '/products/tubes',
+  path: '/products/tubes',
+  getParentRoute: () => BackendRoute,
+} as any)
+const BackendProductsTyresRoute = BackendProductsTyresRouteImport.update({
+  id: '/products/tyres',
+  path: '/products/tyres',
+  getParentRoute: () => BackendRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -146,12 +165,15 @@ export interface FileRoutesByFullPath {
   '/backend/customers': typeof BackendCustomersRoute
   '/backend/inventory': typeof BackendInventoryRoute
   '/backend/pricelists': typeof BackendPricelistsRoute
-  '/backend/products': typeof BackendProductsRoute
   '/backend/purchases': typeof BackendPurchasesRoute
   '/backend/reports': typeof BackendReportsRoute
   '/backend/sales': typeof BackendSalesRoute
   '/backend/settings': typeof BackendSettingsRoute
   '/backend/': typeof BackendIndexRoute
+  '/backend/products/spare-parts': typeof BackendProductsSparePartsRoute
+  '/backend/products/tubes': typeof BackendProductsTubesRoute
+  '/backend/products/tyres': typeof BackendProductsTyresRoute
+  '/backend/products/': typeof BackendProductsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -167,12 +189,15 @@ export interface FileRoutesByTo {
   '/backend/customers': typeof BackendCustomersRoute
   '/backend/inventory': typeof BackendInventoryRoute
   '/backend/pricelists': typeof BackendPricelistsRoute
-  '/backend/products': typeof BackendProductsRoute
   '/backend/purchases': typeof BackendPurchasesRoute
   '/backend/reports': typeof BackendReportsRoute
   '/backend/sales': typeof BackendSalesRoute
   '/backend/settings': typeof BackendSettingsRoute
   '/backend': typeof BackendIndexRoute
+  '/backend/products/spare-parts': typeof BackendProductsSparePartsRoute
+  '/backend/products/tubes': typeof BackendProductsTubesRoute
+  '/backend/products/tyres': typeof BackendProductsTyresRoute
+  '/backend/products': typeof BackendProductsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -190,12 +215,15 @@ export interface FileRoutesById {
   '/backend/customers': typeof BackendCustomersRoute
   '/backend/inventory': typeof BackendInventoryRoute
   '/backend/pricelists': typeof BackendPricelistsRoute
-  '/backend/products': typeof BackendProductsRoute
   '/backend/purchases': typeof BackendPurchasesRoute
   '/backend/reports': typeof BackendReportsRoute
   '/backend/sales': typeof BackendSalesRoute
   '/backend/settings': typeof BackendSettingsRoute
   '/backend/': typeof BackendIndexRoute
+  '/backend/products/spare-parts': typeof BackendProductsSparePartsRoute
+  '/backend/products/tubes': typeof BackendProductsTubesRoute
+  '/backend/products/tyres': typeof BackendProductsTyresRoute
+  '/backend/products/': typeof BackendProductsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -214,12 +242,15 @@ export interface FileRouteTypes {
     | '/backend/customers'
     | '/backend/inventory'
     | '/backend/pricelists'
-    | '/backend/products'
     | '/backend/purchases'
     | '/backend/reports'
     | '/backend/sales'
     | '/backend/settings'
     | '/backend/'
+    | '/backend/products/spare-parts'
+    | '/backend/products/tubes'
+    | '/backend/products/tyres'
+    | '/backend/products/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -235,12 +266,15 @@ export interface FileRouteTypes {
     | '/backend/customers'
     | '/backend/inventory'
     | '/backend/pricelists'
-    | '/backend/products'
     | '/backend/purchases'
     | '/backend/reports'
     | '/backend/sales'
     | '/backend/settings'
     | '/backend'
+    | '/backend/products/spare-parts'
+    | '/backend/products/tubes'
+    | '/backend/products/tyres'
+    | '/backend/products'
   id:
     | '__root__'
     | '/'
@@ -257,12 +291,15 @@ export interface FileRouteTypes {
     | '/backend/customers'
     | '/backend/inventory'
     | '/backend/pricelists'
-    | '/backend/products'
     | '/backend/purchases'
     | '/backend/reports'
     | '/backend/sales'
     | '/backend/settings'
     | '/backend/'
+    | '/backend/products/spare-parts'
+    | '/backend/products/tubes'
+    | '/backend/products/tyres'
+    | '/backend/products/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -386,13 +423,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BackendPricelistsRouteImport
       parentRoute: typeof BackendRoute
     }
-    '/backend/products': {
-      id: '/backend/products'
-      path: '/products'
-      fullPath: '/backend/products'
-      preLoaderRoute: typeof BackendProductsRouteImport
-      parentRoute: typeof BackendRoute
-    }
     '/backend/purchases': {
       id: '/backend/purchases'
       path: '/purchases'
@@ -421,6 +451,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BackendSettingsRouteImport
       parentRoute: typeof BackendRoute
     }
+    '/backend/products/': {
+      id: '/backend/products/'
+      path: '/products'
+      fullPath: '/backend/products/'
+      preLoaderRoute: typeof BackendProductsIndexRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/products/spare-parts': {
+      id: '/backend/products/spare-parts'
+      path: '/products/spare-parts'
+      fullPath: '/backend/products/spare-parts'
+      preLoaderRoute: typeof BackendProductsSparePartsRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/products/tubes': {
+      id: '/backend/products/tubes'
+      path: '/products/tubes'
+      fullPath: '/backend/products/tubes'
+      preLoaderRoute: typeof BackendProductsTubesRouteImport
+      parentRoute: typeof BackendRoute
+    }
+    '/backend/products/tyres': {
+      id: '/backend/products/tyres'
+      path: '/products/tyres'
+      fullPath: '/backend/products/tyres'
+      preLoaderRoute: typeof BackendProductsTyresRouteImport
+      parentRoute: typeof BackendRoute
+    }
   }
 }
 
@@ -428,24 +486,30 @@ interface BackendRouteChildren {
   BackendCustomersRoute: typeof BackendCustomersRoute
   BackendInventoryRoute: typeof BackendInventoryRoute
   BackendPricelistsRoute: typeof BackendPricelistsRoute
-  BackendProductsRoute: typeof BackendProductsRoute
   BackendPurchasesRoute: typeof BackendPurchasesRoute
   BackendReportsRoute: typeof BackendReportsRoute
   BackendSalesRoute: typeof BackendSalesRoute
   BackendSettingsRoute: typeof BackendSettingsRoute
   BackendIndexRoute: typeof BackendIndexRoute
+  BackendProductsSparePartsRoute: typeof BackendProductsSparePartsRoute
+  BackendProductsTubesRoute: typeof BackendProductsTubesRoute
+  BackendProductsTyresRoute: typeof BackendProductsTyresRoute
+  BackendProductsIndexRoute: typeof BackendProductsIndexRoute
 }
 
 const BackendRouteChildren: BackendRouteChildren = {
   BackendCustomersRoute: BackendCustomersRoute,
   BackendInventoryRoute: BackendInventoryRoute,
   BackendPricelistsRoute: BackendPricelistsRoute,
-  BackendProductsRoute: BackendProductsRoute,
   BackendPurchasesRoute: BackendPurchasesRoute,
   BackendReportsRoute: BackendReportsRoute,
   BackendSalesRoute: BackendSalesRoute,
   BackendSettingsRoute: BackendSettingsRoute,
   BackendIndexRoute: BackendIndexRoute,
+  BackendProductsSparePartsRoute: BackendProductsSparePartsRoute,
+  BackendProductsTubesRoute: BackendProductsTubesRoute,
+  BackendProductsTyresRoute: BackendProductsTyresRoute,
+  BackendProductsIndexRoute: BackendProductsIndexRoute,
 }
 
 const BackendRouteWithChildren =
@@ -467,13 +531,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
