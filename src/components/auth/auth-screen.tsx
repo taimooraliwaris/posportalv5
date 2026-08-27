@@ -4,14 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
-import { useBackend } from "@/lib/backend-context";
 import { toast } from "sonner";
 
 type Mode = "signin" | "forgot";
 
 export function AuthScreen() {
   const { signIn, signInWithGoogle, sendPasswordReset } = useAuth();
-  const { storeSettings } = useBackend();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,10 +51,10 @@ export function AuthScreen() {
       >
         <div className="flex flex-col items-center gap-3 text-center">
           <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground">
-            {storeSettings.brand?.charAt(0) ?? "V"}
+            V
           </span>
           <div>
-            <h1 className="text-xl font-semibold">{storeSettings.name}</h1>
+            <h1 className="text-xl font-semibold">Velora POS</h1>
             <p className="text-sm text-muted-foreground">
               {mode === "signin" ? "Sign in to your register" : "Reset your password"}
             </p>
