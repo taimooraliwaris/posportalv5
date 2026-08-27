@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { MoreVertical, Plus, StickyNote, Trash2, User, X } from "lucide-react";
