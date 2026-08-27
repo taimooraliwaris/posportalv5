@@ -220,13 +220,14 @@ function Till() {
                     type="button"
                     aria-label="Clear customer"
                     onClick={() => {
-                      if (activeOrder) updateOrder(activeOrder.id, { customerId: undefined });
+                      if (activeOrder) updateOrder(activeOrder.id, { customerId: "" });
                       toast.success("Customer cleared");
                     }}
                     className="grid w-11 place-items-center border-l border-border bg-card text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <X className="h-4 w-4" />  {/* add X to lucide import */}
+                    <X className="h-4 w-4" />
                   </button>
+
                 )}
               </div>
               <button
