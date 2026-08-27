@@ -27,6 +27,7 @@ export const Route = createFileRoute("/")({
 function OpenRegister() {
   const store = useStore();
   const { registerOpen, openingCash, openRegister } = usePos();
+  const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
   const [amount, setAmount] = useState("500.00");
   const [time, setTime] = useState(() => formatTime());
@@ -41,6 +42,8 @@ function OpenRegister() {
     openRegister(value);
     toast.success("Register opened");
     setModalOpen(false);
+    // Cashiers always want the till next — skip the interstitial screen.
+    void navigate({ to: "/till" });
   };
 
   if (registerOpen) {
