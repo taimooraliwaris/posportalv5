@@ -558,12 +558,14 @@ export function PosProvider({ children }: { children: ReactNode }) {
       write.mutate(() =>
         supabase.from("products").upsert({
           id: created.id,
-          name: created.name,
-          price: created.price,
-          category_id: created.category,
-          barcode: created.barcode,
-          tone: created.tone,
-          icon: created.icon,
+          name_en: created.name,
+          sale_price: created.price,
+          cost_price: created.cost_price || 0,
+          category_id: created.category_id || created.category,
+          item_code: created.barcode || created.item_code,
+          stock_qty: created.stock_qty || 0,
+          specs: created.specs || {},
+          vehicle_model_id: created.vehicle_model_id || null,
         }),
       );
       return created;

@@ -124,6 +124,12 @@ function PriceCheck() {
                   <span className="text-muted-foreground">Shelf price</span>
                   <span className="font-medium">{formatRs(selected.price)}</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <div className={cn("p-1.5 rounded-sm", toneClass[selected.tone || "sky"])}>
+                    <IconComponent name={selected.icon || "Box"} size={16} />
+                  </div>
+                  <span className="text-sm font-medium">{categoryName || "Uncategorised"}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Taxes</span>
                   <span className="font-medium">{formatRs(taxes)}</span>
