@@ -233,16 +233,12 @@ export function PosProvider({ children }: { children: ReactNode }) {
     queryFn: fetchCashMoves,
     enabled: signedIn,
   });
-  const taxesQuery = useQuery({
-    queryKey: cloudKeys.taxes,
-    queryFn: fetchTaxes,
-    enabled: signedIn,
-  });
+  
 
   const productList = productsQuery.data ?? seedProducts;
   const categoryList = categoriesQuery.data ?? seedCategories;
   const customers = customersQuery.data ?? seedCustomers;
-  const taxes = taxesQuery.data ?? seedTaxes;
+  
 
   /* ---------------------------------------------------------------- orders */
   // Cart edits stay in local state for instant feedback and are mirrored to the
@@ -663,7 +659,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
       if (patch.stock_qty !== undefined) row.stock_qty = patch.stock_qty;
       write.mutate(() => supabase.from("products").update(row).eq("id", id));
     },
-    taxes,
+    
     loading: productsQuery.isLoading || categoriesQuery.isLoading,
   };
 
