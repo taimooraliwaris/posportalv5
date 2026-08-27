@@ -1,183 +1,256 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { BackendLayout } from "@/components/backend/backend-layout";
-import { DataCard, MoneyKeypadField, StatCard, StatusPill } from "@/components/backend/backend-ui";
-import { DataTable, type Column } from "@/components/backend/data-table";
-import { useBackend } from "@/lib/backend-context";
-import { stockAdjustReasons, stockStatus, type StockItem } from "@/lib/backend-data";
+import { StatCard } from "@/components/backend/backend-ui";
 import { usePos } from "@/lib/pos-context";
 import { formatRs } from "@/lib/pos-data";
-import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
+import { Search, Plus, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/backend/inventory")({
-  head: () => ({
-    meta: [
-      { title: "Inventory — Velora back office" },
-      {
-        name: "description",
-        content: "Track stock levels, adjustments, transfers and inventory valuation.",
-      },
-      { property: "og:title", content: "Inventory — Velora back office" },
-      {
-        property: "og:description",
-        content: "Track stock levels, adjustments, transfers and inventory valuation.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
   component: InventoryPage,
 });
 
 function InventoryPage() {
-  const { stock, adjustStock } = useBackend();
-  const { productList } = usePos();
-  const [adjusting, setAdjusting] = useState<string | null>(null);
-  const [value, setValue] = useState("");
-  const [reason, setReason] = useState(stockAdjustReasons[0]);
+  const { productList, updateProductInCatalog } = usePos();
+  const [query, setQuery] = useState("");
+  const [adjustingId, setAdjustingId] = useState<string | null>(null);
+  const [adjustValue, setAdjustValue] = useState("");
+  const [adjustReason, setAdjustReason] = useState("count");
 
-  const nameFor = (id: string) => productList.find((p) => p.id === id)?.name ?? id;
-  const priceFor = (id: string) => productList.find((p) => p.id === id)?.price ?? 0;
+  const visibleProducts = useMemo(() => {
+    return productList
+      .filter((p) => {
+        if (!query) return true;
+        return (
+          p.name.toLowerCase().includes(query.toLowerCase()) ||
+          p.item_code?.toLowerCase().includes(query.toLowerCase()) ||
+          p.name_ur?.includes(query)
+        );
+      })
+      .sort((a, b) => a.stock_qty - b.stock_qty); // Show lowest stock first
+  }, [productList, query]);
+
+  // KPIs
+  const totalItems = productList.length;
+  const outOfStock = productList.filter((p) => p.stock_qty <= 0).length;
+  const lowStock = productList.filter((p) => p.stock_qty > 0 && p.stock_qty <= 5).length; // assuming <= 5 is low stock threshold for now
+
   const openAdjust = (productId: string) => {
-    setAdjusting(productId);
-    setValue(String(stock.find((s) => s.productId === productId)?.onHand ?? 0));
+    setAdjustingId(productId);
+    setAdjustValue(String(productList.find((p) => p.id === productId)?.stock_qty ?? 0));
+    setAdjustReason("count");
   };
 
   const saveAdjustment = () => {
-    if (!adjusting) return;
-    adjustStock(adjusting, Number(value) || 0, reason);
-    setAdjusting(null);
-    toast.success("Stock adjusted");
+    if (!adjustingId) return;
+    const qty = Number(adjustValue);
+    if (isNaN(qty) || qty < 0) {
+      toast.error("Invalid stock quantity");
+      return;
+    }
+
+    updateProductInCatalog(adjustingId, { stock_qty: qty });
+    toast.success("Stock adjusted successfully");
+    setAdjustingId(null);
   };
-
-  // Focus-free restocking: scan a product anywhere on the page to count it in.
-  useScanTarget(
-    "inventory",
-    ({ code }) => {
-      const product = productList.find((p) => p.barcode === code);
-      if (!product) {
-        toast.error(`No product matches barcode ${code}`);
-        return "unknown";
-      }
-      openAdjust(product.id);
-      return "added";
-    },
-    !adjusting,
-  );
-
-  const atCost = stock.reduce((sum, s) => sum + s.onHand * s.cost, 0);
-  const atRetail = stock.reduce((sum, s) => sum + s.onHand * priceFor(s.productId), 0);
 
   return (
     <BackendLayout title="Inventory">
-      <div className="mb-4 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Stock value at cost" value={formatRs(atCost)} />
-        <StatCard label="Stock value at retail" value={formatRs(atRetail)} />
-        <StatCard label="Potential margin" value={formatRs(atRetail - atCost)} />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h2 className="text-[15px] font-medium text-foreground">Inventory Levels</h2>
+          <p className="text-[11px] text-muted-foreground">Monitor and adjust stock quantities</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="default" className="h-9 px-4 text-xs gap-2">
+            <Plus className="w-3.5 h-3.5" />
+            Bulk Adjustment
+          </Button>
+        </div>
       </div>
 
-      <p className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
-        Scanner ready — scan any product barcode to open its stock count.
-      </p>
-
-      <Tabs defaultValue="stock">
-        <TabsList>
-          <TabsTrigger value="stock">Stock on hand</TabsTrigger>
-          <TabsTrigger value="transfer">Stock transfer</TabsTrigger>
-        </TabsList>
-        <TabsContent value="stock">
-          <DataTable
-            columns={stockColumns(nameFor, (item) => openAdjust(item.productId))}
-            rows={stock}
-            getKey={(s) => s.productId}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <StatCard
+          label="Total Catalog Items"
+          value={String(totalItems)}
+          hint="+12 this month"
+        />
+        <div className="rounded-xl border border-warning/50 bg-warning/5 [&>div]:border-none [&>div]:bg-transparent">
+          <StatCard
+            label="Low Stock Warnings"
+            value={String(lowStock)}
+            hint="Needs reorder"
           />
-        </TabsContent>
-        <TabsContent value="transfer">
-          <DataCard className="space-y-3 p-4 text-sm">
-            <p className="font-medium">Stock transfer</p>
-            <p className="text-muted-foreground">
-              Move stock between locations. Velora Mart currently trades from a single shop floor,
-              so transfers are recorded for future multi-store use.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-4">
-              <div className="rounded-md border border-border p-3">From: Shop floor</div>
-              <div className="rounded-md border border-border p-3">To: Back store</div>
-              <div className="rounded-md border border-border p-3">Product: Pedal Bin</div>
-              <div className="rounded-md border border-border p-3">Quantity: 4</div>
-            </div>
-            <Button className="h-11" onClick={() => toast.success("Transfer drafted")}>
-              Draft transfer
-            </Button>
-          </DataCard>
-        </TabsContent>
-      </Tabs>
+        </div>
+        <div className="rounded-xl border border-destructive/50 bg-destructive/5 [&>div]:border-none [&>div]:bg-transparent">
+          <StatCard
+            label="Out of Stock"
+            value={String(outOfStock)}
+            hint="Critical"
+          />
+        </div>
+      </div>
 
-      <Dialog open={!!adjusting} onOpenChange={() => setAdjusting(null)}>
-        <DialogContent className="max-w-sm">
+      <div className="flex flex-col border border-border rounded-xl overflow-hidden bg-card">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+          <div className="flex-1 bg-muted/50 border border-border rounded-md px-2 py-1.5 text-[11px] text-muted-foreground flex items-center gap-2">
+            <Search className="w-3.5 h-3.5" />
+            <input
+              type="text"
+              className="bg-transparent border-none outline-none flex-1 text-foreground placeholder:text-muted-foreground"
+              placeholder="Search by name, SKU, or اردو..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-muted/30">
+                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Product
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  SKU / Code
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">
+                  Unit Price
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">
+                  In Stock
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {visibleProducts.map((p) => {
+                const isOutOfStock = p.stock_qty <= 0;
+                const isLowStock = p.stock_qty > 0 && p.stock_qty <= 5;
+
+                return (
+                  <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-sm text-foreground">{p.name}</div>
+                      {p.name_ur && (
+                        <div className="text-[11px] text-muted-foreground font-urdu" dir="rtl">
+                          {p.name_ur}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-mono text-[11px] text-muted-foreground bg-secondary/50 px-2 py-1 rounded inline-block">
+                        {p.item_code || "N/A"}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="text-sm font-medium">{formatRs(p.price)}</div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium tracking-wide",
+                          isOutOfStock
+                            ? "bg-destructive/10 text-destructive border border-destructive/20"
+                            : isLowStock
+                              ? "bg-warning/10 text-warning-foreground border border-warning/20"
+                              : "bg-success/10 text-success border border-success/20",
+                        )}
+                      >
+                        {isOutOfStock ? (
+                          <XCircle className="w-3 h-3" />
+                        ) : isLowStock ? (
+                          <AlertCircle className="w-3 h-3" />
+                        ) : (
+                          <CheckCircle2 className="w-3 h-3" />
+                        )}
+                        {isOutOfStock ? "Out of Stock" : isLowStock ? "Low Stock" : "In Stock"}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-sm">{p.stock_qty}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => openAdjust(p.id)}
+                      >
+                        Adjust
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {visibleProducts.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                    No products found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Dialog open={!!adjustingId} onOpenChange={(open) => !open && setAdjustingId(null)}>
+        <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Adjust stock</DialogTitle>
+            <DialogTitle>Adjust Stock</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Current quantity: {stock.find((s) => s.productId === adjusting)?.onHand ?? 0}
-          </p>
-          <MoneyKeypadField
-            label="New counted quantity"
-            value={value}
-            onChange={setValue}
-            maxDecimals={0}
-            onEnter={saveAdjustment}
-          />
-          <select
-            value={reason}
-            onChange={(e) => setReason(e.target.value as typeof reason)}
-            aria-label="Adjustment reason"
-            className="h-11 rounded-md border border-border bg-card px-3 text-sm"
-          >
-            {stockAdjustReasons.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-          <Button className="h-11" onClick={saveAdjustment}>
-            Save adjustment
-          </Button>
+          <div className="py-4 space-y-4">
+            <div>
+              <p className="text-sm font-medium mb-1">
+                {productList.find((p) => p.id === adjustingId)?.name}
+              </p>
+              <p className="text-xs text-muted-foreground font-mono">
+                {productList.find((p) => p.id === adjustingId)?.item_code}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] text-muted-foreground">New Quantity</label>
+              <Input
+                type="number"
+                value={adjustValue}
+                onChange={(e) => setAdjustValue(e.target.value)}
+                className="font-mono text-lg"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] text-muted-foreground">Reason</label>
+              <select
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+              >
+                <option value="count">Inventory Count</option>
+                <option value="damage">Damage / Loss</option>
+                <option value="received">Stock Received</option>
+                <option value="return">Customer Return</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setAdjustingId(null)}>
+              Cancel
+            </Button>
+            <Button onClick={saveAdjustment}>Save Adjustment</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </BackendLayout>
   );
-}
-
-function stockColumns(
-  nameFor: (id: string) => string,
-  onAdjust: (item: StockItem) => void,
-): Column<StockItem>[] {
-  return [
-    {
-      header: "Product",
-      width: "2fr",
-      cell: (s) => <span className="font-medium">{nameFor(s.productId)}</span>,
-    },
-    { header: "On hand", align: "right", cell: (s) => s.onHand },
-    { header: "Reserved", align: "right", cell: (s) => s.reserved },
-    { header: "Available", align: "right", cell: (s) => s.onHand - s.reserved },
-    { header: "Reorder point", align: "right", cell: (s) => s.reorderPoint },
-    {
-      header: "Status",
-      width: "1.4fr",
-      cell: (s) => (
-        <span className="flex items-center justify-end gap-2">
-          <StatusPill status={stockStatus(s)} />
-          <Button variant="secondary" className="h-9" onClick={() => onAdjust(s)}>
-            Adjust
-          </Button>
-        </span>
-      ),
-    },
-  ];
 }

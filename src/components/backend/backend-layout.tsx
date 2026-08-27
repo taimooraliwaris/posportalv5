@@ -68,10 +68,10 @@ export function BackendLayout({
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-card transition-transform lg:sticky lg:top-0 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-border bg-card transition-transform lg:sticky lg:top-0 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -110,20 +110,23 @@ export function BackendLayout({
                     )}
                   </div>
 
-                  {productsOpen && active && (
-                    <div className="ml-5 mt-1 flex flex-col space-y-1 border-l border-border pl-3 pb-1">
-                      {categoryList.map((cat) => (
-                        <Link
-                          key={cat.slug}
-                          to="/backend/products"
-                          search={{ category: cat.slug }}
-                          className="px-2 py-1.5 text-[13px] rounded hover:bg-muted text-muted-foreground flex items-center"
-                        >
-                          {cat.name}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+                  <div 
+                    className={cn(
+                      "ml-5 flex flex-col border-l border-border pl-3 overflow-hidden transition-all duration-300 ease-in-out",
+                      (productsOpen && active) ? "max-h-[500px] mt-1 pb-1 opacity-100 space-y-1" : "max-h-0 opacity-0"
+                    )}
+                  >
+                    {categoryList.map((cat) => (
+                      <Link
+                        key={cat.slug}
+                        to="/backend/products"
+                        search={{ category: cat.slug }}
+                        className="px-2 py-1.5 text-[13px] rounded hover:bg-muted text-muted-foreground flex items-center"
+                      >
+                        {cat.name}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               );
             }
@@ -240,7 +243,7 @@ export function BackendLayout({
             </Button>
           </div>
         </header>
-        <main className="min-w-0 flex-1 p-4">
+        <main className="min-w-0 flex-1 p-4 overflow-y-auto custom-scrollbar">
           <ErrorBoundary name="backend_content">{children}</ErrorBoundary>
         </main>
       </div>

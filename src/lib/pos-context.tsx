@@ -551,7 +551,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
     },
     productList,
     addProductToCatalog: (p) => {
-      const created: Product = { ...p, id: randomId("p") };
+      const created: Product = { ...p, id: crypto.randomUUID() } as any;
       queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) => [
         created,
         ...(prev ?? productList),

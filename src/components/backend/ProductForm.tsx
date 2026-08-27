@@ -136,7 +136,7 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
 
   if (step === 1) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-6 md:p-8">
         <h3 className="text-sm font-medium text-muted-foreground mb-4">Select product category</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div
@@ -175,7 +175,7 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-6 md:p-8">
       {/* Datalists for comboboxes */}
       <datalist id="brands-list">
         {allBrands.map((b) => (
