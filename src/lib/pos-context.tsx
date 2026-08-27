@@ -14,7 +14,6 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "./auth-context";
 import {
-  TAX_RATE,
   categories as seedCategories,
   products as seedProducts,
   seedCustomers,
@@ -30,10 +29,24 @@ import {
   fetchOrders,
   fetchProducts,
   fetchReturns,
+  fetchTaxes,
   fromOrder,
   fromReturnRecord,
   randomId,
 } from "./cloud-data";
+import { seedTaxes, type TaxRate } from "./backend-data";
+import {
+  calculateOrderTotals,
+  resolveProductTaxRate,
+  type CalculatedOrderTotals,
+  type TaxBreakdownItem,
+} from "./tax-resolver";
+export {
+  calculateOrderTotals,
+  resolveProductTaxRate,
+  type CalculatedOrderTotals,
+  type TaxBreakdownItem,
+};
 
 export type CartLine = {
   id: string;
@@ -120,12 +133,17 @@ function makeOrder(number: string, cashierName = ""): Order {
   };
 }
 
-export function orderTotals(order: Order | undefined, discountRate = 0) {
+export function orderTotals(
+  order: Order | undefined,
+  discountRate = 0,
+  options?: {
+    taxes?: TaxRate[];
+    products?: Product[];
+    categories?: Category[];
+  },
+) {
   const lines = order?.lines ?? [];
-  const gross = lines.reduce((sum, l) => sum + l.unitPrice * l.qty * (1 - l.discount / 100), 0);
-  const subtotal = gross * (1 - discountRate);
-  const taxes = subtotal * TAX_RATE;
-  return { subtotal, taxes, total: subtotal + taxes };
+  return calculateOrderTotals(lines, discountRate, options);
 }
 
 type PosState = {
@@ -167,6 +185,7 @@ type PosState = {
     input: Omit<ReturnRecord, "id" | "number" | "date" | "time">,
   ) => ReturnRecord;
   updateProductInCatalog: (id: string, patch: Partial<Product>) => void;
+  taxes: TaxRate[];
   /** True until the first cloud read for catalog data settles. */
   loading: boolean;
 };
@@ -213,10 +232,16 @@ export function PosProvider({ children }: { children: ReactNode }) {
     queryFn: fetchCashMoves,
     enabled: signedIn,
   });
+  const taxesQuery = useQuery({
+    queryKey: cloudKeys.taxes,
+    queryFn: fetchTaxes,
+    enabled: signedIn,
+  });
 
   const productList = productsQuery.data ?? seedProducts;
   const categoryList = categoriesQuery.data ?? seedCategories;
   const customers = customersQuery.data ?? seedCustomers;
+  const taxes = taxesQuery.data ?? seedTaxes;
 
   /* ---------------------------------------------------------------- orders */
   // Cart edits stay in local state for instant feedback and are mirrored to the
@@ -480,8 +505,29 @@ export function PosProvider({ children }: { children: ReactNode }) {
       const paid = orders.find((o) => o.id === activeOrderId);
       if (!paid) return;
       const settled: Order = { ...paid, status: "paid", time: now() };
-      mutateOrders((prev) => prev.map((o) => (o.id === settled.id ? settled : o)), [settled.id]);
       setLastPaidOrder(settled);
+
+      // Persist the settled order immediately to Supabase
+      write.mutate(() =>
+        supabase.from("orders").upsert(fromOrder(settled, currentUser?.name ?? "")),
+      );
+
+      mutateOrders((prev) => {
+        const updated = prev.map((o) => (o.id === settled.id ? settled : o));
+        const otherOngoing = updated.find(
+          (o) => o.id !== settled.id && (o.status === "ongoing" || o.status === "payment"),
+        );
+        if (otherOngoing) {
+          setActiveOrderId(otherOngoing.id);
+          setSelectedLineId(null);
+          return updated;
+        }
+        const fresh = makeOrder(nextOrderNumber(updated), currentUser?.name ?? "");
+        setActiveOrderId(fresh.id);
+        setSelectedLineId(null);
+        persist(fresh);
+        return [fresh, ...updated];
+      }, [settled.id]);
     },
     customers,
     addCustomer: (c) => {
@@ -615,6 +661,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
       if (patch.icon !== undefined) row["icon"] = patch.icon;
       write.mutate(() => supabase.from("products").update(row).eq("id", id));
     },
+    taxes,
     loading: productsQuery.isLoading || categoriesQuery.isLoading,
   };
 

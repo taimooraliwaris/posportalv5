@@ -54,6 +54,7 @@ function Till() {
     addByBarcode,
     productList,
     categoryList,
+    taxes: taxRates,
     loading,
   } = usePos();
   const { cameraOpen, openCamera } = useScanMode();
@@ -146,7 +147,11 @@ function Till() {
   });
 
   const pricelist = pricelists.find((p) => p.id === activeOrder?.pricelistId) ?? pricelists[0]!;
-  const { subtotal, taxes, total } = orderTotals(activeOrder, pricelist.discount);
+  const { subtotal, taxes, total } = orderTotals(activeOrder, pricelist.discount, {
+    taxes: taxRates,
+    products: productList,
+    categories: categoryList,
+  });
 
   const filteredProducts = useMemo(() => {
     let list = productList;

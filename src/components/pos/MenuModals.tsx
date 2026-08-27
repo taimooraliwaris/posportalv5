@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { usePos } from "@/lib/pos-context";
+import { usePos, resolveProductTaxRate } from "@/lib/pos-context";
 import { useBackend } from "@/lib/backend-context";
-import { formatRs, TAX_RATE, type CategoryId } from "@/lib/pos-data";
+import { formatRs, type CategoryId } from "@/lib/pos-data";
+import { useScanMode, useScanTarget } from "@/lib/scan-mode-context";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -102,7 +103,8 @@ export function NewProductModal({
   onOpenChange: (o: boolean) => void;
   presetBarcode?: string;
 }) {
-  const { addProductToCatalog, categoryList, addCategory } = usePos();
+  const { addProductToCatalog, categoryList, addCategory, taxes: taxRates } = usePos();
+  const { openCamera } = useScanMode();
   const { addStockItem, storeSettings } = useBackend();
   const [name, setName] = useState("");
   const [newCategory, setNewCategory] = useState("");
@@ -114,7 +116,23 @@ export function NewProductModal({
   const [category, setCategory] = useState<CategoryId>("misc");
   const [tone, setTone] = useState<(typeof swatches)[number]>("pink");
 
-  const incl = Number(price || 0) * (taxOn ? 1 + TAX_RATE : 1);
+  const resolvedTax = resolveProductTaxRate(
+    { name, categoryId: category },
+    taxRates,
+    undefined,
+    categoryList,
+  );
+  const incl = Number(price || 0) * (taxOn ? 1 + resolvedTax.rate : 1);
+
+  useScanTarget(
+    "product-dialog",
+    ({ code }) => {
+      setBarcode(code);
+      toast.success(`Barcode scanned: ${code}`);
+      return "added";
+    },
+    open,
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -140,7 +158,14 @@ export function NewProductModal({
                   placeholder="e.g. 1234567890"
                   className="h-11"
                 />
-                <Button variant="secondary" size="icon" className="h-11 w-11 shrink-0">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  onClick={() => openCamera("single")}
+                  aria-label="Scan barcode with camera"
+                >
                   <Barcode className="h-5 w-5" />
                 </Button>
               </div>
@@ -166,7 +191,7 @@ export function NewProductModal({
               <div className="flex h-11 items-center gap-3">
                 {taxOn && (
                   <span className="flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-sm text-accent-foreground">
-                    GST 18%
+                    {resolvedTax.taxName}
                     <button type="button" onClick={() => setTaxOn(false)}>
                       <X className="h-3.5 w-3.5" />
                     </button>

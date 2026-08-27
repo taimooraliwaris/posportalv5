@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Keypad } from "@/components/pos/Keypad";
 import { PrintModal, SendReceiptModal } from "@/components/pos/ReceiptModals";
 import { usePos, orderTotals, type PaymentLine } from "@/lib/pos-context";
-import { formatRs } from "@/lib/pos-data";
+import { formatRs, pricelists } from "@/lib/pos-data";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { useNumericEntry } from "@/lib/use-numeric-entry";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -27,14 +28,55 @@ export const Route = createFileRoute("/payment")({
 const methods: PaymentLine["method"][] = ["Cash", "Card", "Customer Account"];
 
 function Payment() {
-  const { activeOrder, addPayment, removePayment, validateOrder, lastPaidOrder } = usePos();
+  const {
+    activeOrder,
+    addPayment,
+    removePayment,
+    validateOrder,
+    lastPaidOrder,
+    productList,
+    categoryList,
+    taxes: taxRates,
+    customers,
+    updateOrder,
+  } = usePos();
   const navigate = useNavigate();
   const [printOpen, setPrintOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [method, setMethod] = useState<PaymentLine["method"]>("Cash");
 
-  const { total } = orderTotals(activeOrder);
+  const pricelist = pricelists.find((p) => p.id === activeOrder?.pricelistId) ?? pricelists[0]!;
+  const { total, taxes, subtotal } = orderTotals(activeOrder, pricelist.discount, {
+    taxes: taxRates,
+    products: productList,
+    categories: categoryList,
+  });
+
+  // Scan customer card or account barcode at payment
+  useScanTarget(
+    "payment",
+    ({ code }) => {
+      const trimmed = code.trim().toLowerCase();
+      const matched = customers.find(
+        (c) =>
+          c.id.toLowerCase() === trimmed ||
+          c.name.toLowerCase() === trimmed ||
+          c.email.toLowerCase() === trimmed ||
+          c.phone?.toLowerCase() === trimmed,
+      );
+      if (matched) {
+        if (activeOrder) updateOrder(activeOrder.id, { customerId: matched.id });
+        setMethod("Customer Account");
+        toast.success(`Customer ${matched.name} linked to payment`);
+        return "added";
+      }
+      toast.info(`Scanned code: ${code}`);
+      return "info";
+    },
+    !showSuccess,
+  );
+
   const payments = activeOrder?.payments ?? [];
   const tendered = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = Math.max(0, total - tendered);
@@ -73,6 +115,9 @@ function Payment() {
       <SuccessScreen
         order={lastPaidOrder}
         change={change}
+        taxes={taxRates}
+        productList={productList}
+        categoryList={categoryList}
         onPrint={() => setPrintOpen(true)}
         onSend={() => setSendOpen(true)}
         onContinue={() => {
@@ -256,17 +301,27 @@ function PaymentMethodButton({
 function SuccessScreen({
   order,
   change,
+  taxes: taxRates,
+  productList,
+  categoryList,
   onPrint,
   onSend,
   onContinue,
 }: {
   order: ReturnType<typeof usePos>["lastPaidOrder"];
   change: number;
+  taxes?: ReturnType<typeof usePos>["taxes"];
+  productList?: ReturnType<typeof usePos>["productList"];
+  categoryList?: ReturnType<typeof usePos>["categoryList"];
   onPrint: () => void;
   onSend: () => void;
   onContinue: () => void;
 }) {
-  const { total } = orderTotals(order ?? undefined);
+  const { total } = orderTotals(order ?? undefined, 0, {
+    taxes: taxRates,
+    products: productList,
+    categories: categoryList,
+  });
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6">
       <div className="mx-auto grid h-24 w-24 animate-pop-in place-items-center rounded-full bg-success text-success-foreground">

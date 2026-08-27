@@ -18,9 +18,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BackendLayout } from "@/components/backend/backend-layout";
 import { DataCard, Field, StatCard } from "@/components/backend/backend-ui";
 import { useBackend, useStore } from "@/lib/backend-context";
-import { formatDate, toDateKey, type SessionRecord } from "@/lib/backend-data";
-import { formatRs, TAX_RATE } from "@/lib/pos-data";
-import { usePos } from "@/lib/pos-context";
+import { formatDate, toDateKey, type SessionRecord, type HistoricalSale } from "@/lib/backend-data";
+import { formatRs } from "@/lib/pos-data";
+import { usePos, resolveProductTaxRate, calculateOrderTotals } from "@/lib/pos-context";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,18 +54,19 @@ function ReportsPage() {
   const store = useStore();
   const hydrated = useHydrated();
   const { sessions, sales, stock } = useBackend();
-  const { productList, categoryList } = usePos();
-  const [monthOffset, setMonthOffset] = useState(0);
+  const { productList, categoryList, taxes: taxRates } = usePos();
+  const [activeTab, setActiveTab] = useState("pl");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [selectedSession, setSelectedSession] = useState<SessionRecord | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [rangeFrom, setRangeFrom] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 6);
-    return toDateKey(d);
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().slice(0, 10);
   });
-  const [rangeTo, setRangeTo] = useState(() => toDateKey(new Date()));
+  const [rangeTo, setRangeTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [monthOffset, setMonthOffset] = useState(0);
 
-  const month = useMemo(() => {
+  const monthDate = useMemo(() => {
     const d = new Date();
     d.setDate(1);
     d.setMonth(d.getMonth() + monthOffset);
@@ -76,7 +77,13 @@ function ReportsPage() {
 
   const costFor = (productId: string) => stock.find((s) => s.productId === productId)?.cost ?? 0;
 
-  const revenue = sales.reduce((sum, s) => sum + s.total / (1 + TAX_RATE), 0);
+  const defaultTaxRate = (taxRates[0]?.percentage ?? 18) / 100;
+  const defaultTaxName = taxRates[0]?.name ?? "GST 18%";
+
+  const revenue = sales.reduce((sum, s) => {
+    const lineNet = s.lines.reduce((ls, l) => ls + l.qty * l.unitPrice, 0);
+    return sum + (lineNet > 0 ? lineNet : s.total / (1 + defaultTaxRate));
+  }, 0);
   const cogs = sales.reduce(
     (sum, s) => sum + s.lines.reduce((ls, l) => ls + l.qty * costFor(l.productId), 0),
     0,
@@ -122,10 +129,10 @@ function ReportsPage() {
     .sort((a, b) => b.units - a.units)
     .slice(0, 6);
 
-  const monthKeyPrefix = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
+  const monthKeyPrefix = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, "0")}`;
   const monthSessions = sessions.filter((s) => s.date.startsWith(monthKeyPrefix));
   const monthSales = monthSessions.reduce((sum, s) => sum + s.totalSales, 0);
-  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
   const maxDaySales = Math.max(
     1,
     ...Array.from({ length: daysInMonth }, (_, i) => {
@@ -134,9 +141,7 @@ function ReportsPage() {
     }),
   );
 
-  const rangeSessions = sessions
-    .filter((s) => s.date >= rangeFrom && s.date <= rangeTo)
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const rangeSessions = sessions.filter((s) => s.date >= rangeFrom && s.date <= rangeTo);
   const rangeTotals = rangeSessions.reduce(
     (acc, s) => ({
       orders: acc.orders + s.orderCount,
@@ -147,7 +152,7 @@ function ReportsPage() {
     }),
     { orders: 0, cash: 0, card: 0, total: 0, variance: 0 },
   );
-  const rangeTax = rangeTotals.total - rangeTotals.total / (1 + TAX_RATE);
+  const rangeTax = rangeTotals.total - rangeTotals.total / (1 + defaultTaxRate);
 
   const printXReport = () => {
     if (rangeSessions.length === 0) {
@@ -175,8 +180,8 @@ function ReportsPage() {
       <table><thead><tr><th>Date</th><th>Session</th><th>Cashier</th><th class="num">Orders</th><th class="num">Cash</th><th class="num">Card</th><th class="num">Total</th></tr></thead>
       <tbody>${rows}<tr class="total"><td colspan="3">Total</td><td class="num">${rangeTotals.orders}</td><td class="num">${escapeHtml(formatRs(rangeTotals.cash))}</td><td class="num">${escapeHtml(formatRs(rangeTotals.card))}</td><td class="num">${escapeHtml(formatRs(rangeTotals.total))}</td></tr></tbody></table>
       <h2>Summary</h2>
-      ${summaryRow("Net sales", formatRs(rangeTotals.total / (1 + TAX_RATE)))}
-      ${summaryRow("GST 18%", formatRs(rangeTax))}
+      ${summaryRow("Net sales", formatRs(rangeTotals.total / (1 + defaultTaxRate)))}
+      ${summaryRow(defaultTaxName, formatRs(rangeTax))}
       ${summaryRow("Cash variance", formatRs(rangeTotals.variance))}
       ${summaryRow("Total sales", formatRs(rangeTotals.total), true)}
       <p class="foot">X report does not close the till session.</p>`,
@@ -191,12 +196,12 @@ function ReportsPage() {
         <p class="meta">Session ${escapeHtml(session.id)} · ${escapeHtml(session.cashier)} · ${escapeHtml(session.openedAt)} to ${escapeHtml(session.closedAt)}</p></div>
       <h2>Sold</h2>
       ${summaryRow("Orders", String(session.orderCount))}
-      ${summaryRow("Net sales", formatRs(session.totalSales / (1 + TAX_RATE)))}
+      ${summaryRow("Net sales", formatRs(session.totalSales / (1 + defaultTaxRate)))}
       <h2>Payments</h2>
       ${summaryRow("Cash", formatRs(session.cashSales))}
       ${summaryRow("Card", formatRs(session.cardSales))}
       <h2>Taxes</h2>
-      ${summaryRow("GST 18%", formatRs(session.totalSales - session.totalSales / (1 + TAX_RATE)))}
+      ${summaryRow(defaultTaxName, formatRs(session.totalSales - session.totalSales / (1 + defaultTaxRate)))}
       <h2>Cash control</h2>
       ${summaryRow("Opening float", formatRs(session.openingFloat))}
       ${summaryRow("Cash variance", formatRs(session.variance))}
@@ -448,7 +453,7 @@ function ReportsPage() {
                 <Field label="Orders" value={selectedSession.orderCount} />
                 <Field
                   label="Net sales"
-                  value={formatRs(selectedSession.totalSales / (1 + TAX_RATE))}
+                  value={formatRs(selectedSession.totalSales / (1 + defaultTaxRate))}
                 />
               </div>
               <div className="border-t border-dashed border-border pt-2">
@@ -459,9 +464,10 @@ function ReportsPage() {
               <div className="border-t border-dashed border-border pt-2">
                 <p className="font-medium">TAXES</p>
                 <Field
-                  label="GST 18%"
+                  label={defaultTaxName}
                   value={formatRs(
-                    selectedSession.totalSales - selectedSession.totalSales / (1 + TAX_RATE),
+                    selectedSession.totalSales -
+                      selectedSession.totalSales / (1 + defaultTaxRate),
                   )}
                 />
               </div>

@@ -14,8 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductTile } from "@/components/pos/ProductTile";
-import { usePos, orderTotals, type Order, type ReturnLine } from "@/lib/pos-context";
-import { TAX_RATE, categories, formatRs, toneClass } from "@/lib/pos-data";
+import { usePos, orderTotals, calculateOrderTotals, type Order, type ReturnLine } from "@/lib/pos-context";
+import { formatRs, toneClass } from "@/lib/pos-data";
 import { returnReasons } from "@/lib/backend-data";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/backend-context";
@@ -49,9 +49,9 @@ type Draft = { qty: number; reason: string };
 type Stage = "search" | "lines" | "refund" | "exchange" | "done";
 
 function ReturnExchange() {
-  const { currentUser } = useAuth(); // <-- Add it here
+  const { currentUser } = useAuth();
   const store = useStore();
-  const { orders, productList, processReturn } = usePos();
+  const { orders, productList, categoryList, taxes: taxRates, processReturn } = usePos();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [order, setOrder] = useState<Order | null>(null);
@@ -86,8 +86,21 @@ function ReturnExchange() {
         }))
     : [];
 
-  const refundNet = returnLines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
-  const refundTotal = refundNet * (1 + TAX_RATE);
+  const refundTotals = calculateOrderTotals(
+    returnLines.map((l, idx) => ({
+      id: `ret-${idx}`,
+      productId: l.productId,
+      name: l.name,
+      qty: l.qty,
+      unitPrice: l.unitPrice,
+      discount: 0,
+    })),
+    0,
+    { taxes: taxRates, products: productList, categories: categoryList },
+  );
+  const refundNet = refundTotals.subtotal;
+  const refundTaxes = refundTotals.taxes;
+  const refundTotal = refundTotals.total;
 
   const replacementLines: ReturnLine[] = Object.entries(replacements)
     .filter(([, qty]) => qty > 0)
@@ -95,8 +108,20 @@ function ReturnExchange() {
       const product = productList.find((p) => p.id === productId)!;
       return { productId, name: product.name, qty, unitPrice: product.price, reason: "Exchange" };
     });
-  const replacementTotal =
-    replacementLines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0) * (1 + TAX_RATE);
+
+  const replacementTotals = calculateOrderTotals(
+    replacementLines.map((l, idx) => ({
+      id: `rep-${idx}`,
+      productId: l.productId,
+      name: l.name,
+      qty: l.qty,
+      unitPrice: l.unitPrice,
+      discount: 0,
+    })),
+    0,
+    { taxes: taxRates, products: productList, categories: categoryList },
+  );
+  const replacementTotal = replacementTotals.total;
   const difference = replacementTotal - refundTotal;
 
   const selectOrder = (o: Order) => {
@@ -130,7 +155,21 @@ function ReturnExchange() {
         toast.success(`${product.name} added as replacement`);
         return "added";
       }
-      const match = orders.find((o) => o.receipt === code || o.number === code || o.id === code);
+      const raw = code.trim().toLowerCase();
+      const normalized = raw.replace(/^(rcp\/|rcp-|#)/i, "");
+      const match = orders.find((o) => {
+        const num = o.number.toLowerCase().trim();
+        const rc = o.receipt.toLowerCase().trim().replace(/^(rcp\/|rcp-|#)/i, "");
+        const id = o.id.toLowerCase().trim();
+        const fullRc = o.receipt.toLowerCase().trim();
+        return (
+          num === normalized ||
+          rc === normalized ||
+          fullRc === raw ||
+          id === raw ||
+          num === raw
+        );
+      });
       if (!match) {
         setQuery(code);
         toast.error(`No receipt matches ${code}`);
@@ -352,7 +391,7 @@ function ReturnExchange() {
                   value={String(returnLines.reduce((s, l) => s + l.qty, 0))}
                 />
                 <Row label="Refund subtotal" value={formatRs(refundNet)} />
-                <Row label="Taxes" value={formatRs(refundNet * TAX_RATE)} />
+                <Row label="Taxes" value={formatRs(refundTaxes)} />
                 <div className="flex justify-between text-base font-semibold">
                   <span>Refund total</span>
                   <span>{formatRs(refundTotal)}</span>

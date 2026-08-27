@@ -7,7 +7,9 @@ import { DataTable, type Column } from "@/components/backend/data-table";
 import { CreatePartnerModal } from "@/components/pos/CustomerModals";
 import { usePos } from "@/lib/pos-context";
 import { formatRs, type Customer } from "@/lib/pos-data";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/backend/customers")({
   head: () => ({
@@ -30,6 +32,28 @@ function CustomersPage() {
   const { customers, orders } = usePos();
   const [selected, setSelected] = useState<Customer | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+
+  useScanTarget(
+    "customers",
+    ({ code }) => {
+      const q = code.trim().toLowerCase();
+      const matched = customers.find(
+        (c) =>
+          c.id.toLowerCase() === q ||
+          c.name.toLowerCase().includes(q) ||
+          c.email.toLowerCase().includes(q) ||
+          c.phone?.toLowerCase().includes(q),
+      );
+      if (matched) {
+        setSelected(matched);
+        toast.success(`Customer ${matched.name} found`);
+        return "info";
+      }
+      toast.info(`Scanned customer code: ${code}`);
+      return "info";
+    },
+    !createOpen,
+  );
 
   const balanceFor = (index: number) => [0, -4200, 1500, -18750][index % 4] ?? 0;
 

@@ -9,8 +9,9 @@ import { DataCard, DetailDrawer, Field, StatusPill } from "@/components/backend/
 import { DataTable, type Column } from "@/components/backend/data-table";
 import { useBackend } from "@/lib/backend-context";
 import { stockStatus, type StockItem } from "@/lib/backend-data";
-import { usePos } from "@/lib/pos-context";
-import { categories, formatRs, type Product } from "@/lib/pos-data";
+import { usePos, resolveProductTaxRate } from "@/lib/pos-context";
+import { formatRs, type Product } from "@/lib/pos-data";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { NewProductModal } from "@/components/pos/MenuModals";
 import { toast } from "sonner";
 
@@ -35,12 +36,30 @@ export const Route = createFileRoute("/backend/products")({
 });
 
 function ProductsPage() {
-  const { productList } = usePos();
+  const { productList, categoryList, taxes } = usePos();
   const { stockFor, setProductMeta } = useBackend();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [selected, setSelected] = useState<Product | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+
+  // Scan product barcode to filter/find or inspect
+  useScanTarget(
+    "inventory",
+    ({ code }) => {
+      const match = productList.find((p) => p.barcode === code || p.id === code);
+      if (match) {
+        setSelected(match);
+        setQuery(match.barcode || match.name);
+        toast.success(`Found ${match.name}`);
+        return "info";
+      }
+      setQuery(code);
+      toast.info(`Scanned ${code}`);
+      return "info";
+    },
+    !createOpen,
+  );
 
   const rows = productList.filter((p) => {
     const matchesQuery =
@@ -77,7 +96,7 @@ function ProductsPage() {
           className="h-11 rounded-md border border-border bg-card px-3 text-sm"
         >
           <option value="all">All categories</option>
-          {categories.map((c) => (
+          {categoryList.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
@@ -104,6 +123,10 @@ function ProductsPage() {
             <DataCard className="space-y-2 p-4">
               <Field label="Barcode" value={selected.barcode || "Not assigned"} />
               <Field label="Sales price" value={formatRs(selected.price)} />
+              <Field
+                label="Applicable Tax"
+                value={`${resolveProductTaxRate(selected, taxes, productList, categoryList).taxName} (${resolveProductTaxRate(selected, taxes, productList, categoryList).percentage}%)`}
+              />
               <Field label="Cost price" value={formatRs(selectedStock?.cost ?? 0)} />
               <Field label="Reorder point" value={selectedStock?.reorderPoint ?? 0} />
               <Field label="Description" value={selectedStock?.description ?? "—"} />
