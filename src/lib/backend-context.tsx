@@ -71,9 +71,6 @@ type BackendState = {
   updatePricelist: (id: string, patch: Partial<PricelistDetail>) => void;
   removePricelist: (id: string) => void;
 
-  taxes: TaxRate[];
-  saveTax: (tax: TaxRate) => void;
-  removeTax: (id: string) => void;
 
   staff: StaffUser[];
   saveStaff: (user: StaffUser) => void;
@@ -125,11 +122,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     queryFn: fetchPricelists,
     enabled: signedIn,
   });
-  const taxesQuery = useQuery({
-    queryKey: cloudKeys.taxes,
-    queryFn: fetchTaxes,
-    enabled: signedIn,
-  });
+  
   const settingsQuery = useQuery({
     queryKey: cloudKeys.storeSettings,
     queryFn: fetchStoreSettings,
@@ -153,8 +146,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
   const suppliers = suppliersQuery.data ?? seedSuppliers;
   const purchaseOrders = poQuery.data ?? [];
   const pricelists = pricelistsQuery.data ?? seedPricelists;
-  const taxes = taxesQuery.data ?? seedTaxes;
-  const storeSettings = { ...seedStoreSettings, ...(settingsQuery.data ?? {}) };
+    const storeSettings = { ...seedStoreSettings, ...(settingsQuery.data ?? {}) };
   const staff = staffQuery.data?.length ? staffQuery.data : seedStaff;
 
   /** Derive sessions and sales from real persisted orders in the cloud. */
@@ -389,19 +381,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
       write.mutate(() => supabase.from("pricelists").delete().eq("id", id));
     },
 
-    taxes,
-    saveTax: (tax) => {
-      patchCache<TaxRate>(cloudKeys.taxes, taxes, (prev) =>
-        prev.some((t) => t.id === tax.id)
-          ? prev.map((t) => (t.id === tax.id ? tax : t))
-          : [...prev, tax],
-      );
-      write.mutate(() => supabase.from("tax_rates").upsert(fromTaxRate(tax)));
-    },
-    removeTax: (id) => {
-      patchCache<TaxRate>(cloudKeys.taxes, taxes, (prev) => prev.filter((t) => t.id !== id));
-      write.mutate(() => supabase.from("tax_rates").delete().eq("id", id));
-    },
+
 
     staff,
     saveStaff: (user) => {
