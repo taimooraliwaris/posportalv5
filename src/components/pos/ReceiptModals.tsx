@@ -79,12 +79,8 @@ export function PrintModal({
 export function Receipt({ order, simple }: { order: Order | null; simple?: boolean }) {
   const { currentUser } = useAuth();
   const store = useStore();
-  const { taxes: taxRates, productList, categoryList } = usePos();
-  const { subtotal, taxes, total, taxBreakdown } = orderTotals(order ?? undefined, 0, {
-    taxes: taxRates,
-    products: productList,
-    categories: categoryList,
-  });
+  const { productList, categoryList } = usePos();
+  const { subtotal, total } = orderTotals(order ?? undefined, 0);
 
   return (
     <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-border bg-card p-5 font-mono text-xs leading-relaxed">
@@ -109,18 +105,7 @@ export function Receipt({ order, simple }: { order: Order | null; simple?: boole
       )}
       <div className="mt-3 border-t border-dashed border-border pt-3">
         <Row label="Subtotal" value={formatRs(subtotal)} />
-        {taxBreakdown.length > 0 ? (
-          taxBreakdown.map((t) => (
-            <Row
-              key={t.name}
-              label={`${t.name} (${t.percentage}%)`}
-              value={formatRs(t.taxAmount)}
-            />
-          ))
-        ) : (
-          <Row label="Taxes" value={formatRs(taxes)} />
-        )}
-        <Row label="TOTAL" value={formatRs(total)} bold />
+        <Row label="Total" value={formatRs(total)} bold />
         {(order?.payments ?? []).map((p) => (
           <Row key={p.id} label={p.method} value={formatRs(p.amount)} />
         ))}

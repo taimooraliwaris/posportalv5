@@ -35,7 +35,7 @@ const statusFilters = [
 ] as const;
 
 function Orders() {
-  const { orders, deleteOrder, taxes: taxRates, productList, categoryList } = usePos();
+  const { orders, deleteOrder,  productList, categoryList } = usePos();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("All");
   const [selected, setSelected] = useState<Order | null>(null);
@@ -103,11 +103,7 @@ function Orders() {
             <span>Status</span>
           </div>
           {filtered.map((o) => {
-            const { total } = orderTotals(o, 0, {
-              taxes: taxRates,
-              products: productList,
-              categories: categoryList,
-            });
+            const { total } = orderTotals(o, 0);
             return (
               <div
                 key={o.id}
@@ -180,7 +176,6 @@ function Orders() {
                 {selected
                   ? formatRs(
                       orderTotals(selected, 0, {
-                        taxes: taxRates,
                         products: productList,
                         categories: categoryList,
                       }).total,

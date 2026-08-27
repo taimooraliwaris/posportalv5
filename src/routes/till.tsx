@@ -55,7 +55,7 @@ function Till() {
     addByBarcode,
     productList,
     categoryList,
-    taxes: taxRates,
+    
     loading,
   } = usePos();
   const { cameraOpen, openCamera } = useScanMode();
