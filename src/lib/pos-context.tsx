@@ -30,12 +30,12 @@ import {
   fetchOrders,
   fetchProducts,
   fetchReturns,
-  fetchTaxes,
+  
   fromOrder,
   fromReturnRecord,
   randomId,
 } from "./cloud-data";
-import { seedTaxes, type TaxRate } from "./backend-data";
+
 import {
   calculateOrderTotals,
   resolveProductTaxRate,
@@ -186,7 +186,7 @@ type PosState = {
     input: Omit<ReturnRecord, "id" | "number" | "date" | "time">,
   ) => ReturnRecord;
   updateProductInCatalog: (id: string, patch: Partial<Product>) => void;
-  taxes: TaxRate[];
+  
   /** True until the first cloud read for catalog data settles. */
   loading: boolean;
 };

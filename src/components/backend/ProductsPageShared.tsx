@@ -32,8 +32,11 @@ export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
       }
     }
 
+    const selectedCatObj = categoryList.find((c) => c.slug === selectedCategory);
+    const resolvedCatId = selectedCatObj ? selectedCatObj.id : selectedCategory;
+
     // Fallback: category might be ID or Slug.
-    if (p.category_id !== selectedCategory && p.category !== selectedCategory) return false;
+    if (p.category_id !== resolvedCatId && p.category !== resolvedCatId) return false;
 
     return true;
   });
