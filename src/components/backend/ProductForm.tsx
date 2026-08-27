@@ -26,6 +26,7 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
   const [manualBrand, setManualBrand] = useState("");
   const [manualSize, setManualSize] = useState("");
   const [manualModel, setManualModel] = useState("");
+  const [manualPly, setManualPly] = useState("");
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -87,6 +88,7 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
     manualBrand || (isTyre ? tyreBrandMatch?.[1] : isTube ? tubeBrandMatch?.[1] : undefined);
   const resolvedSize =
     manualSize || (isTyre ? tyreSizeMatch?.[1] : isTube ? tyreSizeMatch?.[1] : undefined);
+  const resolvedPly = manualPly || (isTyre ? tyrePlyMatch?.[1] : undefined);
   // We use the full model code in the DB. The prefix `18` maps to `CD70-CDI` in backend logic, but here we just pass the prefix for now, or the manual selection.
   const resolvedModel = manualModel || modelMatch?.[1];
 
@@ -121,7 +123,7 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
         position: isSparePart ? positionMatch?.[1] : undefined,
         variant: isSparePart ? variantMatch?.[1] : undefined,
         size: resolvedSize,
-        ply: isTyre ? tyrePlyMatch?.[1] : undefined,
+        ply: resolvedPly,
         tread: isTyre ? tyreTreadMatch?.[1] : undefined,
         valve: isTube ? tubeValveMatch?.[1] : undefined,
       },
@@ -321,17 +323,29 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
                 className="h-9"
               />
             </div>
-            <div>
-              <label className="text-[11px] text-muted-foreground block mb-1">
-                Ctn Qty (Optional)
-              </label>
-              <Input
-                type="number"
-                value={ctnQty}
-                onChange={(e) => setCtnQty(e.target.value)}
-                className="h-9"
-              />
-            </div>
+            {isTyre ? (
+              <div>
+                <label className="text-[11px] text-muted-foreground block mb-1">Ply Rating</label>
+                <Input
+                  value={resolvedPly || ""}
+                  onChange={(e) => setManualPly(e.target.value)}
+                  className="h-9"
+                  placeholder="e.g. 6PR"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="text-[11px] text-muted-foreground block mb-1">
+                  Ctn Qty (Optional)
+                </label>
+                <Input
+                  type="number"
+                  value={ctnQty}
+                  onChange={(e) => setCtnQty(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+            )}
           </div>
         </div>
       </form>
