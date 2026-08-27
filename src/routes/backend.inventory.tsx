@@ -27,7 +27,7 @@ function InventoryPage() {
       .filter((p) => {
         if (!query) return true;
         return (
-          p.name.toLowerCase().includes(query.toLowerCase()) ||
+          p.name?.toLowerCase().includes(query.toLowerCase()) ||
           p.item_code?.toLowerCase().includes(query.toLowerCase()) ||
           p.name_ur?.includes(query)
         );

@@ -585,7 +585,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
       ]);
       write.mutate(() =>
         supabase
-          .from("categories")
+          .from("product_categories")
           .insert({ id: created.id, name: created.name, tone: created.tone }),
       );
       return created;

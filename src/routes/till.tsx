@@ -159,7 +159,7 @@ function Till() {
     if (category) list = list.filter((p) => p.category === category);
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter((p) => p.name.toLowerCase().includes(q) || p.barcode.includes(q));
+      list = list.filter((p) => p.name?.toLowerCase().includes(q) || p.barcode.includes(q));
     }
     return list;
   }, [productList, category, search]);

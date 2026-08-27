@@ -24,7 +24,7 @@ export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
     if (query) {
       const lower = query.toLowerCase();
       if (
-        !p.name.toLowerCase().includes(lower) &&
+        !p.name?.toLowerCase().includes(lower) &&
         !p.item_code?.toLowerCase().includes(lower) &&
         !p.name_ur?.includes(query)
       ) {

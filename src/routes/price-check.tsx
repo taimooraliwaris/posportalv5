@@ -39,7 +39,7 @@ function PriceCheck() {
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return productList.slice(0, 12);
-    return productList.filter((p) => p.name.toLowerCase().includes(q) || p.barcode.includes(q));
+    return productList.filter((p) => p.name?.toLowerCase().includes(q) || p.barcode.includes(q));
   }, [productList, query]);
 
   // Focus-free: a scanner burst is picked up anywhere on this screen.

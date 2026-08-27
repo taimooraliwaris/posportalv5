@@ -256,8 +256,7 @@ export const fetchCustomers = async () =>
 export const fetchSuppliers = async () =>
   (await rows(supabase.from("suppliers").select("*").order("name"))).map(toSupplier);
 
-export const fetchStock = async () =>
-  (await rows(supabase.from("stock_items").select("*").order("product_id"))).map(toStockItem);
+export const fetchStock = async () => [];
 
 export const fetchPurchaseOrders = async () =>
   (await rows(supabase.from("purchase_orders").select("*").order("order_date", { ascending: false }))).map(
@@ -304,23 +303,8 @@ export type CloudAdjustment = {
   date: string;
 };
 
-export const fetchStockAdjustments = async (): Promise<CloudAdjustment[]> =>
-  (
-    await rows(
-      supabase
-        .from("stock_adjustments")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200),
-    )
-  ).map((row) => ({
-    id: row.id,
-    productId: row.product_id,
-    from: row.from_qty,
-    to: row.to_qty,
-    reason: row.reason,
-    date: row.created_at.slice(0, 10),
-  }));
+export const fetchStockAdjustments = async (): Promise<CloudAdjustment[]> => [];
+
 
 export const fetchStaff = async (): Promise<StaffUser[]> => {
   const profiles = await rows(supabase.from("profiles").select("*").order("name"));

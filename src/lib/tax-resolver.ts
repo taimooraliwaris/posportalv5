@@ -61,7 +61,7 @@ export function resolveProductTaxRate(
   
   // Find product if only productId provided
   const matchedProduct = products?.find(
-    (p) => p.id.toLowerCase() === pId || p.name.toLowerCase() === pName,
+    (p) => p.id.toLowerCase() === pId || p.name?.toLowerCase() === pName,
   );
   const effectiveCatId = (
     productOrLine.categoryId ??
