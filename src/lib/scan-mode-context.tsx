@@ -16,6 +16,8 @@ import {
   type ScanOutcome,
 } from "./scanner-router";
 
+type CameraMode = "batch" | "single";
+
 type ScanModeState = {
   mode: ScanMode;
   setMode: (mode: ScanMode) => void;
@@ -23,6 +25,11 @@ type ScanModeState = {
   paused: boolean;
   setPaused: (paused: boolean) => void;
   scan: (code: string) => Promise<ScanOutcome>;
+  /** Exactly one camera overlay lives in the app — this is its state. */
+  cameraOpen: boolean;
+  cameraMode: CameraMode;
+  openCamera: (mode?: CameraMode) => void;
+  closeCamera: () => void;
 };
 
 const ScanModeContext = createContext<ScanModeState | null>(null);
@@ -30,6 +37,8 @@ const ScanModeContext = createContext<ScanModeState | null>(null);
 export function ScanModeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ScanMode>(scannerRouter.getMode());
   const [paused, setPaused] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraMode, setCameraMode] = useState<CameraMode>("batch");
 
   useEffect(() => scannerRouter.subscribe(setModeState), []);
 
@@ -53,12 +62,20 @@ export function ScanModeProvider({ children }: { children: ReactNode }) {
       paused,
       setPaused,
       scan: (code) => scannerRouter.dispatch(code, "manual"),
+      cameraOpen,
+      cameraMode,
+      openCamera: (next = "batch") => {
+        setCameraMode(next);
+        setCameraOpen(true);
+      },
+      closeCamera: () => setCameraOpen(false),
     }),
-    [mode, paused],
+    [mode, paused, cameraOpen, cameraMode],
   );
 
   return <ScanModeContext.Provider value={value}>{children}</ScanModeContext.Provider>;
 }
+
 
 export function useScanMode() {
   const ctx = useContext(ScanModeContext);
