@@ -143,9 +143,9 @@ export function calculateOrderTotals(
   lines: CartLine[] = [],
   discountRate = 0,
   options?: {
-    taxes?: TaxRate[];
-    products?: Product[];
-    categories?: Category[];
+    taxes?: TaxRate[] | undefined;
+    products?: Product[] | undefined;
+    categories?: Category[] | undefined;
   },
 ): CalculatedOrderTotals {
   let gross = 0;

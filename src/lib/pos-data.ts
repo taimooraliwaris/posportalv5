@@ -1,19 +1,41 @@
 export type CategoryId = string;
 
 export type Category = {
-  id: CategoryId;
+  id: string;
+  slug: string;
   name: string;
-  tone: "pink" | "sand" | "sage" | "sky";
+  name_ur?: string | null;
+  icon?: string | null;
+  color?: string | null;
+  spec_schema?: any;
+  parser_rules?: any;
+  tone?: string;
 };
 
 export type Product = {
   id: string;
+  category: string;
+  category_id: string;
+  item_code: string | null;
   name: string;
+  name_ur: string | null;
+  brand: string | null;
+  cost_price: number;
   price: number;
-  category: CategoryId;
+  stock_qty: number;
+  ctn_qty: number | null;
+  foc_threshold: number | null;
+  foc_qty: number | null;
+  qrc_runs: number | null;
+  specs: Record<string, any>;
+  vehicle_model_id: string | null;
+  is_active: boolean;
+  category_slug?: string;
+  category_name?: string;
+  primary_model_code?: string;
   barcode: string;
-  tone: "pink" | "sand" | "sage" | "sky";
-  icon: string;
+  tone?: string;
+  icon?: string;
 };
 
 export type Customer = {
@@ -43,176 +65,9 @@ export const STORE = {
 
 export const TAX_RATE = 0.18;
 
-export const categories: Category[] = [
-  { id: "misc", name: "Misc", tone: "pink" },
-  { id: "desks", name: "Desks", tone: "sky" },
-  { id: "chairs", name: "Chairs", tone: "sand" },
-];
+export const categories: Category[] = [];
 
-export const products: Product[] = [
-  {
-    id: "p1",
-    name: "Pedal Bin",
-    price: 47.0,
-    category: "misc",
-    barcode: "8901001",
-    tone: "pink",
-    icon: "Trash2",
-  },
-  {
-    id: "p2",
-    name: "Office Lamp",
-    price: 40.0,
-    category: "misc",
-    barcode: "8901002",
-    tone: "sand",
-    icon: "Lamp",
-  },
-  {
-    id: "p3",
-    name: "Storage Box",
-    price: 18.5,
-    category: "misc",
-    barcode: "8901003",
-    tone: "sky",
-    icon: "Package",
-  },
-  {
-    id: "p4",
-    name: "Desk Organizer",
-    price: 22.0,
-    category: "misc",
-    barcode: "8901004",
-    tone: "sage",
-    icon: "Boxes",
-  },
-  {
-    id: "p5",
-    name: "Desk Pad",
-    price: 15.75,
-    category: "misc",
-    barcode: "8901005",
-    tone: "pink",
-    icon: "Square",
-  },
-  {
-    id: "p6",
-    name: "Flipover Board",
-    price: 89.0,
-    category: "misc",
-    barcode: "8901006",
-    tone: "sky",
-    icon: "Presentation",
-  },
-  {
-    id: "p7",
-    name: "Whiteboard",
-    price: 65.0,
-    category: "misc",
-    barcode: "8901007",
-    tone: "sage",
-    icon: "PenLine",
-  },
-  {
-    id: "p8",
-    name: "Acoustic Screen",
-    price: 120.0,
-    category: "misc",
-    barcode: "8901008",
-    tone: "sand",
-    icon: "PanelsTopLeft",
-  },
-  {
-    id: "p9",
-    name: "Corner Desk",
-    price: 310.0,
-    category: "desks",
-    barcode: "8902001",
-    tone: "sky",
-    icon: "Table",
-  },
-  {
-    id: "p10",
-    name: "Standing Desk",
-    price: 420.0,
-    category: "desks",
-    barcode: "8902002",
-    tone: "sage",
-    icon: "LayoutPanelTop",
-  },
-  {
-    id: "p11",
-    name: "Drawer Unit",
-    price: 145.0,
-    category: "desks",
-    barcode: "8902003",
-    tone: "sand",
-    icon: "Archive",
-  },
-  {
-    id: "p12",
-    name: "Large Cabinet",
-    price: 260.0,
-    category: "desks",
-    barcode: "8902004",
-    tone: "pink",
-    icon: "DoorClosed",
-  },
-  {
-    id: "p13",
-    name: "Meeting Table",
-    price: 890.0,
-    category: "desks",
-    barcode: "8902005",
-    tone: "sky",
-    icon: "Rows3",
-  },
-  {
-    id: "p14",
-    name: "Side Bench",
-    price: 130.0,
-    category: "desks",
-    barcode: "8902006",
-    tone: "sage",
-    icon: "Minus",
-  },
-  {
-    id: "p15",
-    name: "Task Chair",
-    price: 175.0,
-    category: "chairs",
-    barcode: "8903001",
-    tone: "sand",
-    icon: "Armchair",
-  },
-  {
-    id: "p16",
-    name: "Two-Seat Sofa",
-    price: 540.0,
-    category: "chairs",
-    barcode: "8903002",
-    tone: "sky",
-    icon: "Sofa",
-  },
-  {
-    id: "p17",
-    name: "Lounge Pod",
-    price: 760.0,
-    category: "chairs",
-    barcode: "8903003",
-    tone: "sage",
-    icon: "Armchair",
-  },
-  {
-    id: "p18",
-    name: "Visitor Stool",
-    price: 68.0,
-    category: "chairs",
-    barcode: "8903004",
-    tone: "pink",
-    icon: "CircleDot",
-  },
-];
+export const products: Product[] = [];
 
 export const seedCustomers: Customer[] = [
   {

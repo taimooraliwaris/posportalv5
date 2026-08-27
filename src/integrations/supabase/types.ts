@@ -14,6 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      product_categories: {
+        Row: {
+          id: string
+          slug: string
+          name_en: string
+          name_ur: string | null
+          icon: string | null
+          color: string | null
+          spec_schema: Json
+          parser_rules: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          name_en: string
+          name_ur?: string | null
+          icon?: string | null
+          color?: string | null
+          spec_schema?: Json
+          parser_rules?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          name_en?: string
+          name_ur?: string | null
+          icon?: string | null
+          color?: string | null
+          spec_schema?: Json
+          parser_rules?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vehicle_models: {
+        Row: {
+          id: string
+          code: string
+          item_code_prefix: string | null
+          brand: string | null
+          engine_cc: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          code: string
+          item_code_prefix?: string | null
+          brand?: string | null
+          engine_cc?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          code?: string
+          item_code_prefix?: string | null
+          brand?: string | null
+          engine_cc?: number | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      product_vehicle_models: {
+        Row: {
+          product_id: string
+          model_id: string
+          is_primary: boolean
+        }
+        Insert: {
+          product_id: string
+          model_id: string
+          is_primary?: boolean
+        }
+        Update: {
+          product_id?: string
+          model_id?: string
+          is_primary?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_vehicle_models_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_vehicle_models_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_models"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       cash_moves: {
         Row: {
           amount: number
@@ -625,7 +724,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_products: {
+        Row: {
+          id: string
+          category_id: string
+          category_slug: string
+          category_name: string
+          item_code: string | null
+          name_en: string
+          name_ur: string | null
+          brand: string | null
+          cost_price: number
+          sale_price: number
+          stock_qty: number
+          ctn_qty: number | null
+          foc_threshold: number | null
+          foc_qty: number | null
+          qrc_runs: number | null
+          specs: Json
+          vehicle_model_id: string | null
+          primary_model_code: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {

@@ -30,20 +30,42 @@ export const randomId = (prefix: string) =>
 
 /* ------------------------------------------------------------------ catalog */
 
-export const toProduct = (row: Row<"products">): Product => ({
+export const toProduct = (row: Row<"v_products"> | Row<"products">): Product => ({
   id: row.id,
-  name: row.name,
-  price: Number(row.price),
+  name: row.name_en,
+  name_ur: row.name_ur,
+  brand: row.brand,
+  price: Number(row.sale_price),
+  cost_price: Number(row.cost_price),
   category: row.category_id,
-  barcode: row.barcode,
-  tone: asTone(row.tone),
-  icon: row.icon,
+  category_id: row.category_id,
+  item_code: row.item_code,
+  barcode: row.item_code || row.id,
+  stock_qty: row.stock_qty,
+  ctn_qty: row.ctn_qty,
+  foc_threshold: row.foc_threshold,
+  foc_qty: row.foc_qty,
+  qrc_runs: row.qrc_runs,
+  specs: typeof row.specs === 'object' && row.specs !== null ? row.specs : {},
+  vehicle_model_id: row.vehicle_model_id,
+  is_active: row.is_active,
+  category_slug: 'category_slug' in row ? row.category_slug : undefined,
+  category_name: 'category_name' in row ? row.category_name : undefined,
+  primary_model_code: 'primary_model_code' in row ? row.primary_model_code : undefined,
+  tone: "sky",
+  icon: "Box",
 });
 
-export const toCategory = (row: Row<"categories">): Category => ({
+export const toCategory = (row: Row<"product_categories">): Category => ({
   id: row.id,
-  name: row.name,
-  tone: asTone(row.tone),
+  slug: row.slug,
+  name: row.name_en,
+  name_ur: row.name_ur,
+  icon: row.icon,
+  color: row.color,
+  spec_schema: row.spec_schema,
+  parser_rules: row.parser_rules,
+  tone: asTone(row.color || "sky"),
 });
 
 export const toCustomer = (row: Row<"customers">): Customer => ({
@@ -222,10 +244,10 @@ export const cloudKeys = {
 };
 
 export const fetchProducts = async () =>
-  (await rows(supabase.from("products").select("*").order("id"))).map(toProduct);
+  (await rows(supabase.from("v_products").select("*").order("id"))).map(toProduct as any);
 
 export const fetchCategories = async () =>
-  (await rows(supabase.from("categories").select("*").order("name"))).map(toCategory);
+  (await rows(supabase.from("product_categories").select("*").order("name_en"))).map(toCategory);
 
 export const fetchCustomers = async () =>
   (await rows(supabase.from("customers").select("*").order("name"))).map(toCustomer);
