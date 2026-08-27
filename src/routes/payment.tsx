@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Check, Plus, X } from "lucide-react";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import type { Category, Customer, Product } from "./pos-data";

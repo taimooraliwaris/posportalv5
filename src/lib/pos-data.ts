@@ -9,7 +9,7 @@ export type Category = {
   color?: string | null;
   spec_schema?: any;
   parser_rules?: any;
-  tone?: string;
+  tone?: string | undefined;
 };
 
 export type Product = {
@@ -34,8 +34,8 @@ export type Product = {
   category_name?: string;
   primary_model_code?: string;
   barcode: string;
-  tone?: string;
-  icon?: string;
+  tone?: string | undefined;
+  icon?: string | undefined;
 };
 
 export type Customer = {

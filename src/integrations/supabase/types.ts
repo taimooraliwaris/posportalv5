@@ -298,36 +298,63 @@ export type Database = {
       }
       products: {
         Row: {
-          barcode: string
-          category_id: string
-          created_at: string
-          icon: string
           id: string
-          name: string
-          price: number
-          tone: string
+          category_id: string
+          item_code: string | null
+          name_en: string
+          name_ur: string | null
+          brand: string | null
+          cost_price: number
+          sale_price: number
+          stock_qty: number
+          ctn_qty: number | null
+          foc_threshold: number | null
+          foc_qty: number | null
+          qrc_runs: number | null
+          specs: Json
+          vehicle_model_id: string | null
+          is_active: boolean
+          created_at: string
           updated_at: string
         }
         Insert: {
-          barcode: string
+          id?: string
           category_id: string
+          item_code?: string | null
+          name_en: string
+          name_ur?: string | null
+          brand?: string | null
+          cost_price?: number
+          sale_price?: number
+          stock_qty?: number
+          ctn_qty?: number | null
+          foc_threshold?: number | null
+          foc_qty?: number | null
+          qrc_runs?: number | null
+          specs?: Json
+          vehicle_model_id?: string | null
+          is_active?: boolean
           created_at?: string
-          icon?: string
-          id: string
-          name: string
-          price?: number
-          tone?: string
           updated_at?: string
         }
         Update: {
-          barcode?: string
-          category_id?: string
-          created_at?: string
-          icon?: string
           id?: string
-          name?: string
-          price?: number
-          tone?: string
+          category_id?: string
+          item_code?: string | null
+          name_en?: string
+          name_ur?: string | null
+          brand?: string | null
+          cost_price?: number
+          sale_price?: number
+          stock_qty?: number
+          ctn_qty?: number | null
+          foc_threshold?: number | null
+          foc_qty?: number | null
+          qrc_runs?: number | null
+          specs?: Json
+          vehicle_model_id?: string | null
+          is_active?: boolean
+          created_at?: string
           updated_at?: string
         }
         Relationships: [
