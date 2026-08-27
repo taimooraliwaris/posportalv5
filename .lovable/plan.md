@@ -1,8 +1,11 @@
 # Velora POS — finish the build + till fixes
 
-## 0. Review pass on recent changes
+## 0. Fix the current build break, then review recent changes
 
-Read through the files touched in the last few commits (POS context, back-office context, auth context, auth screens, passcode gate, header, scanner overlay) and confirm nothing regressed: session-gated cloud reads still fall back to seed data before sign-in, the order bootstrap no longer writes before sign-in, the passcode gate still unlocks, and sign-out still clears cached data. Fix anything broken while keeping the intent of those changes.
+Two type errors in the till: clearing the assigned customer passes `customerId: undefined`, which the strict optional-property setting rejects. The POS context already treats an empty value as "clear" (it deletes the key), so both call sites pass an empty string instead. Also remove the stray leftover code comment next to the clear-customer button.
+
+Then read through the files touched in the last few commits (POS context, back-office context, auth context, auth screens, passcode gate, header, scanner overlay) and confirm nothing regressed: session-gated cloud reads still fall back to seed data before sign-in, the order bootstrap no longer writes before sign-in, the passcode gate still unlocks, and sign-out still clears cached data. Fix anything broken while keeping the intent of those changes.
+
 
 ## 1. Floating camera scan button (single global overlay)
 
