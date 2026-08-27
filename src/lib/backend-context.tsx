@@ -296,14 +296,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
         ...list,
       ]);
       // stock items replaced by products
-      write.mutate(() =>
-        supabase.from("stock_adjustments").insert({
-          product_id: productId,
-          from_qty: current.onHand,
-          to_qty: to,
-          reason,
-        }),
-      );
+
     },
     setProductMeta: (productId, patch) => {
       const current = stock.find((s) => s.productId === productId);
