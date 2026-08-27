@@ -350,7 +350,7 @@ function ReportsPage() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="font-medium">
-                  {month.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+                  {monthDate.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
                 </span>
                 <Button
                   variant="secondary"
