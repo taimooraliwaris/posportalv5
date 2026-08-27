@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Calendar, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DataCard } from "./backend-ui";
 import { useBackend } from "@/lib/backend-context";
 import type { PricelistDetail, PricelistRule, RuleScopeKind } from "@/lib/backend-data";
@@ -11,19 +10,12 @@ import { formatRs } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const selectClass = "h-11 w-full rounded-md border border-border bg-card px-3 text-sm";
-
-export function describeRule(rule: PricelistRule) {
+function describeRule(rule: PricelistRule) {
   if (rule.type === "fixed") return `Fixed price ${formatRs(rule.value)}`;
-  if (rule.type === "buy-x-get-y")
-    return `Buy ${rule.minQty ?? 1} get ${rule.freeQty ?? 1} free`;
+  if (rule.type === "buy-x-get-y") return `Buy ${rule.minQty ?? 1} get ${rule.freeQty ?? 1} free`;
   return `${rule.value}% off`;
 }
 
-/**
- * Builds a rule for a pricelist: pick a scope (whole store, a category or a
- * single product), the discount type, then optional advanced conditions.
- */
 export function PricelistRuleBuilder({ pricelist }: { pricelist: PricelistDetail }) {
   const { updatePricelist } = useBackend();
   const { productList, categoryList } = usePos();
@@ -31,29 +23,30 @@ export function PricelistRuleBuilder({ pricelist }: { pricelist: PricelistDetail
   const [scopeKind, setScopeKind] = useState<RuleScopeKind>("store");
   const [scopeId, setScopeId] = useState("");
   const [type, setType] = useState<PricelistRule["type"]>("percentage");
-  const [value, setValue] = useState("10");
-  const [minQty, setMinQty] = useState("1");
-  const [freeQty, setFreeQty] = useState("1");
+  const [value, setValue] = useState("");
+  const [minQty, setMinQty] = useState("");
+  const [freeQty, setFreeQty] = useState("");
+  const [hasDates, setHasDates] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [advanced, setAdvanced] = useState(false);
 
   const scopeLabel = () => {
-    if (scopeKind === "store") return "All products";
+    if (scopeKind === "store") return "Whole store";
     if (scopeKind === "category")
-      return categoryList.find((c) => c.id === scopeId)?.name ?? "Category";
-    return productList.find((p) => p.id === scopeId)?.name ?? "Product";
+      return categoryList.find((c) => c.id === scopeId)?.name || "Unknown category";
+    return productList.find((p) => p.id === scopeId)?.name || "Unknown product";
   };
 
   const addRule = () => {
     if (scopeKind !== "store" && !scopeId) {
-      toast("Choose a " + scopeKind);
+      toast("Please select a specific " + scopeKind);
       return;
     }
     if (type !== "buy-x-get-y" && !(Number(value) > 0)) {
-      toast("Enter a value greater than zero");
+      toast("Please enter a discount value greater than zero");
       return;
     }
+
     const rule: PricelistRule = {
       id: `r-${Math.random().toString(36).slice(2, 8)}`,
       scope: scopeLabel(),
@@ -61,218 +54,295 @@ export function PricelistRuleBuilder({ pricelist }: { pricelist: PricelistDetail
       value: type === "buy-x-get-y" ? 0 : Number(value),
       scopeKind,
       ...(scopeKind === "store" ? {} : { scopeId }),
-      ...(type === "buy-x-get-y" || advanced ? { minQty: Number(minQty) || 1 } : {}),
+      ...(type === "buy-x-get-y" || minQty ? { minQty: Number(minQty) || 1 } : {}),
       ...(type === "buy-x-get-y" ? { freeQty: Number(freeQty) || 1 } : {}),
-      ...(advanced && startDate ? { startDate } : {}),
-      ...(advanced && endDate ? { endDate } : {}),
+      ...(hasDates && startDate ? { startDate } : {}),
+      ...(hasDates && endDate ? { endDate } : {}),
     };
     updatePricelist(pricelist.id, { rules: [...pricelist.rules, rule] });
     toast.success("Rule added");
+
+    // reset
+    setValue("");
+    setMinQty("");
+    setFreeQty("");
   };
 
   const removeRule = (id: string) =>
     updatePricelist(pricelist.id, { rules: pricelist.rules.filter((r) => r.id !== id) });
 
-  return (
-    <>
-      <DataCard className="space-y-3 p-4">
-        <p className="text-sm font-medium">Add a rule</p>
+  const inputClass =
+    "h-10 rounded-lg border-border bg-muted/50 px-3 text-sm focus:bg-background transition-colors inline-block text-center font-medium shadow-sm";
 
-        <div className="space-y-2">
-          <Label htmlFor="rule-scope">Applies to</Label>
+  return (
+    <div className="space-y-6 mt-6">
+      <div className="bg-primary/5 border border-primary/20 p-6 rounded-2xl">
+        <div className="flex items-center gap-2 mb-4">
+          <Tag className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-primary text-base">Create a New Rule</h3>
+        </div>
+
+        {/* Mad Libs Sentence Builder */}
+        <div className="text-base md:text-lg leading-[3rem] text-foreground flex flex-wrap items-center gap-x-2 gap-y-3 font-medium">
+          <span>When a customer buys</span>
+
           <select
-            id="rule-scope"
             value={scopeKind}
             onChange={(e) => {
               setScopeKind(e.target.value as RuleScopeKind);
               setScopeId("");
             }}
-            className={selectClass}
+            className={cn(inputClass, "w-48 cursor-pointer")}
           >
-            <option value="store">Whole store</option>
-            <option value="category">A category</option>
-            <option value="product">A single product</option>
+            <option value="store">Anything in the store</option>
+            <option value="category">From a category</option>
+            <option value="product">A specific product</option>
           </select>
-        </div>
 
-        {scopeKind === "category" && (
-          <div className="space-y-2">
-            <Label htmlFor="rule-category">Category</Label>
+          {scopeKind === "category" && (
             <select
-              id="rule-category"
               value={scopeId}
               onChange={(e) => setScopeId(e.target.value)}
-              className={selectClass}
+              className={cn(inputClass, "w-48 cursor-pointer")}
             >
-              <option value="">Select category</option>
+              <option value="">Select category...</option>
               {categoryList.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
             </select>
-          </div>
-        )}
+          )}
 
-        {scopeKind === "product" && (
-          <div className="space-y-2">
-            <Label htmlFor="rule-product">Product</Label>
+          {scopeKind === "product" && (
             <select
-              id="rule-product"
               value={scopeId}
               onChange={(e) => setScopeId(e.target.value)}
-              className={selectClass}
+              className={cn(inputClass, "w-64 cursor-pointer")}
             >
-              <option value="">Select product</option>
+              <option value="">Select product...</option>
               {productList.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
               ))}
             </select>
-          </div>
-        )}
+          )}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="rule-type">Rule type</Label>
-            <select
-              id="rule-type"
-              value={type}
-              onChange={(e) => setType(e.target.value as PricelistRule["type"])}
-              className={selectClass}
-            >
-              <option value="percentage">Percentage discount</option>
-              <option value="fixed">Fixed price</option>
-              <option value="buy-x-get-y">Buy X get Y free</option>
-            </select>
-          </div>
+          <span>,</span>
 
-          {type === "buy-x-get-y" ? (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-2">
-                <Label htmlFor="rule-buy">Buy</Label>
-                <Input
-                  id="rule-buy"
-                  type="number"
-                  min={1}
-                  value={minQty}
-                  onChange={(e) => setMinQty(e.target.value)}
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="rule-free">Get free</Label>
-                <Input
-                  id="rule-free"
-                  type="number"
-                  min={1}
-                  value={freeQty}
-                  onChange={(e) => setFreeQty(e.target.value)}
-                  className="h-11"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label htmlFor="rule-value">
-                {type === "fixed" ? "Fixed price" : "Discount %"}
-              </Label>
+          {/* Conditional Quantity */}
+          {type !== "buy-x-get-y" && (
+            <>
+              <select
+                value={minQty ? "min" : "any"}
+                onChange={(e) => setMinQty(e.target.value === "min" ? "2" : "")}
+                className={cn(inputClass, "w-32 cursor-pointer")}
+              >
+                <option value="any">Any amount</option>
+                <option value="min">At least</option>
+              </select>
+              {minQty && (
+                <>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={minQty}
+                    onChange={(e) => setMinQty(e.target.value)}
+                    className={cn(inputClass, "w-20")}
+                  />
+                  <span>items,</span>
+                </>
+              )}
+            </>
+          )}
+
+          <span>we will apply</span>
+
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as PricelistRule["type"])}
+            className={cn(
+              inputClass,
+              "w-48 cursor-pointer text-primary bg-primary/10 border-primary/20",
+            )}
+          >
+            <option value="percentage">a % discount</option>
+            <option value="fixed">a fixed price</option>
+            <option value="buy-x-get-y">a Buy X Get Y Free</option>
+          </select>
+
+          {type === "percentage" && (
+            <>
+              <span>of</span>
               <Input
-                id="rule-value"
                 type="number"
-                inputMode="decimal"
+                min="1"
+                max="100"
+                placeholder="%"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                className="h-11"
+                className={cn(
+                  inputClass,
+                  "w-24 text-primary font-bold bg-primary/10 border-primary/20",
+                )}
               />
-            </div>
+            </>
           )}
-        </div>
 
-        <button
-          type="button"
-          onClick={() => setAdvanced((v) => !v)}
-          className="flex items-center gap-1 text-sm font-medium text-muted-foreground"
-        >
-          <ChevronDown className={cn("h-4 w-4 transition-transform", advanced && "rotate-180")} />
-          Advanced conditions
-        </button>
-
-        {advanced && (
-          <div className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="rule-min">Min quantity</Label>
+          {type === "fixed" && (
+            <>
+              <span>of</span>
               <Input
-                id="rule-min"
                 type="number"
-                min={1}
+                min="1"
+                placeholder="Rs."
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                className={cn(
+                  inputClass,
+                  "w-32 text-primary font-bold bg-primary/10 border-primary/20",
+                )}
+              />
+              <span>Rs.</span>
+            </>
+          )}
+
+          {type === "buy-x-get-y" && (
+            <>
+              <span>deal: Buy</span>
+              <Input
+                type="number"
+                min="1"
                 value={minQty}
                 onChange={(e) => setMinQty(e.target.value)}
-                className="h-11"
+                className={cn(inputClass, "w-20")}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rule-start">Starts</Label>
+              <span>get</span>
               <Input
-                id="rule-start"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="h-11"
+                type="number"
+                min="1"
+                value={freeQty}
+                onChange={(e) => setFreeQty(e.target.value)}
+                className={cn(
+                  inputClass,
+                  "w-20 text-primary font-bold bg-primary/10 border-primary/20",
+                )}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rule-end">Ends</Label>
-              <Input
-                id="rule-end"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="h-11"
-              />
-            </div>
-          </div>
-        )}
+              <span>free!</span>
+            </>
+          )}
 
-        <Button className="h-11 w-full" onClick={addRule}>
-          <Plus className="h-4 w-4" /> Add rule
-        </Button>
-      </DataCard>
+          <div className="w-full h-px bg-border/50 my-2" />
 
-      <DataCard>
-        <p className="border-b border-border px-4 py-2 text-sm font-medium">
-          Rules ({pricelist.rules.length})
-        </p>
-        {pricelist.rules.map((rule) => (
-          <div
-            key={rule.id}
-            className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 text-sm last:border-0"
-          >
-            <span className="min-w-0">
-              <span className="block truncate font-medium">{rule.scope}</span>
-              <span className="block text-xs text-muted-foreground">
-                {describeRule(rule)}
-                {rule.minQty && rule.type !== "buy-x-get-y" ? ` · min qty ${rule.minQty}` : ""}
-                {rule.startDate ? ` · from ${rule.startDate}` : ""}
-                {rule.endDate ? ` · until ${rule.endDate}` : ""}
-              </span>
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-destructive"
-              onClick={() => removeRule(rule.id)}
-              aria-label={`Remove rule ${rule.scope}`}
+          <div className="flex items-center gap-3 w-full">
+            <button
+              type="button"
+              onClick={() => setHasDates(!hasDates)}
+              className={cn(
+                "flex items-center gap-2 text-sm px-3 py-1.5 rounded-full transition-colors",
+                hasDates
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80",
+              )}
             >
-              <Trash2 className="h-4 w-4" />
+              <Calendar className="w-4 h-4" />
+              {hasDates ? "Active during specific dates" : "Active forever"}
+            </button>
+
+            {hasDates && (
+              <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                <span className="text-sm">From</span>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className={cn(inputClass, "w-40")}
+                />
+                <span className="text-sm">until</span>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className={cn(inputClass, "w-40")}
+                />
+              </div>
+            )}
+
+            <Button onClick={addRule} className="ml-auto rounded-full px-6 shadow-sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Rule
             </Button>
           </div>
-        ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {pricelist.rules.length === 0 && (
-          <p className="p-6 text-center text-sm text-muted-foreground">No rules yet.</p>
+          <div className="col-span-full py-12 text-center text-muted-foreground bg-muted/20 border border-dashed border-border rounded-xl">
+            <Tag className="w-8 h-8 mx-auto mb-3 opacity-20" />
+            <p>No rules defined yet.</p>
+            <p className="text-sm mt-1">Use the builder above to create your first pricing rule.</p>
+          </div>
         )}
-      </DataCard>
-    </>
+
+        {pricelist.rules.map((rule) => (
+          <DataCard
+            key={rule.id}
+            className="p-5 flex flex-col justify-between border border-border/60 shadow-sm hover:shadow transition-shadow"
+          >
+            <div>
+              <div className="flex items-start justify-between mb-3">
+                <div className="bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">
+                  {rule.type === "percentage"
+                    ? "% Discount"
+                    : rule.type === "fixed"
+                      ? "Fixed Price"
+                      : "BOGO Deal"}
+                </div>
+                <button
+                  onClick={() => removeRule(rule.id)}
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 p-1.5 rounded-md transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              <h4 className="text-xl font-bold text-foreground mb-1">{describeRule(rule)}</h4>
+              <p className="text-sm font-medium text-muted-foreground">
+                On <span className="text-foreground">{rule.scope}</span>
+              </p>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-border/50 space-y-1.5 text-xs text-muted-foreground">
+              {rule.minQty && rule.type !== "buy-x-get-y" && (
+                <div className="flex justify-between">
+                  <span className="opacity-70">Min Qty:</span>{" "}
+                  <span className="font-medium text-foreground">{rule.minQty}</span>
+                </div>
+              )}
+              {rule.startDate && (
+                <div className="flex justify-between">
+                  <span className="opacity-70">Starts:</span>{" "}
+                  <span className="font-medium text-foreground">{rule.startDate}</span>
+                </div>
+              )}
+              {rule.endDate && (
+                <div className="flex justify-between">
+                  <span className="opacity-70">Ends:</span>{" "}
+                  <span className="font-medium text-foreground">{rule.endDate}</span>
+                </div>
+              )}
+              {!rule.startDate && !rule.endDate && (
+                <div className="flex justify-between">
+                  <span className="opacity-70">Duration:</span>{" "}
+                  <span className="font-medium text-success">Forever</span>
+                </div>
+              )}
+            </div>
+          </DataCard>
+        ))}
+      </div>
+    </div>
   );
 }

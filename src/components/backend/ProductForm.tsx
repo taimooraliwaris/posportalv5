@@ -106,11 +106,11 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
     // Save product
     addProductToCatalog({
       item_code: itemCode || null,
-      name_en: nameEn,
+      name: nameEn,
       name_ur: nameUr || null,
       brand: resolvedBrand || null,
       cost_price: Number(costPrice || 0),
-      sale_price: Number(salePrice || 0),
+      price: Number(salePrice || 0),
       stock_qty: Number(stockQty || 0),
       ctn_qty: Number(ctnQty || 0),
       foc_threshold: null,
@@ -125,10 +125,11 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
         tread: isTyre ? tyreTreadMatch?.[1] : undefined,
         valve: isTube ? tubeValveMatch?.[1] : undefined,
       },
+      category: cat.slug,
       category_id: cat.id,
       vehicle_model_id: null,
       is_active: true,
-    } as unknown as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    } as any);
 
     toast.success("Product saved successfully");
     if (onSaved) onSaved();

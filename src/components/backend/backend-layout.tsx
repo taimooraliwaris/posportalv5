@@ -81,7 +81,7 @@ export function BackendLayout({
           </span>
           <span className="truncate font-semibold">{store.brand}</span>
         </div>
-        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto custom-scrollbar p-2">
           {navItems.map((item) => {
             const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
 
