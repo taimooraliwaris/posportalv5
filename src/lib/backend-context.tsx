@@ -295,7 +295,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
         },
         ...list,
       ]);
-      write.mutate(() => supabase.from("stock_items").upsert(fromStockItem(next)));
+      // stock items replaced by products
       write.mutate(() =>
         supabase.from("stock_adjustments").insert({
           product_id: productId,
@@ -312,11 +312,11 @@ export function BackendProvider({ children }: { children: ReactNode }) {
       patchCache<StockItem>(cloudKeys.stock, stock, (list) =>
         list.map((s) => (s.productId === productId ? next : s)),
       );
-      write.mutate(() => supabase.from("stock_items").upsert(fromStockItem(next)));
+      // stock items replaced by products
     },
     addStockItem: (item) => {
       patchCache<StockItem>(cloudKeys.stock, stock, (list) => [item, ...list]);
-      write.mutate(() => supabase.from("stock_items").upsert(fromStockItem(item)));
+      // stock items replaced by products
     },
     adjustments,
 
@@ -369,7 +369,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
           po.lines.some((l) => l.productId === item.productId),
         );
         if (touched.length)
-          write.mutate(() => supabase.from("stock_items").upsert(touched.map(fromStockItem)));
+          // stock items replaced by products
       }
     },
 
