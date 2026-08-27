@@ -40,7 +40,9 @@ export function PasscodeGate({ children }: { children: ReactNode }) {
       if (!/^[0-9]$/.test(key)) return;
       setCode((current) => {
         const next = (current + key).slice(0, 6);
-        if (next.length === 6) submit(next);
+        if (next.length === 6) {
+          setTimeout(() => submit(next), 0);
+        }
         return next;
       });
     },
