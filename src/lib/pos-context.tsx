@@ -537,7 +537,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
         ...(prev ?? []),
       ]);
       write.mutate(() =>
-        supabase.from("customers").insert({
+        supabase.from("customers").upsert({
           id: created.id,
           name: created.name,
           email: created.email,
@@ -556,7 +556,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
         ...(prev ?? productList),
       ]);
       write.mutate(() =>
-        supabase.from("products").insert({
+        supabase.from("products").upsert({
           id: created.id,
           name: created.name,
           price: created.price,
