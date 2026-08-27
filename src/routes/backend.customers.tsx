@@ -2,29 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BackendLayout } from "@/components/backend/backend-layout";
-import { DataCard, DetailDrawer, Field } from "@/components/backend/backend-ui";
+import { DataCard, DetailDrawer } from "@/components/backend/backend-ui";
 import { DataTable, type Column } from "@/components/backend/data-table";
 import { CreatePartnerModal } from "@/components/pos/CustomerModals";
 import { usePos } from "@/lib/pos-context";
 import { formatRs, type Customer } from "@/lib/pos-data";
-import { useScanTarget } from "@/lib/scan-mode-context";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { Plus, User, Phone, Mail, MapPin, Building, Briefcase, CreditCard, History, Calculator } from "lucide-react";
 
 export const Route = createFileRoute("/backend/customers")({
-  head: () => ({
-    meta: [
-      { title: "Customers — Velora back office" },
-      { name: "description", content: "Customer records, order history and account ledgers." },
-      { property: "og:title", content: "Customers — Velora back office" },
-      {
-        property: "og:description",
-        content: "Customer records, order history and account ledgers.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
   component: CustomersPage,
 });
 
@@ -33,81 +19,146 @@ function CustomersPage() {
   const [selected, setSelected] = useState<Customer | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  useScanTarget(
-    "customers",
-    ({ code }) => {
-      const q = code.trim().toLowerCase();
-      const matched = customers.find(
-        (c) =>
-          c.id.toLowerCase() === q ||
-          c.name.toLowerCase().includes(q) ||
-          c.email.toLowerCase().includes(q) ||
-          c.phone?.toLowerCase().includes(q),
-      );
-      if (matched) {
-        setSelected(matched);
-        toast.success(`Customer ${matched.name} found`);
-        return "info";
-      }
-      toast.info(`Scanned customer code: ${code}`);
-      return "info";
-    },
-    !createOpen,
-  );
-
-  const balanceFor = (index: number) => [0, -4200, 1500, -18750][index % 4] ?? 0;
-
+  // Mock ledger balance based on string length to remain deterministic
+  const balanceFor = (name: string) => [0, -4200, 1500, -18750][name.length % 4] ?? 0;
 
   return (
-    <BackendLayout
-      title="Customers"
-      actions={
-        <Button className="h-11" onClick={() => setCreateOpen(true)}>
-          New customer
+    <BackendLayout title="Customers">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h2 className="text-[15px] font-medium text-foreground">Customer Directory</h2>
+          <p className="text-[11px] text-muted-foreground">Manage client relationships, ledgers, and order histories</p>
+        </div>
+        <Button className="h-9 px-4 text-xs gap-2 rounded-full shadow-sm" onClick={() => setCreateOpen(true)}>
+          <Plus className="w-3.5 h-3.5" />
+          Add Customer
         </Button>
-      }
-    >
-      <DataTable
-        columns={customerColumns(
-          (id) => orders.filter((o) => o.customerId === id),
-          balanceFor,
-        )}
-        rows={customers}
-        getKey={(c) => c.id}
-        onRowClick={setSelected}
-        empty="No customers yet."
-      />
+      </div>
+
+      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+        <DataTable
+          columns={customerColumns(
+            (id) => orders.filter((o) => o.customerId === id),
+            balanceFor,
+          )}
+          rows={customers}
+          getKey={(c) => c.id}
+          onRowClick={setSelected}
+          empty="No customers found."
+        />
+      </div>
 
       <DetailDrawer
         open={!!selected}
-        onOpenChange={() => setSelected(null)}
+        onOpenChange={(isOpen) => !isOpen && setSelected(null)}
         title={selected?.name ?? ""}
-        description="Contact details, orders and account ledger."
       >
-        <DataCard className="space-y-2 p-4">
-          <Field label="Email" value={selected?.email ?? "—"} />
-          <Field label="Phone" value={selected?.phone ?? "—"} />
-          <Field label="Location" value={selected?.location ?? "—"} />
-          <Field label="Company" value={selected?.company ?? "—"} />
-        </DataCard>
-        <DataCard className="p-4">
-          <p className="mb-2 text-sm font-medium">Account ledger</p>
-          {[
-            { date: "01/08/2026", description: "Opening balance", amount: 0 },
-            { date: "09/08/2026", description: "Invoice RCP/1000", amount: -12500 },
-            { date: "14/08/2026", description: "Cash received", amount: 8000 },
-          ].map((row) => (
-            <div
-              key={row.date}
-              className="flex justify-between border-b border-border py-2 text-sm last:border-0"
-            >
-              <span className="text-muted-foreground">
-                {row.date} · {row.description}
-              </span>
-              <span>{formatRs(row.amount)}</span>
+        {selected && (
+          <div className="space-y-6 mt-4 pb-12">
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-muted/40 p-4 rounded-xl border border-border">
+                <div className="text-muted-foreground text-xs mb-1 flex items-center gap-1.5"><History className="w-3.5 h-3.5" /> Total Orders</div>
+                <div className="font-semibold text-lg">{orders.filter(o => o.customerId === selected.id).length}</div>
+              </div>
+              <div className="bg-primary/5 p-4 rounded-xl border border-primary/20">
+                <div className="text-primary/70 text-xs mb-1 flex items-center gap-1.5"><Calculator className="w-3.5 h-3.5" /> Lifetime Value</div>
+                <div className="font-mono font-bold text-lg text-primary">
+                  {formatRs(
+                    orders.filter(o => o.customerId === selected.id).reduce((sum, o) => sum + o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0), 0)
+                  )}
+                </div>
+              </div>
             </div>
-          ))}
-        </DataCard>
+
+            {/* Contact Info */}
+            <DataCard className="p-0 overflow-hidden shadow-sm">
+              <div className="bg-muted/40 px-4 py-2 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5" />
+                Contact Info
+              </div>
+              <div className="divide-y divide-border">
+                <div className="flex items-center gap-3 p-3">
+                  <Mail className="w-4 h-4 text-muted-foreground/70" />
+                  <div className="flex-1 text-sm">{selected.email || <span className="text-muted-foreground italic">No email provided</span>}</div>
+                </div>
+                <div className="flex items-center gap-3 p-3">
+                  <Phone className="w-4 h-4 text-muted-foreground/70" />
+                  <div className="flex-1 text-sm">{selected.phone || <span className="text-muted-foreground italic">No phone provided</span>}</div>
+                </div>
+                <div className="flex items-center gap-3 p-3">
+                  <MapPin className="w-4 h-4 text-muted-foreground/70" />
+                  <div className="flex-1 text-sm">{selected.location || <span className="text-muted-foreground italic">No location provided</span>}</div>
+                </div>
+                {selected.company && (
+                  <div className="flex items-center gap-3 p-3 bg-muted/20">
+                    <Building className="w-4 h-4 text-muted-foreground/70" />
+                    <div className="flex-1 text-sm font-medium">{selected.company}</div>
+                  </div>
+                )}
+              </div>
+            </DataCard>
+
+            {/* Ledger */}
+            <DataCard className="p-0 overflow-hidden shadow-sm">
+              <div className="bg-muted/40 px-4 py-2 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider flex justify-between items-center">
+                <div className="flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5" />
+                  Account Ledger
+                </div>
+                <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", balanceFor(selected.name) < 0 ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success")}>
+                  {balanceFor(selected.name) < 0 ? "OWES BALANCE" : "CLEAR"}
+                </span>
+              </div>
+              <div className="divide-y divide-border">
+                {[
+                  { date: "01/08/2026", description: "Opening balance", amount: 0 },
+                  { date: "09/08/2026", description: "Invoice RCP/1000", amount: -12500 },
+                  { date: "14/08/2026", description: "Cash received", amount: 8000 },
+                ].map((row, i) => (
+                  <div key={i} className="flex justify-between items-center p-3 text-sm hover:bg-muted/30 transition-colors">
+                    <div>
+                      <div className="font-medium">{row.description}</div>
+                      <div className="text-xs text-muted-foreground">{row.date}</div>
+                    </div>
+                    <div className={cn("font-mono font-medium", row.amount < 0 ? "text-destructive" : row.amount > 0 ? "text-success" : "text-muted-foreground")}>
+                      {row.amount > 0 ? "+" : ""}{formatRs(row.amount)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </DataCard>
+
+            {/* Recent Orders Timeline */}
+            <DataCard className="p-0 overflow-hidden shadow-sm">
+              <div className="bg-muted/40 px-4 py-2 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5" />
+                Recent Orders
+              </div>
+              <div className="p-4">
+                {orders.filter(o => o.customerId === selected.id).length > 0 ? (
+                  <div className="space-y-4">
+                    {orders.filter(o => o.customerId === selected.id).slice(0, 5).map(o => (
+                      <div key={o.id} className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium text-sm">Order #{o.number}</div>
+                          <div className="text-xs text-muted-foreground">Processed {o.date ? new Date(o.date).toLocaleDateString() : o.time}</div>
+                        </div>
+                        <div className="font-mono text-sm font-semibold">
+                          {formatRs(o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-sm text-muted-foreground">
+                    No orders placed yet.
+                  </div>
+                )}
+              </div>
+            </DataCard>
+          </div>
+        )}
       </DetailDrawer>
 
       <CreatePartnerModal
@@ -121,33 +172,42 @@ function CustomersPage() {
 
 function customerColumns(
   ordersFor: (customerId: string) => { lines: { qty: number; unitPrice: number }[] }[],
-  balanceFor: (index: number) => number,
+  balanceFor: (name: string) => number,
 ): Column<Customer>[] {
   return [
-    { header: "Name", width: "2fr", cell: (c) => <span className="font-medium">{c.name}</span> },
-    {
-      header: "Phone",
-      cell: (c) => <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>,
+    { 
+      header: "Contact Info", 
+      width: "3fr", 
+      cell: (c) => (
+        <div className="flex flex-col">
+          <span className="font-semibold text-sm text-foreground">{c.name}</span>
+          {(c.phone || c.email) && (
+            <span className="text-xs text-muted-foreground mt-0.5">{c.phone || c.email}</span>
+          )}
+        </div>
+      ) 
     },
-    { header: "Orders", align: "right", cell: (c) => ordersFor(c.id).length },
+    { 
+      header: "Total Orders", 
+      align: "right", 
+      cell: (c) => <span className="text-sm font-medium">{ordersFor(c.id).length}</span> 
+    },
     {
-      header: "Lifetime spend",
+      header: "Lifetime Value",
       align: "right",
-      cell: (c) =>
-        formatRs(
-          ordersFor(c.id).reduce(
-            (sum, o) => sum + o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0),
-            0,
-          ),
-        ),
+      cell: (c) => (
+        <span className="font-mono text-sm">
+          {formatRs(ordersFor(c.id).reduce((sum, o) => sum + o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0), 0))}
+        </span>
+      ),
     },
     {
-      header: "Account balance",
+      header: "Outstanding Balance",
       align: "right",
       cell: (c) => {
-        const balance = balanceFor(Number(c.id.replace(/\D/g, "")) || c.name.length);
+        const balance = balanceFor(c.name);
         return (
-          <span className={cn("font-medium", balance < 0 ? "text-destructive" : "text-success")}>
+          <span className={cn("font-mono font-medium text-sm px-2 py-1 rounded-md bg-muted/30", balance < 0 ? "text-destructive" : "text-success")}>
             {formatRs(Math.abs(balance))}
           </span>
         );

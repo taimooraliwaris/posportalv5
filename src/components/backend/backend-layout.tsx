@@ -116,16 +116,24 @@ export function BackendLayout({
                       (productsOpen && active) ? "max-h-[500px] mt-1 pb-1 opacity-100 space-y-1" : "max-h-0 opacity-0"
                     )}
                   >
-                    {categoryList.map((cat) => (
-                      <Link
-                        key={cat.slug}
-                        to="/backend/products"
-                        search={{ category: cat.slug }}
-                        className="px-2 py-1.5 text-[13px] rounded hover:bg-muted text-muted-foreground flex items-center"
-                      >
-                        {cat.name}
-                      </Link>
-                    ))}
+                    <Link
+                      to="/backend/products/spare-parts"
+                      className="px-2 py-1.5 text-[13px] rounded hover:bg-muted text-muted-foreground flex items-center [&.active]:bg-muted [&.active]:text-foreground [&.active]:font-medium"
+                    >
+                      Spare Parts
+                    </Link>
+                    <Link
+                      to="/backend/products/tyres"
+                      className="px-2 py-1.5 text-[13px] rounded hover:bg-muted text-muted-foreground flex items-center [&.active]:bg-muted [&.active]:text-foreground [&.active]:font-medium"
+                    >
+                      Tyres
+                    </Link>
+                    <Link
+                      to="/backend/products/tubes"
+                      className="px-2 py-1.5 text-[13px] rounded hover:bg-muted text-muted-foreground flex items-center [&.active]:bg-muted [&.active]:text-foreground [&.active]:font-medium"
+                    >
+                      Tubes
+                    </Link>
                   </div>
                 </div>
               );

@@ -235,23 +235,23 @@ export function PricelistRuleBuilder({ pricelist }: { pricelist: PricelistDetail
 
           <div className="w-full h-px bg-border/50 my-2" />
 
-          <div className="flex items-center gap-3 w-full">
+          <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 w-full">
             <button
               type="button"
               onClick={() => setHasDates(!hasDates)}
               className={cn(
-                "flex items-center gap-2 text-sm px-3 py-1.5 rounded-full transition-colors",
+                "flex items-center gap-2 text-sm px-3 py-1.5 rounded-full transition-colors whitespace-nowrap",
                 hasDates
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80",
               )}
             >
-              <Calendar className="w-4 h-4" />
+              <Calendar className="w-4 h-4 shrink-0" />
               {hasDates ? "Active during specific dates" : "Active forever"}
             </button>
 
             {hasDates && (
-              <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+              <div className="flex flex-wrap items-center gap-2 animate-in fade-in zoom-in duration-200">
                 <span className="text-sm">From</span>
                 <Input
                   type="date"
@@ -269,7 +269,7 @@ export function PricelistRuleBuilder({ pricelist }: { pricelist: PricelistDetail
               </div>
             )}
 
-            <Button onClick={addRule} className="ml-auto rounded-full px-6 shadow-sm">
+            <Button onClick={addRule} className="sm:ml-auto w-full sm:w-auto rounded-full px-6 shadow-sm mt-2 sm:mt-0">
               <Plus className="w-4 h-4 mr-2" />
               Add Rule
             </Button>
