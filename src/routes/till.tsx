@@ -5,11 +5,10 @@ import { Button } from "@/components/ui/button";
 import { PosHeader } from "@/components/pos/PosHeader";
 import { ProductTile } from "@/components/pos/ProductTile";
 import { Keypad } from "@/components/pos/Keypad";
-import { ScannerOverlay } from "@/components/pos/ScannerOverlay";
 import { ChooseCustomerModal } from "@/components/pos/CustomerModals";
 import { CustomerNoteModal, OrderActionsModal } from "@/components/pos/OrderActionModals";
 import { usePos, orderTotals, type CartLine } from "@/lib/pos-context";
-import { useScanTarget } from "@/lib/scan-mode-context";
+import { useScanMode, useScanTarget } from "@/lib/scan-mode-context";
 import { applyNumericKey, useNumericKeyboard } from "@/lib/use-numeric-entry";
 import {
   formatRs,
@@ -57,9 +56,9 @@ function Till() {
     categoryList,
     loading,
   } = usePos();
+  const { cameraOpen, openCamera } = useScanMode();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
@@ -97,7 +96,7 @@ function Till() {
       toast.error(`No product matches barcode ${code}`);
       return "unknown";
     },
-    !scanning && !editing,
+    !cameraOpen && !editing,
   );
 
   const applyValue = (raw: string) => {
@@ -176,7 +175,7 @@ function Till() {
         tab="register"
         search={search}
         onSearch={setSearch}
-        onScan={() => setScanning(true)}
+        onScan={() => openCamera("batch")}
       />
       <main className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden lg:flex-row">
         <section className="flex min-h-0 flex-col border-r border-border bg-card lg:w-[26rem] lg:shrink-0 xl:w-[30rem]">
@@ -220,13 +219,14 @@ function Till() {
                     type="button"
                     aria-label="Clear customer"
                     onClick={() => {
-                      if (activeOrder) updateOrder(activeOrder.id, { customerId: undefined });
+                      if (activeOrder) updateOrder(activeOrder.id, { customerId: "" });
                       toast.success("Customer cleared");
                     }}
                     className="grid w-11 place-items-center border-l border-border bg-card text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <X className="h-4 w-4" />  {/* add X to lucide import */}
+                    <X className="h-4 w-4" />
                   </button>
+
                 )}
               </div>
               <button
@@ -354,7 +354,6 @@ function Till() {
         </section>
       </main>
 
-      {scanning && <ScannerOverlay onClose={() => setScanning(false)} />}
       <ChooseCustomerModal
         open={customerOpen}
         onOpenChange={setCustomerOpen}
@@ -363,7 +362,7 @@ function Till() {
           toast.success(`${c.name} assigned`);
         }}
         onClear={() => {
-          if (activeOrder) updateOrder(activeOrder.id, { customerId: undefined });
+          if (activeOrder) updateOrder(activeOrder.id, { customerId: "" });
           toast.success("Customer cleared");
         }}
       />

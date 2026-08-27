@@ -35,7 +35,9 @@ const outcomeTone: Record<ScanOutcome, (() => void) | null> = {
 };
 
 class ScannerRouter {
-  private handlers = new Map<ScanMode, ScanHandler>();
+  /** Stack per mode: the last registered handler (e.g. an open dialog) wins,
+   * and removing it restores the screen underneath. */
+  private handlers = new Map<ScanMode, ScanHandler[]>();
   private mode: ScanMode = "till";
   private listeners = new Set<(mode: ScanMode) => void>();
 
@@ -56,9 +58,15 @@ class ScannerRouter {
   }
 
   register(mode: ScanMode, handler: ScanHandler): () => void {
-    this.handlers.set(mode, handler);
+    const stack = this.handlers.get(mode) ?? [];
+    stack.push(handler);
+    this.handlers.set(mode, stack);
     return () => {
-      if (this.handlers.get(mode) === handler) this.handlers.delete(mode);
+      const current = this.handlers.get(mode);
+      if (!current) return;
+      const next = current.filter((h) => h !== handler);
+      if (next.length) this.handlers.set(mode, next);
+      else this.handlers.delete(mode);
     };
   }
 
@@ -67,11 +75,13 @@ class ScannerRouter {
     const trimmed = code.trim();
     if (!trimmed) return "ignored";
 
-    const handler = this.handlers.get(this.mode);
+    const stack = this.handlers.get(this.mode);
+    const handler = stack?.[stack.length - 1];
     if (!handler) {
       beep.error();
       return "rejected";
     }
+
 
     const outcome = (await handler({ code: trimmed, source })) ?? "ignored";
     outcomeTone[outcome]?.();
