@@ -37,8 +37,16 @@ class AudioService {
       window.AudioContext ??
       (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
-    if (!this.context) this.context = new Ctor();
-    if (this.context.state === "suspended") void this.context.resume();
+    if (!this.context) {
+      try {
+        this.context = new Ctor();
+      } catch {
+        return null;
+      }
+    }
+    if (this.context.state === "suspended") {
+      this.context.resume().catch(() => {});
+    }
     return this.context;
   }
 

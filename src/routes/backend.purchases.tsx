@@ -9,6 +9,7 @@ import { AddSupplierModal } from "@/components/backend/SupplierModal";
 import { useBackend } from "@/lib/backend-context";
 import { formatDate, type PurchaseOrder, type Supplier } from "@/lib/backend-data";
 import { usePos } from "@/lib/pos-context";
+import { formatRs } from "@/lib/pos-data";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
 

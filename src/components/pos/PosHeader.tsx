@@ -53,7 +53,7 @@ export function PosHeader({
   const [cashOpen, setCashOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
 
-  const openTabs = orders.filter((o) => o.status !== "paid" && o.status !== "cancelled");
+  const openTabs = orders.filter((o) => o.status === "ongoing" || o.status === "payment");
 
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-border bg-card px-3 py-2">
