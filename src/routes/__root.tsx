@@ -134,8 +134,8 @@ function RootComponent() {
               <ScanModeProvider>
                 <AuthGate>
                   <Outlet />
-                  <ScanLayer />
                 </AuthGate>
+                  <ScanLayer />
                 <Toaster />
               </ScanModeProvider>
             </PosProvider>
