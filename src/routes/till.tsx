@@ -364,7 +364,7 @@ function Till() {
           toast.success(`${c.name} assigned`);
         }}
         onClear={() => {
-          if (activeOrder) updateOrder(activeOrder.id, { customerId: undefined });
+          if (activeOrder) updateOrder(activeOrder.id, { customerId: "" });
           toast.success("Customer cleared");
         }}
       />
