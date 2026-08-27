@@ -1,14 +1,19 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { usePos } from "@/lib/pos-context";
 import { cn } from "@/lib/utils";
-import { Check, MapPin, Tag } from "lucide-react";
+import { ArrowLeft, Circle, Droplet, Wrench } from "lucide-react";
 
 export function ProductForm({ onSaved }: { onSaved?: () => void }) {
-  const { addProductToCatalog } = usePos();
-  
+  const { addProductToCatalog, productList, categoryList } = usePos();
+
+  const [step, setStep] = useState<1 | 2>(1);
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState<
+    "spare_parts" | "tyres" | "tubes" | "misc"
+  >("spare_parts");
+
   const [itemCode, setItemCode] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [nameUr, setNameUr] = useState("");
@@ -16,214 +21,327 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
   const [salePrice, setSalePrice] = useState("");
   const [stockQty, setStockQty] = useState("");
   const [ctnQty, setCtnQty] = useState("");
-  
+
+  // Custom manual overrides for auto-parsing
+  const [manualBrand, setManualBrand] = useState("");
+  const [manualSize, setManualSize] = useState("");
+  const [manualModel, setManualModel] = useState("");
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus on step 2
+  useEffect(() => {
+    if (step === 2) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [step]);
+
+  // Handle barcode Enter key prevention
+  const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      // Move focus to next input if possible
+      const form = e.currentTarget.form;
+      if (form) {
+        const index = Array.prototype.indexOf.call(form, e.currentTarget);
+        (form.elements[index + 1] as HTMLElement)?.focus();
+      }
+    }
+  };
+
+  // Derive unique lists for datalists
+  const allBrands = Array.from(
+    new Set(productList.map((p) => p.brand).filter(Boolean)),
+  ) as string[];
+  const allSizes = Array.from(
+    new Set(productList.map((p) => p.specs?.['size']).filter(Boolean)),
+  ) as string[];
+  const allModels = Array.from(
+    new Set(productList.map((p) => p.primary_model_code).filter(Boolean)),
+  ) as string[];
+
   // Spare parts rules
   const modelMatch = itemCode.match(/^(\d{2})-/);
   const familyMatch = nameEn.match(/^([A-Z]+)\b/);
   const positionMatch = nameEn.match(/\b(FRONT|REAR|CENTER|LEFT|RIGHT)\b/);
   const variantMatch = itemCode.match(/-([\w\d]+)$/);
-  
+
   // Tyre rules
   const tyreBrandMatch = nameEn.match(/^([A-Z][A-Z .]+?)\s+\d/);
   const tyreSizeMatch = nameEn.match(/(\d+\.\d+[-/]\d+)/);
   const tyrePlyMatch = nameEn.match(/(\d+PR)/);
   const tyreTreadMatch = nameEn.match(/\(\s*([^)]+)\s*\)/);
-  
+
   // Tube rules
   const tubeValveMatch = nameEn.match(/(TR-\d+)/);
+  const tubeBrandMatch = nameEn.match(/([A-Z][A-Z]+)$/);
 
-  const isSparePart = itemCode.length > 0;
-  const isTyre = nameEn.includes("PR") || nameEn.includes("-17") || nameEn.includes("-18");
-  const isTube = nameEn.includes("TR-");
+  const isSparePart = selectedCategorySlug === "spare_parts";
+  const isTyre = selectedCategorySlug === "tyres";
+  const isTube = selectedCategorySlug === "tubes";
 
-  const modelCode = modelMatch ? (modelMatch[1] === "18" ? "CD70-CDI" : modelMatch[1] === "07" ? "CG125" : "Unknown") : null;
-  const family = familyMatch ? familyMatch[1] : null;
-  const position = positionMatch ? positionMatch[1].toLowerCase() : null;
-  const variant = variantMatch ? `Variant ${variantMatch[1]}` : null;
-
-  const brand = isTyre ? tyreBrandMatch?.[1] : isTube ? nameEn.split(" ").pop() : null;
-  const size = tyreSizeMatch?.[1];
-  const ply = tyrePlyMatch?.[1];
-  const tread = tyreTreadMatch?.[1];
-  const valve = tubeValveMatch?.[1];
+  // Resolved values (manual overrides auto-parsed)
+  const resolvedBrand =
+    manualBrand || (isTyre ? tyreBrandMatch?.[1] : isTube ? tubeBrandMatch?.[1] : undefined);
+  const resolvedSize =
+    manualSize || (isTyre ? tyreSizeMatch?.[1] : isTube ? tyreSizeMatch?.[1] : undefined);
+  // We use the full model code in the DB. The prefix `18` maps to `CD70-CDI` in backend logic, but here we just pass the prefix for now, or the manual selection.
+  const resolvedModel = manualModel || modelMatch?.[1];
 
   const handleSave = () => {
     if (!nameEn) {
       toast.error("Name is required");
       return;
     }
-    
+
+    // Resolve category ID securely
+    const cat = categoryList.find((c) => c.slug === selectedCategorySlug);
+    if (!cat) {
+      toast.error("Invalid category");
+      return;
+    }
+
     // Save product
     addProductToCatalog({
-      item_code: itemCode,
-      name: nameEn,
-      name_ur: nameUr,
-      brand: brand || null,
+      item_code: itemCode || null,
+      name_en: nameEn,
+      name_ur: nameUr || null,
+      brand: resolvedBrand || null,
       cost_price: Number(costPrice || 0),
-      price: Number(salePrice || 0),
+      sale_price: Number(salePrice || 0),
       stock_qty: Number(stockQty || 0),
       ctn_qty: Number(ctnQty || 0),
       foc_threshold: null,
       foc_qty: null,
       qrc_runs: 1,
       specs: {
-        family,
-        position,
-        variant,
-        size,
-        ply,
-        tread,
-        valve
+        family: isSparePart ? familyMatch?.[1] : undefined,
+        position: isSparePart ? positionMatch?.[1] : undefined,
+        variant: isSparePart ? variantMatch?.[1] : undefined,
+        size: resolvedSize,
+        ply: isTyre ? tyrePlyMatch?.[1] : undefined,
+        tread: isTyre ? tyreTreadMatch?.[1] : undefined,
+        valve: isTube ? tubeValveMatch?.[1] : undefined,
       },
-      category: isSparePart ? "spare_parts" : isTyre ? "tyres" : isTube ? "tubes" : "misc",
-      category_id: isSparePart ? "spare_parts" : isTyre ? "tyres" : isTube ? "tubes" : "misc",
+      category_id: cat.id,
       vehicle_model_id: null,
       is_active: true,
-      barcode: itemCode,
-    } as any);
+    } as unknown as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
     toast.success("Product saved successfully");
     if (onSaved) onSaved();
   };
 
+  if (step === 1) {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-muted-foreground mb-4">Select product category</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div
+            onClick={() => {
+              setSelectedCategorySlug("spare_parts");
+              setStep(2);
+            }}
+            className="flex flex-col items-center justify-center p-6 bg-card border-2 border-border rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+          >
+            <Wrench className="w-8 h-8 text-primary mb-3" />
+            <span className="font-semibold text-sm">Spare Parts</span>
+          </div>
+          <div
+            onClick={() => {
+              setSelectedCategorySlug("tyres");
+              setStep(2);
+            }}
+            className="flex flex-col items-center justify-center p-6 bg-card border-2 border-border rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+          >
+            <Circle className="w-8 h-8 text-primary mb-3" />
+            <span className="font-semibold text-sm">Tyres</span>
+          </div>
+          <div
+            onClick={() => {
+              setSelectedCategorySlug("tubes");
+              setStep(2);
+            }}
+            className="flex flex-col items-center justify-center p-6 bg-card border-2 border-border rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+          >
+            <Droplet className="w-8 h-8 text-primary mb-3" />
+            <span className="font-semibold text-sm">Tubes</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {/* Spare Part Panel */}
-      <div className="p-4 bg-secondary/20 border border-border rounded-xl">
-        <h3 className="text-[11px] font-medium text-muted-foreground tracking-wider uppercase mb-4">Spare part — item code path</h3>
-        
-        <label className="text-[11px] text-muted-foreground block mb-1">Item code <span className="text-destructive">*</span></label>
-        <Input value={itemCode} onChange={e => setItemCode(e.target.value)} className={cn("mb-2 font-mono h-9", itemCode && "border-primary")} />
-        
-        {modelCode && (
-          <div className="flex items-center gap-2 p-1.5 px-2.5 rounded bg-success/20 border border-success/30 mt-1">
-            <Check className="w-3.5 h-3.5 text-success" />
-            <span className="text-[11px] text-success flex-1">Model detected</span>
-            <span className="text-xs font-mono text-success font-medium">{modelCode}</span>
-          </div>
-        )}
-        {variant && (
-          <div className="flex items-center gap-2 p-1.5 px-2.5 rounded bg-success/20 border border-success/30 mt-1">
-            <Check className="w-3.5 h-3.5 text-success" />
-            <span className="text-[11px] text-success flex-1">Variant</span>
-            <span className="text-xs font-mono text-success font-medium">{variant}</span>
-          </div>
-        )}
+    <div className="space-y-4">
+      {/* Datalists for comboboxes */}
+      <datalist id="brands-list">
+        {allBrands.map((b) => (
+          <option key={b} value={b} />
+        ))}
+      </datalist>
+      <datalist id="sizes-list">
+        {allSizes.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+      <datalist id="models-list">
+        {allModels.map((m) => (
+          <option key={m} value={m} />
+        ))}
+      </datalist>
 
-        <div className="h-px bg-border my-4" />
-
-        <label className="text-[11px] text-muted-foreground block mb-1">Name (English) <span className="text-destructive">*</span></label>
-        <Input value={nameEn} onChange={e => setNameEn(e.target.value)} className="mb-2 h-9 uppercase" />
-        
-        {position && (
-          <div className="flex items-center gap-2 p-1.5 px-2.5 rounded bg-primary/20 border border-primary/30 mt-1">
-            <MapPin className="w-3.5 h-3.5 text-primary" />
-            <span className="text-[11px] text-primary flex-1">Position detected</span>
-            <span className="text-xs font-mono text-primary font-medium">{position}</span>
-          </div>
-        )}
-        {family && (
-          <div className="flex items-center gap-2 p-1.5 px-2.5 rounded bg-primary/20 border border-primary/30 mt-1">
-            <Tag className="w-3.5 h-3.5 text-primary" />
-            <span className="text-[11px] text-primary flex-1">Family</span>
-            <span className="text-xs font-mono text-primary font-medium">{family}</span>
-          </div>
-        )}
-
-        {nameEn && (
-          <>
-            <div className="h-px bg-border my-4" />
-            <div className="text-[10px] text-muted-foreground font-medium tracking-wider mb-2">APPEARS AFTER NAME FILLS</div>
-            <label className="text-[11px] text-muted-foreground block mb-1">Name (Urdu)</label>
-            <Input value={nameUr} onChange={e => setNameUr(e.target.value)} dir="rtl" className="mb-2 h-9 text-right font-urdu text-sm" />
-
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              <div>
-                <label className="text-[11px] text-muted-foreground block mb-1">Cost (PKR) *</label>
-                <Input value={costPrice} onChange={e => setCostPrice(e.target.value)} className="h-9" />
-              </div>
-              <div>
-                <label className="text-[11px] text-muted-foreground block mb-1">Sale (PKR)</label>
-                <Input value={salePrice} onChange={e => setSalePrice(e.target.value)} className="h-9" />
-              </div>
-              <div>
-                <label className="text-[11px] text-muted-foreground block mb-1">Stock qty</label>
-                <Input value={stockQty} onChange={e => setStockQty(e.target.value)} className="h-9" />
-              </div>
-              <div>
-                <label className="text-[11px] text-muted-foreground block mb-1">CTN qty</label>
-                <Input value={ctnQty} onChange={e => setCtnQty(e.target.value)} className="h-9 text-muted-foreground" />
-              </div>
-            </div>
-
-            <Button onClick={handleSave} className="w-full mt-4 h-10">Save product</Button>
-          </>
-        )}
+      <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setStep(1)}>
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <span className="font-medium text-sm capitalize">
+          {selectedCategorySlug.replace("_", " ")} Details
+        </span>
       </div>
 
-      {/* Tyre Panel */}
-      <div className="p-4 bg-secondary/20 border border-border rounded-xl">
-        <h3 className="text-[11px] font-medium text-muted-foreground tracking-wider uppercase mb-4">Tyre / Tube parsing</h3>
-        
-        <label className="text-[11px] text-muted-foreground block mb-1">Product name <span className="text-destructive">*</span></label>
-        <Input value={nameEn} onChange={e => setNameEn(e.target.value)} className="mb-2 h-9 uppercase" />
+      <form className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Core details column */}
+        <div className="space-y-3">
+          <div>
+            <label className="text-[11px] text-muted-foreground block mb-1">
+              Barcode / Item code <span className="text-destructive">*</span>
+            </label>
+            <Input
+              ref={inputRef}
+              value={itemCode}
+              onChange={(e) => setItemCode(e.target.value)}
+              onKeyDown={handleBarcodeKeyDown}
+              className={cn("font-mono h-9", itemCode && "border-primary")}
+              placeholder="Scan or type..."
+            />
+          </div>
 
-        {brand && (
-          <div className="flex items-center gap-2 p-1.5 px-2.5 rounded bg-success/20 border border-success/30 mt-1">
-            <Check className="w-3.5 h-3.5 text-success" />
-            <span className="text-[11px] text-success flex-1">Brand</span>
-            <span className="text-xs font-mono text-success font-medium">{brand}</span>
+          <div>
+            <label className="text-[11px] text-muted-foreground block mb-1">
+              Name (English) <span className="text-destructive">*</span>
+            </label>
+            <Input
+              value={nameEn}
+              onChange={(e) => setNameEn(e.target.value)}
+              className={cn("h-9", nameEn && "border-primary")}
+              placeholder="e.g. SERVIS 2.50-17 6PR ( CHEETA )"
+            />
           </div>
-        )}
-        {size && (
-          <div className="flex items-center gap-2 p-1.5 px-2.5 rounded bg-success/20 border border-success/30 mt-1">
-            <Check className="w-3.5 h-3.5 text-success" />
-            <span className="text-[11px] text-success flex-1">Size</span>
-            <span className="text-xs font-mono text-success font-medium">{size}</span>
+
+          <div>
+            <label className="text-[11px] text-muted-foreground block mb-1">
+              Name (Urdu) <span className="text-xs text-muted-foreground/50">(Optional)</span>
+            </label>
+            <Input
+              value={nameUr}
+              onChange={(e) => setNameUr(e.target.value)}
+              className="font-urdu text-right h-9"
+              dir="rtl"
+              placeholder="اردو نام..."
+            />
           </div>
-        )}
-        {ply && (
-          <div className="flex items-center gap-2 p-1.5 px-2.5 rounded bg-success/20 border border-success/30 mt-1">
-            <Check className="w-3.5 h-3.5 text-success" />
-            <span className="text-[11px] text-success flex-1">Ply rating</span>
-            <span className="text-xs font-mono text-success font-medium">{ply}</span>
-          </div>
-        )}
-        {tread && (
-          <div className="flex items-center gap-2 p-1.5 px-2.5 rounded bg-success/20 border border-success/30 mt-1">
-            <Check className="w-3.5 h-3.5 text-success" />
-            <span className="text-[11px] text-success flex-1">Tread pattern</span>
-            <span className="text-xs font-mono text-success font-medium">{tread}</span>
-          </div>
-        )}
-        {valve && (
-          <div className="flex items-center gap-2 p-1.5 px-2.5 rounded bg-primary/20 border border-primary/30 mt-1">
-            <Check className="w-3.5 h-3.5 text-primary" />
-            <span className="text-[11px] text-primary flex-1">Valve type</span>
-            <span className="text-xs font-mono text-primary font-medium">{valve}</span>
-          </div>
-        )}
-        
-        {(brand || size) && (
-          <>
-            <div className="h-px bg-border my-4" />
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              <div>
-                <label className="text-[11px] text-muted-foreground block mb-1">Cost (PKR) *</label>
-                <Input value={costPrice} onChange={e => setCostPrice(e.target.value)} className="h-9" />
-              </div>
-              <div>
-                <label className="text-[11px] text-muted-foreground block mb-1">Sale (PKR)</label>
-                <Input value={salePrice} onChange={e => setSalePrice(e.target.value)} className="h-9" />
-              </div>
-              <div>
-                <label className="text-[11px] text-muted-foreground block mb-1">Stock qty</label>
-                <Input value={stockQty} onChange={e => setStockQty(e.target.value)} className="h-9" />
-              </div>
+        </div>
+
+        {/* Dynamic Fields & Pricing column */}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] text-muted-foreground block mb-1">Brand</label>
+              <Input
+                list="brands-list"
+                value={resolvedBrand || ""}
+                onChange={(e) => setManualBrand(e.target.value)}
+                className="h-9"
+                placeholder="Auto-detected or type..."
+              />
             </div>
-            <Button onClick={handleSave} className="w-full mt-4 h-10">Save product</Button>
-          </>
-        )}
+            {isTyre || isTube ? (
+              <div>
+                <label className="text-[11px] text-muted-foreground block mb-1">Size</label>
+                <Input
+                  list="sizes-list"
+                  value={resolvedSize || ""}
+                  onChange={(e) => setManualSize(e.target.value)}
+                  className="h-9 font-mono"
+                  placeholder="e.g. 2.50-17"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="text-[11px] text-muted-foreground block mb-1">
+                  Vehicle Model
+                </label>
+                <Input
+                  list="models-list"
+                  value={resolvedModel || ""}
+                  onChange={(e) => setManualModel(e.target.value)}
+                  className="h-9 font-mono"
+                  placeholder="e.g. CD70-CDI"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] text-muted-foreground block mb-1">
+                Cost Price (Rs)
+              </label>
+              <Input
+                type="number"
+                value={costPrice}
+                onChange={(e) => setCostPrice(e.target.value)}
+                className="h-9"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-muted-foreground block mb-1">
+                Sale Price (Rs) <span className="text-destructive">*</span>
+              </label>
+              <Input
+                type="number"
+                value={salePrice}
+                onChange={(e) => setSalePrice(e.target.value)}
+                className="h-9 bg-primary/5"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] text-muted-foreground block mb-1">Stock Qty</label>
+              <Input
+                type="number"
+                value={stockQty}
+                onChange={(e) => setStockQty(e.target.value)}
+                className="h-9"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-muted-foreground block mb-1">
+                Ctn Qty (Optional)
+              </label>
+              <Input
+                type="number"
+                value={ctnQty}
+                onChange={(e) => setCtnQty(e.target.value)}
+                className="h-9"
+              />
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div className="flex justify-end gap-2 pt-4 border-t border-border mt-4">
+        <Button variant="outline" onClick={() => setStep(1)}>
+          Cancel
+        </Button>
+        <Button onClick={handleSave} disabled={!nameEn}>
+          Save Product
+        </Button>
       </div>
     </div>
   );
