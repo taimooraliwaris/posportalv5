@@ -30,6 +30,7 @@ import {
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth-context";
 import { useBackend, useStore } from "@/lib/backend-context";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -191,7 +192,9 @@ export function BackendLayout({
             </Button>
           </div>
         </header>
-        <main className="min-w-0 flex-1 p-4">{children}</main>
+        <main className="min-w-0 flex-1 p-4">
+          <ErrorBoundary name="backend_content">{children}</ErrorBoundary>
+        </main>
       </div>
     </div>
   );

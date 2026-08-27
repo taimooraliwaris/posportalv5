@@ -9,7 +9,7 @@ import { AddSupplierModal } from "@/components/backend/SupplierModal";
 import { useBackend } from "@/lib/backend-context";
 import { formatDate, type PurchaseOrder, type Supplier } from "@/lib/backend-data";
 import { usePos } from "@/lib/pos-context";
-import { formatRs } from "@/lib/pos-data";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/backend/purchases")({
@@ -37,6 +37,29 @@ function PurchasesPage() {
   const { productList } = usePos();
   const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? "");
   const [supplierOpen, setSupplierOpen] = useState(false);
+
+  // Scan product barcode to quickly create draft purchase order
+  useScanTarget("purchases", ({ code }) => {
+    const product = productList.find((p) => p.barcode === code || p.id === code);
+    if (product) {
+      addPurchaseOrder({
+        supplierId: supplierId || suppliers[0]?.id || "",
+        date: new Date().toISOString().slice(0, 10),
+        status: "draft",
+        lines: [
+          {
+            productId: product.id,
+            qty: 10,
+            cost: Math.round(product.price * 0.6 * 100) / 100,
+          },
+        ],
+      });
+      toast.success(`Draft PO created for ${product.name} (scanned ${code})`);
+      return "added";
+    }
+    toast.error(`No product found for barcode ${code}`);
+    return "unknown";
+  });
 
   const totalFor = (lines: { qty: number; cost: number }[]) =>
     lines.reduce((sum, l) => sum + l.qty * l.cost, 0);

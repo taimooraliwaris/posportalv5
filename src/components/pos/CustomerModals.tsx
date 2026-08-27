@@ -2,9 +2,10 @@ import { useState } from "react";
 import { ChevronDown, Mail, Search, Send, UserPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { usePos } from "@/lib/pos-context";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import type { Customer } from "@/lib/pos-data";
+import { toast } from "sonner";
 
 export function ChooseCustomerModal({
     open,
@@ -20,6 +21,30 @@ export function ChooseCustomerModal({
   const { customers } = usePos();
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+
+  useScanTarget(
+    "customers",
+    ({ code }) => {
+      const q = code.trim().toLowerCase();
+      const matched = customers.find(
+        (c) =>
+          c.id.toLowerCase() === q ||
+          c.name.toLowerCase().includes(q) ||
+          c.email.toLowerCase().includes(q) ||
+          c.phone?.toLowerCase().includes(q),
+      );
+      if (matched) {
+        onSelect(matched);
+        onOpenChange(false);
+        toast.success(`Customer ${matched.name} selected via scan`);
+        return "added";
+      }
+      setQuery(code);
+      toast.info(`Scanned customer code: ${code}`);
+      return "info";
+    },
+    open && !createOpen,
+  );
 
   const filtered = customers.filter((c) =>
     `${c.name} ${c.email} ${c.location ?? ""}`.toLowerCase().includes(query.toLowerCase()),

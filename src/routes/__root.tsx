@@ -19,6 +19,7 @@ import { ScanModeProvider } from "@/lib/scan-mode-context";
 import { ScanLayer } from "@/components/pos/ScanLayer";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 function NotFoundComponent() {
   return (
@@ -133,9 +134,13 @@ function RootComponent() {
             <PosProvider>
               <ScanModeProvider>
                 <AuthGate>
-                  <Outlet />
+                  <ErrorBoundary name="app_root_outlet">
+                    <Outlet />
+                  </ErrorBoundary>
                 </AuthGate>
+                <ErrorBoundary name="scan_layer">
                   <ScanLayer />
+                </ErrorBoundary>
                 <Toaster />
               </ScanModeProvider>
             </PosProvider>

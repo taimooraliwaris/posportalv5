@@ -35,7 +35,7 @@ const statusFilters = [
 ] as const;
 
 function Orders() {
-  const { orders, deleteOrder } = usePos();
+  const { orders, deleteOrder, taxes: taxRates, productList, categoryList } = usePos();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("All");
   const [selected, setSelected] = useState<Order | null>(null);
@@ -103,7 +103,11 @@ function Orders() {
             <span>Status</span>
           </div>
           {filtered.map((o) => {
-            const { total } = orderTotals(o);
+            const { total } = orderTotals(o, 0, {
+              taxes: taxRates,
+              products: productList,
+              categories: categoryList,
+            });
             return (
               <div
                 key={o.id}
@@ -172,7 +176,17 @@ function Orders() {
             </div>
             <div className="flex justify-between text-base font-semibold">
               <span>Total</span>
-              <span>{selected ? formatRs(orderTotals(selected).total) : "Rs. 0.00"}</span>
+              <span>
+                {selected
+                  ? formatRs(
+                      orderTotals(selected, 0, {
+                        taxes: taxRates,
+                        products: productList,
+                        categories: categoryList,
+                      }).total,
+                    )
+                  : "Rs. 0.00"}
+              </span>
             </div>
           </div>
         </DialogContent>

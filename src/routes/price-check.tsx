@@ -4,10 +4,10 @@ import { ArrowLeft, Barcode, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductIcon } from "@/components/pos/ProductTile";
-import { usePos } from "@/lib/pos-context";
+import { usePos, resolveProductTaxRate } from "@/lib/pos-context";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
-import { TAX_RATE, formatRs, categories, toneClass, type Product } from "@/lib/pos-data";
+import { formatRs, toneClass, type Product } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/price-check")({
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/price-check")({
 });
 
 function PriceCheck() {
-  const { productList } = usePos();
+  const { productList, categoryList, taxes: taxRates } = usePos();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
 
@@ -56,9 +56,13 @@ function PriceCheck() {
   });
 
   const categoryName = selected
-    ? (categories.find((c) => c.id === selected.category)?.name ?? "Uncategorised")
+    ? (categoryList.find((c) => c.id === selected.category)?.name ?? "Uncategorised")
     : "";
-  const taxes = selected ? selected.price * TAX_RATE : 0;
+
+  const resolvedTax = selected
+    ? resolveProductTaxRate(selected, taxRates, productList, categoryList)
+    : { rate: 0.18, percentage: 18, taxName: "GST 18%", taxId: "default" };
+  const taxes = selected ? selected.price * resolvedTax.rate : 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

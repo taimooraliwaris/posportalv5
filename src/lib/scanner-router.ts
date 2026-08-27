@@ -16,7 +16,15 @@ export type ScanMode =
   /** Mode C — refund/replace, including receipt barcodes. */
   | "return"
   /** Mode D — fill the barcode/SKU field of the item being edited. */
-  | "inventory";
+  | "inventory"
+  /** Mode E — fill product barcode in create/edit modal. */
+  | "product-dialog"
+  /** Mode F — add product to purchase order by scanning barcode. */
+  | "purchases"
+  /** Mode G — search or assign customer by member card / barcode. */
+  | "customers"
+  /** Mode H — scan voucher / loyalty card / receipt at payment. */
+  | "payment";
 
 export type ScanOutcome = "added" | "info" | "unknown" | "rejected" | "ignored";
 
