@@ -175,10 +175,7 @@ function Orders() {
               <span>
                 {selected
                   ? formatRs(
-                      orderTotals(selected, 0, {
-                        products: productList,
-                        categories: categoryList,
-                      }).total,
+                      orderTotals(selected, 0).total,
                     )
                   : "Rs. 0.00"}
               </span>

@@ -52,7 +52,7 @@ type Stage = "search" | "lines" | "refund" | "exchange" | "done";
 function ReturnExchange() {
   const { currentUser } = useAuth();
   const store = useStore();
-  const { orders, productList, categoryList, taxes: taxRates, processReturn } = usePos();
+  const { orders, productList, categoryList, processReturn } = usePos();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [order, setOrder] = useState<Order | null>(null);
@@ -97,7 +97,7 @@ function ReturnExchange() {
       discount: 0,
     })),
     0,
-    { taxes: taxRates, products: productList, categories: categoryList },
+    { products: productList, categories: categoryList },
   );
   const refundNet = refundTotals.subtotal;
   const refundTaxes = refundTotals.taxes;
@@ -120,7 +120,7 @@ function ReturnExchange() {
       discount: 0,
     })),
     0,
-    { taxes: taxRates, products: productList, categories: categoryList },
+    { products: productList, categories: categoryList },
   );
   const replacementTotal = replacementTotals.total;
   const difference = replacementTotal - refundTotal;

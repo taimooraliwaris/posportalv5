@@ -134,17 +134,9 @@ function makeOrder(number: string, cashierName = ""): Order {
   };
 }
 
-export function orderTotals(
-  order: Order | undefined,
-  discountRate = 0,
-  options?: {
-    taxes?: TaxRate[];
-    products?: Product[];
-    categories?: Category[];
-  },
-) {
+export function orderTotals(order: Order | undefined, discountRate = 0) {
   const lines = order?.lines ?? [];
-  return calculateOrderTotals(lines, discountRate, options);
+  return calculateOrderTotals(lines, discountRate);
 }
 
 type PosState = {

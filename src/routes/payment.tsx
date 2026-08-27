@@ -37,7 +37,6 @@ function Payment() {
     lastPaidOrder,
     productList,
     categoryList,
-    taxes: taxRates,
     customers,
     updateOrder,
   } = usePos();
@@ -48,11 +47,7 @@ function Payment() {
   const [method, setMethod] = useState<PaymentLine["method"]>("Cash");
 
   const pricelist = pricelists.find((p) => p.id === activeOrder?.pricelistId) ?? pricelists[0]!;
-  const { total, taxes, subtotal } = orderTotals(activeOrder, pricelist.discount, {
-    taxes: taxRates,
-    products: productList,
-    categories: categoryList,
-  });
+  const { total, subtotal } = orderTotals(activeOrder, pricelist.discount);
 
   // Scan customer card or account barcode at payment
   useScanTarget(
@@ -302,7 +297,6 @@ function PaymentMethodButton({
 function SuccessScreen({
   order,
   change,
-  taxes: taxRates,
   productList,
   categoryList,
   onPrint,
@@ -318,11 +312,7 @@ function SuccessScreen({
   onSend: () => void;
   onContinue: () => void;
 }) {
-  const { total } = orderTotals(order ?? undefined, 0, {
-    taxes: taxRates,
-    products: productList,
-    categories: categoryList,
-  });
+  const { total } = orderTotals(order ?? undefined, 0);
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6">
       <div className="mx-auto grid h-24 w-24 animate-pop-in place-items-center rounded-full bg-success text-success-foreground">
