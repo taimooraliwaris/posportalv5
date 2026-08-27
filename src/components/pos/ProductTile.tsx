@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as Icons from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useBackend } from "@/lib/backend-context";

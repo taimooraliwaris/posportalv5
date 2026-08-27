@@ -368,8 +368,9 @@ export function BackendProvider({ children }: { children: ReactNode }) {
         const touched = received.filter((item) =>
           po.lines.some((l) => l.productId === item.productId),
         );
-        if (touched.length)
+        if (touched.length) {
           // stock items replaced by products
+        }
       }
     },
 

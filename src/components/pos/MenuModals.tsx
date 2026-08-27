@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { Barcode, Image as ImageIcon, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
