@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { usePos, resolveProductTaxRate } from "@/lib/pos-context";
+import { usePos } from "@/lib/pos-context";
 import { useBackend } from "@/lib/backend-context";
 import { formatRs, type CategoryId } from "@/lib/pos-data";
 import { useScanMode, useScanTarget } from "@/lib/scan-mode-context";
@@ -104,7 +104,7 @@ export function NewProductModal({
   onOpenChange: (o: boolean) => void;
   presetBarcode?: string;
 }) {
-  const { addProductToCatalog, categoryList, addCategory, taxes: taxRates } = usePos();
+  const { addProductToCatalog, categoryList, addCategory } = usePos();
   const { openCamera } = useScanMode();
   const { addStockItem, storeSettings } = useBackend();
   const [name, setName] = useState("");
@@ -113,17 +113,10 @@ export function NewProductModal({
   const [barcode, setBarcode] = useState(presetBarcode ?? "");
   const [track, setTrack] = useState(true);
   const [price, setPrice] = useState("1.00");
-  const [taxOn, setTaxOn] = useState(true);
   const [category, setCategory] = useState<CategoryId>("misc");
   const [tone, setTone] = useState<(typeof swatches)[number]>("pink");
 
-  const resolvedTax = resolveProductTaxRate(
-    { name, categoryId: category },
-    taxRates,
-    undefined,
-    categoryList,
-  );
-  const incl = Number(price || 0) * (taxOn ? 1 + resolvedTax.rate : 1);
+  const incl = Number(price || 0);
 
   useScanTarget(
     "product-dialog",
@@ -187,21 +180,6 @@ export function NewProductModal({
                 inputMode="decimal"
                 className="h-11"
               />
-            </Field>
-            <Field label="Sales Taxes">
-              <div className="flex h-11 items-center gap-3">
-                {taxOn && (
-                  <span className="flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-sm text-accent-foreground">
-                    {resolvedTax.taxName}
-                    <button type="button" onClick={() => setTaxOn(false)}>
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                )}
-                <span className="text-sm text-muted-foreground">
-                  (= {formatRs(incl)} Incl. Taxes)
-                </span>
-              </div>
             </Field>
             <Field label="POS Category">
               <div className="flex flex-wrap items-center gap-2">

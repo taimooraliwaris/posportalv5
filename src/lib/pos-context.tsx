@@ -38,15 +38,11 @@ import {
 
 import {
   calculateOrderTotals,
-  resolveProductTaxRate,
   type CalculatedOrderTotals,
-  type TaxBreakdownItem,
 } from "./tax-resolver";
 export {
   calculateOrderTotals,
-  resolveProductTaxRate,
   type CalculatedOrderTotals,
-  type TaxBreakdownItem,
 };
 
 export type CartLine = {
