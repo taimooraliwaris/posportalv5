@@ -46,21 +46,14 @@ function OpenRegister() {
     void navigate({ to: "/till" });
   };
 
+  useEffect(() => {
+    if (registerOpen) {
+      void navigate({ to: "/till", replace: true });
+    }
+  }, [registerOpen, navigate]);
+
   if (registerOpen) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6">
-        <div className="mx-auto grid h-20 w-20 place-items-center rounded-2xl bg-primary text-4xl font-bold text-primary-foreground">
-          V
-        </div>
-        <h1 className="text-2xl font-semibold">Register is open</h1>
-        <p className="text-muted-foreground">Opening cash: Rs. {openingCash.toFixed(2)}</p>
-        <Button asChild className="h-12 px-8">
-          <Link to="/till">
-            Go to till <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
-      </div>
-    );
+    return null; // The effect above will redirect
   }
 
   return (

@@ -100,7 +100,7 @@ function ReturnExchange() {
     { products: productList, categories: categoryList },
   );
   const refundNet = refundTotals.subtotal;
-  const refundTaxes = refundTotals.taxes;
+
   const refundTotal = refundTotals.total;
 
   const replacementLines: ReturnLine[] = Object.entries(replacements)

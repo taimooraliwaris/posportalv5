@@ -2,12 +2,14 @@ import { useEffect, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
 import { useHydrated } from "@/lib/use-hydrated";
+import { useBackend } from "@/lib/backend-context";
 
 const publicPaths = ["/auth", "/reset-password"];
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const hydrated = useHydrated();
   const { currentUser, authLoading } = useAuth();
+  const { loading: backendLoading } = useBackend();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isPublic = publicPaths.includes(pathname);
@@ -34,8 +36,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
     }
   }, [hydrated, authLoading, currentUser, pathname, isPublic, isBackend, navigate]);
 
-  if (!hydrated || authLoading) return <div className="min-h-screen bg-background" />;
-  if (!currentUser && !isPublic) return <div className="min-h-screen bg-background" />;
+  if (!hydrated || authLoading || (currentUser && backendLoading)) {
+    return <div className="min-h-screen bg-background" />;
+  }
+  if (!currentUser && !isPublic) {
+    return <div className="min-h-screen bg-background" />;
+  }
 
   // Block render while redirecting a Cashier who landed on a backend page
   if (currentUser?.role === "Cashier" && isBackend) {
