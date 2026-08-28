@@ -21,7 +21,7 @@ import { DataCard, Field, StatCard } from "@/components/backend/backend-ui";
 import { useBackend, useStore } from "@/lib/backend-context";
 import { formatDate, toDateKey, type SessionRecord, type HistoricalSale } from "@/lib/backend-data";
 import { formatRs } from "@/lib/pos-data";
-import { usePos, resolveProductTaxRate, calculateOrderTotals } from "@/lib/pos-context";
+import { usePos, calculateOrderTotals } from "@/lib/pos-context";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
