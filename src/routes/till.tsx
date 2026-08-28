@@ -263,10 +263,6 @@ function Till() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-medium">{formatRs(subtotal)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Taxes</span>
-                <span className="font-medium">{formatRs(taxes)}</span>
-              </div>
               <div className="flex justify-between text-base font-semibold">
                 <span>Total</span>
                 <span>{formatRs(total)}</span>

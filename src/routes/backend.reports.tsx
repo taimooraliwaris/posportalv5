@@ -55,7 +55,7 @@ function ReportsPage() {
   const store = useStore();
   const hydrated = useHydrated();
   const { sessions, sales, stock } = useBackend();
-  const { productList, categoryList, taxes: taxRates } = usePos();
+  const { productList, categoryList } = usePos();
   const [activeTab, setActiveTab] = useState("pl");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedSessionIdId, setSelectedSessionId] = useState<string | null>(null);
@@ -78,8 +78,8 @@ function ReportsPage() {
 
   const costFor = (productId: string) => stock.find((s) => s.productId === productId)?.cost ?? 0;
 
-  const defaultTaxRate = (taxRates[0]?.percentage ?? 18) / 100;
-  const defaultTaxName = taxRates[0]?.name ?? "GST 18%";
+  const defaultTaxRate = 0;
+  const defaultTaxName = "";
 
   const revenue = sales.reduce((sum, s) => {
     const lineNet = s.lines.reduce((ls, l) => ls + l.qty * l.unitPrice, 0);
