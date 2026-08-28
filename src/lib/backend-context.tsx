@@ -413,7 +413,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     sessions,
     sales,
     lowStock: stock.filter((s) => s.active && s.onHand - s.reserved <= s.reorderPoint),
-    loading: stockQuery.isLoading || suppliersQuery.isLoading,
+    loading: stockQuery.isLoading || suppliersQuery.isLoading || settingsQuery.isLoading,
   };
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>;

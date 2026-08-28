@@ -3,13 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { usePos } from "@/lib/pos-context";
+import { useBackend } from "@/lib/backend-context";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Circle, Droplet, Wrench } from "lucide-react";
 
 export function ProductForm({ onSaved }: { onSaved?: () => void }) {
   const { addProductToCatalog, productList, categoryList } = usePos();
+  const { suppliers, updateSupplier } = useBackend();
 
   const [step, setStep] = useState<1 | 2>(1);
+  const [selectedSupplierId, setSelectedSupplierId] = useState("");
+
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<
     "spare_parts" | "tyres" | "tubes" | "misc"
   >("spare_parts");
@@ -106,7 +110,7 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
     }
 
     // Save product
-    addProductToCatalog({
+    const created = addProductToCatalog({
       item_code: itemCode || null,
       name: nameEn,
       name_ur: nameUr || null,
@@ -131,7 +135,15 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
       category_id: cat.id,
       vehicle_model_id: null,
       is_active: true,
+      barcode: itemCode || null, // ensure barcode maps too
     } as any);
+
+    if (selectedSupplierId) {
+      const supp = suppliers.find((s) => s.id === selectedSupplierId);
+      if (supp) {
+        updateSupplier(supp.id, { productIds: [...supp.productIds, created.id] });
+      }
+    }
 
     toast.success("Product saved successfully");
     if (onSaved) onSaved();
@@ -245,6 +257,24 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
               dir="rtl"
               placeholder="اردو نام..."
             />
+          </div>
+
+          <div>
+            <label className="text-[11px] text-muted-foreground block mb-1">
+              Supplier <span className="text-xs text-muted-foreground/50">(Optional)</span>
+            </label>
+            <select
+              value={selectedSupplierId}
+              onChange={(e) => setSelectedSupplierId(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">No supplier selected</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

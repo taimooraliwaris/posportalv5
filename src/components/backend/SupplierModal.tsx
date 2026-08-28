@@ -102,25 +102,6 @@ export function AddSupplierModal({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Supplied products</Label>
-            <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto rounded-md border border-border p-2">
-              {productList.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => toggleProduct(p.id)}
-                  className={cn(
-                    "rounded-full border border-border px-3 py-1.5 text-xs font-medium",
-                    productIds.includes(p.id) && "border-primary bg-accent text-accent-foreground",
-                  )}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">{productIds.length} selected</p>
-          </div>
 
           <Button className="h-11 w-full" onClick={save}>
             Save supplier

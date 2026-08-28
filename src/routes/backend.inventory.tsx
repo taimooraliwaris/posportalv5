@@ -11,9 +11,22 @@ import { toast } from "sonner";
 import { Search, Plus, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePersistentState } from "@/lib/use-persistent-state";
+
 export const Route = createFileRoute("/backend/inventory")({
   component: InventoryPage,
 });
+
+type LocalAdjustment = {
+  id: string;
+  productId: string;
+  from: number;
+  to: number;
+  reason: string;
+  date: string;
+  time: string;
+};
 
 function InventoryPage() {
   const { productList, updateProductInCatalog } = usePos();
@@ -21,6 +34,9 @@ function InventoryPage() {
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [adjustValue, setAdjustValue] = useState("");
   const [adjustReason, setAdjustReason] = useState("count");
+
+  // Keep track of adjustments in local storage since the DB table is missing
+  const [adjustmentLog, setAdjustmentLog] = usePersistentState<LocalAdjustment[]>("velora.adjustments", []);
 
   const visibleProducts = useMemo(() => {
     return productList
@@ -54,6 +70,19 @@ function InventoryPage() {
       return;
     }
 
+    const product = productList.find(p => p.id === adjustingId);
+    if (product) {
+      setAdjustmentLog(prev => [{
+        id: Math.random().toString(36).slice(2),
+        productId: product.id,
+        from: product.stock_qty,
+        to: qty,
+        reason: adjustReason,
+        date: new Date().toISOString().slice(0, 10),
+        time: new Date().toLocaleTimeString()
+      }, ...prev]);
+    }
+
     updateProductInCatalog(adjustingId, { stock_qty: qty });
     toast.success("Stock adjusted successfully");
     setAdjustingId(null);
@@ -65,12 +94,6 @@ function InventoryPage() {
         <div>
           <h2 className="text-[15px] font-medium text-foreground">Inventory Levels</h2>
           <p className="text-[11px] text-muted-foreground">Monitor and adjust stock quantities</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="default" className="h-9 px-4 text-xs gap-2">
-            <Plus className="w-3.5 h-3.5" />
-            Bulk Adjustment
-          </Button>
         </div>
       </div>
 
@@ -96,22 +119,29 @@ function InventoryPage() {
         </div>
       </div>
 
-      <div className="flex flex-col border border-border rounded-xl overflow-hidden bg-card">
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-          <div className="flex-1 bg-muted/50 border border-border rounded-md px-2 py-1.5 text-[11px] text-muted-foreground flex items-center gap-2">
-            <Search className="w-3.5 h-3.5" />
-            <input
-              type="text"
-              className="bg-transparent border-none outline-none flex-1 text-foreground placeholder:text-muted-foreground"
-              placeholder="Search by name, SKU, or اردو..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-        </div>
+      <Tabs defaultValue="stock">
+        <TabsList className="mb-4">
+          <TabsTrigger value="stock">Stock Levels</TabsTrigger>
+          <TabsTrigger value="ledger">Adjustment Ledger</TabsTrigger>
+        </TabsList>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <TabsContent value="stock">
+          <div className="flex flex-col border border-border rounded-xl overflow-hidden bg-card">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+              <div className="flex-1 bg-muted/50 border border-border rounded-md px-2 py-1.5 text-[11px] text-muted-foreground flex items-center gap-2">
+                <Search className="w-3.5 h-3.5" />
+                <input
+                  type="text"
+                  className="bg-transparent border-none outline-none flex-1 text-foreground placeholder:text-muted-foreground"
+                  placeholder="Search by name, SKU, or اردو..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/30">
                 <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -201,8 +231,65 @@ function InventoryPage() {
               )}
             </tbody>
           </table>
-        </div>
-      </div>
+          </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="ledger">
+          <div className="flex flex-col border border-border rounded-xl overflow-hidden bg-card">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-muted/10 text-[11px] text-muted-foreground uppercase tracking-wider border-b border-border">
+                    <th className="px-4 py-3 font-semibold">Date & Time</th>
+                    <th className="px-4 py-3 font-semibold">Product</th>
+                    <th className="px-4 py-3 font-semibold">Reason</th>
+                    <th className="px-4 py-3 font-semibold text-right">Previous</th>
+                    <th className="px-4 py-3 font-semibold text-right">Adjusted</th>
+                    <th className="px-4 py-3 font-semibold text-right">Diff</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {adjustmentLog.map((log) => {
+                    const diff = log.to - log.from;
+                    const p = productList.find(x => x.id === log.productId);
+                    return (
+                      <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {log.date} <span className="ml-1 opacity-70">{log.time}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-sm text-foreground">{p?.name || "Unknown Product"}</div>
+                          <div className="text-[11px] text-muted-foreground font-mono">{p?.item_code}</div>
+                        </td>
+                        <td className="px-4 py-3 text-xs capitalize">
+                          {log.reason}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-sm text-muted-foreground">{log.from}</td>
+                        <td className="px-4 py-3 text-right font-mono text-sm font-semibold">{log.to}</td>
+                        <td className="px-4 py-3 text-right font-mono text-sm">
+                          <span className={cn(
+                            diff > 0 ? "text-success" : diff < 0 ? "text-destructive" : "text-muted-foreground"
+                          )}>
+                            {diff > 0 ? "+" : ""}{diff}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {adjustmentLog.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                        No adjustments recorded yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={!!adjustingId} onOpenChange={(open) => !open && setAdjustingId(null)}>
         <DialogContent className="sm:max-w-[400px]">

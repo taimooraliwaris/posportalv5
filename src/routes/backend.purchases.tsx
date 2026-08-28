@@ -12,6 +12,7 @@ import { usePos } from "@/lib/pos-context";
 import { formatRs } from "@/lib/pos-data";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
+import { POBuilder } from "@/components/backend/POBuilder";
 
 export const Route = createFileRoute("/backend/purchases")({
   head: () => ({
@@ -34,36 +35,20 @@ export const Route = createFileRoute("/backend/purchases")({
 });
 
 function PurchasesPage() {
-  const { suppliers, purchaseOrders, setPurchaseOrderStatus, addPurchaseOrder } = useBackend();
-  const { productList } = usePos();
-  const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? "");
+  const { suppliers, purchaseOrders, setPurchaseOrderStatus } = useBackend();
   const [supplierOpen, setSupplierOpen] = useState(false);
-
-  // Scan product barcode to quickly create draft purchase order
-  useScanTarget("purchases", ({ code }) => {
-    const product = productList.find((p) => p.barcode === code || p.id === code);
-    if (product) {
-      addPurchaseOrder({
-        supplierId: supplierId || suppliers[0]?.id || "",
-        date: new Date().toISOString().slice(0, 10),
-        status: "draft",
-        lines: [
-          {
-            productId: product.id,
-            qty: 10,
-            cost: Math.round(product.price * 0.6 * 100) / 100,
-          },
-        ],
-      });
-      toast.success(`Draft PO created for ${product.name} (scanned ${code})`);
-      return "added";
-    }
-    toast.error(`No product found for barcode ${code}`);
-    return "unknown";
-  });
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   const totalFor = (lines: { qty: number; cost: number }[]) =>
     lines.reduce((sum, l) => sum + l.qty * l.cost, 0);
+
+  if (builderOpen) {
+    return (
+      <BackendLayout title="Purchases">
+        <POBuilder onBack={() => setBuilderOpen(false)} />
+      </BackendLayout>
+    );
+  }
 
   return (
     <BackendLayout title="Purchases">
@@ -75,30 +60,9 @@ function PurchasesPage() {
 
         <TabsContent value="orders">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <select
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-              aria-label="Supplier for new purchase order"
-              className="h-11 rounded-md border border-border bg-card px-3 text-sm"
-            >
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
             <Button
               className="h-11"
-              onClick={() => {
-                const product = productList[0]!;
-                addPurchaseOrder({
-                  supplierId,
-                  date: new Date().toISOString().slice(0, 10),
-                  status: "draft",
-                  lines: [{ productId: product.id, qty: 10, cost: product.price * 0.6 }],
-                });
-                toast.success("Draft purchase order created");
-              }}
+              onClick={() => setBuilderOpen(true)}
             >
               New purchase order
             </Button>

@@ -13,7 +13,8 @@ export function calculateOrderTotals(
 ): CalculatedOrderTotals {
   let gross = 0;
   for (const line of lines) {
-    gross += line.qty * line.unitPrice;
+    const lineDiscount = line.discount ? line.discount / 100 : 0;
+    gross += line.qty * line.unitPrice * (1 - lineDiscount);
   }
   
   const discountAmount = gross * orderDiscountRate;
