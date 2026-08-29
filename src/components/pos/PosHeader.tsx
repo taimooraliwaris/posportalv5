@@ -30,7 +30,9 @@ import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme";
 import { useBackend, useStore } from "@/lib/backend-context";
 import { cn } from "@/lib/utils";
-import { CashInOutModal, NewProductModal } from "./MenuModals";
+import { CashInOutModal } from "./MenuModals";
+import { ProductForm } from "@/components/backend/ProductForm";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export function PosHeader({
@@ -248,7 +250,12 @@ export function PosHeader({
       </div>
 
       <CashInOutModal open={cashOpen} onOpenChange={setCashOpen} />
-      <NewProductModal open={productOpen} onOpenChange={setProductOpen} />
+      
+      <Dialog open={productOpen} onOpenChange={setProductOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 border border-border">
+          <ProductForm onSaved={() => setProductOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }
