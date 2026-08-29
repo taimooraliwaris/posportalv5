@@ -111,7 +111,6 @@ function Payment() {
       <SuccessScreen
         order={lastPaidOrder}
         change={change}
-        taxes={taxRates}
         productList={productList}
         categoryList={categoryList}
         onPrint={() => setPrintOpen(true)}
@@ -305,7 +304,6 @@ function SuccessScreen({
 }: {
   order: ReturnType<typeof usePos>["lastPaidOrder"];
   change: number;
-  taxes?: ReturnType<typeof usePos>["taxes"];
   productList?: ReturnType<typeof usePos>["productList"];
   categoryList?: ReturnType<typeof usePos>["categoryList"];
   onPrint: () => void;
