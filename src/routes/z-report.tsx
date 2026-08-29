@@ -1,172 +1,323 @@
+// @ts-nocheck
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, FileText } from "lucide-react";
+import { useState, useMemo } from "react";
+import { ArrowLeft, FileText, Printer, CheckCircle2, AlertCircle, ShoppingBag, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePos } from "@/lib/pos-context";
 import { formatRs } from "@/lib/pos-data";
+import { useStore } from "@/lib/backend-context";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { printReport, escapeHtml } from "@/lib/print-report";
 
 export const Route = createFileRoute("/z-report")({
   head: () => ({
     meta: [
       { title: "Z Report — Velora POS" },
-      { name: "description", content: "Daily Z report and sales summary." },
+      { name: "description", content: "Official end-of-shift Z report and financial reconciliation summary." },
       { property: "og:title", content: "Z Report — Velora POS" },
-      { property: "og:description", content: "Daily Z report and sales summary." },
+      { property: "og:description", content: "Official end-of-shift Z report and financial reconciliation summary." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: ZReport,
+  component: ZReportPage,
 });
 
-function ZReport() {
-  const { closedSummary, orders } = usePos();
-  const [daily, setDaily] = useState(false);
+function ZReportPage() {
+  const { closedSummary, orders, cashMoves, openingCash } = usePos();
+  const { currentUser } = useAuth();
+  const store = useStore();
+  const [viewMode, setViewMode] = useState<"summary" | "orders">("summary");
 
-  const paidOrders = orders.filter((o) => o.status === "paid");
-  const totalSales = paidOrders.reduce(
-    (s, o) => s + o.lines.reduce((l, li) => l + li.qty * li.unitPrice, 0),
-    0,
-  );
-  const totalTax = paidOrders.reduce(
-    (s, o) => s + o.lines.reduce((l, li) => l + li.qty * li.unitPrice * 0.18, 0),
-    0,
-  );
-  const totalPayments = paidOrders.reduce(
-    (s, o) => s + o.payments.reduce((p, py) => p + py.amount, 0),
-    0,
-  );
-  const cashPayments = paidOrders
-    .flatMap((o) => o.payments)
-    .filter((p) => p.method === "Cash")
-    .reduce((s, p) => s + p.amount, 0);
-  const cardPayments = paidOrders
-    .flatMap((o) => o.payments)
-    .filter((p) => p.method === "Card")
-    .reduce((s, p) => s + p.amount, 0);
+  // Load last closed summary from storage if context was reset
+  const snapshot = useMemo(() => {
+    if (closedSummary) return closedSummary;
+    try {
+      const saved = localStorage.getItem("velora_last_z_report");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  }, [closedSummary]);
+
+  const paidOrders = useMemo(() => {
+    return orders.filter((o) => o.status === "paid" || o.status === "exchanged");
+  }, [orders]);
+
+  const totalSales = useMemo(() => {
+    return paidOrders.reduce(
+      (sum, o) => sum + o.lines.reduce((l, li) => l + li.qty * li.unitPrice, 0),
+      0,
+    );
+  }, [paidOrders]);
+
+  const cashPayments = useMemo(() => {
+    return paidOrders
+      .flatMap((o) => o.payments || [])
+      .filter((p) => p.method === "Cash")
+      .reduce((s, p) => s + p.amount, 0);
+  }, [paidOrders]);
+
+  const cardPayments = useMemo(() => {
+    return paidOrders
+      .flatMap((o) => o.payments || [])
+      .filter((p) => p.method === "Card")
+      .reduce((s, p) => s + p.amount, 0);
+  }, [paidOrders]);
+
+  const accountPayments = useMemo(() => {
+    return paidOrders
+      .flatMap((o) => o.payments || [])
+      .filter((p) => p.method === "Customer Account")
+      .reduce((s, p) => s + p.amount, 0);
+  }, [paidOrders]);
+
+  const cashIn = useMemo(() => {
+    return cashMoves.filter((m) => m.type === "in").reduce((s, m) => s + m.amount, 0);
+  }, [cashMoves]);
+
+  const cashOut = useMemo(() => {
+    return cashMoves.filter((m) => m.type === "out").reduce((s, m) => s + m.amount, 0);
+  }, [cashMoves]);
+
+  const expectedCash = openingCash + cashPayments + cashIn - cashOut;
+  const counted = snapshot?.counted ?? expectedCash;
+  const difference = counted - expectedCash;
+
+  const handlePrintZReport = () => {
+    const reportHtml = `
+      <div class="head">
+        <h1>${escapeHtml(store.name || "Velora POS")}</h1>
+        <div class="meta">${escapeHtml(store.tagline || "Retail & Wholesale Portal")}</div>
+        <h2>OFFICIAL Z-REPORT (DAILY SHIFT CLOSING)</h2>
+        <div class="meta">Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
+        <div class="meta">Cashier: ${escapeHtml(currentUser?.name ?? store.cashier)}</div>
+      </div>
+
+      <div style="margin: 16px 0; border-top: 1px dashed #000; padding-top: 8px;">
+        <div class="row strong"><span>REVENUE BREAKDOWN</span></div>
+        <div class="row"><span>Cash Sales:</span><span>${formatRs(cashPayments)}</span></div>
+        <div class="row"><span>Card Sales:</span><span>${formatRs(cardPayments)}</span></div>
+        <div class="row"><span>Customer Account:</span><span>${formatRs(accountPayments)}</span></div>
+        <div class="row strong" style="border-top: 1px solid #ccc; padding-top: 4px;">
+          <span>TOTAL GROSS SALES:</span>
+          <span>${formatRs(totalSales)}</span>
+        </div>
+      </div>
+
+      <div style="margin: 16px 0; border-top: 1px dashed #000; padding-top: 8px;">
+        <div class="row strong"><span>CASH DRAWER RECONCILIATION</span></div>
+        <div class="row"><span>Opening Float:</span><span>${formatRs(openingCash)}</span></div>
+        <div class="row"><span>Cash Sales (+):</span><span>+${formatRs(cashPayments)}</span></div>
+        <div class="row"><span>Cash Inflows (+):</span><span>+${formatRs(cashIn)}</span></div>
+        <div class="row"><span>Cash Outflows (-):</span><span>-${formatRs(cashOut)}</span></div>
+        <div class="row strong" style="border-top: 1px solid #ccc; padding-top: 4px;">
+          <span>EXPECTED CASH:</span>
+          <span>${formatRs(expectedCash)}</span>
+        </div>
+        <div class="row strong">
+          <span>ACTUAL COUNTED:</span>
+          <span>${formatRs(counted)}</span>
+        </div>
+        <div class="row strong" style="color: ${difference >= 0 ? '#047857' : '#b91c1c'};">
+          <span>VARIANCE / DIFFERENCE:</span>
+          <span>${difference > 0 ? "+" : ""}${formatRs(difference)}</span>
+        </div>
+      </div>
+
+      ${snapshot?.note ? `<div style="margin: 10px 0; font-size: 11px;"><strong>Shift Note:</strong> ${escapeHtml(snapshot.note)}</div>` : ""}
+
+      <div class="foot">
+        <div>Completed Orders: ${paidOrders.length}</div>
+        <div>End of Shift Financial Report Generated</div>
+      </div>
+    `;
+
+    printReport("Z-Report Summary", reportHtml);
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
-        <Button variant="ghost" className="h-11" asChild>
-          <Link to="/">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Home
-          </Link>
-        </Button>
-        <h1 className="text-lg font-semibold">Z Report</h1>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-11 w-11"
-          onClick={() => setDaily((d) => !d)}
-        >
-          <FileText className="h-5 w-5" />
-        </Button>
-      </header>
+      {/* Header */}
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" size="sm" className="h-9 gap-2 font-medium" asChild>
+            <Link to="/till">
+              <ArrowLeft className="h-4 w-4" /> Back to Till
+            </Link>
+          </Button>
+          <div className="h-4 w-px bg-border" />
+          <h1 className="text-sm font-semibold sm:text-base">Shift Z-Report</h1>
+        </div>
 
-      <main className="mx-auto w-full max-w-3xl p-4">
-        {!daily ? (
-          <div className="space-y-4">
-            <div className="text-center">
-              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-                V
-              </div>
-              <h2 className="mt-3 text-xl font-semibold">Velora Mart</h2>
-              <p className="text-sm text-muted-foreground">{new Date().toLocaleString()}</p>
-            </div>
-
-            <SummaryCard title="SOLD" rows={[["Sales", totalSales]]} total={totalSales} />
-            <SummaryCard
-              title="PAYMENTS"
-              rows={[
-                ["Cash", cashPayments],
-                ["Card", cardPayments],
-              ]}
-              total={totalPayments}
-            />
-            <SummaryCard title="TAXES" rows={[["GST 18%", totalTax]]} total={totalTax} />
-            <SummaryCard
-              title="TOTAL"
-              rows={[
-                ["Counted", closedSummary?.counted ?? 0],
-                ["Difference", (closedSummary?.counted ?? 0) - totalPayments],
-              ]}
-              total={totalPayments}
-              highlight
-            />
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
-            <h2 className="mb-3 text-lg font-semibold">Daily Sales Report</h2>
-            <div className="hidden grid-cols-4 gap-3 border-b border-border pb-2 text-sm font-medium text-muted-foreground sm:grid">
-              <span>Order</span>
-              <span>Time</span>
-              <span>Items</span>
-              <span>Total</span>
-            </div>
-            {paidOrders.map((o) => (
-              <div
-                key={o.id}
-                className="grid grid-cols-1 gap-3 border-b border-border py-3 last:border-0 sm:grid-cols-4"
-              >
-                <span className="font-medium">{o.number}</span>
-                <span className="text-sm text-muted-foreground">{o.time}</span>
-                <span className="text-sm text-muted-foreground">
-                  {o.lines.reduce((s, l) => s + l.qty, 0)}
-                </span>
-                <span className="font-medium">
-                  {formatRs(o.lines.reduce((s, l) => s + l.qty * l.unitPrice * 1.18, 0))}
-                </span>
-              </div>
-            ))}
-            {paidOrders.length === 0 && (
-              <p className="p-6 text-center text-sm text-muted-foreground">No paid orders today.</p>
-            )}
-          </div>
-        )}
-
-        <div className="mt-6 flex gap-3">
-          <Button variant="secondary" className="h-12 flex-1" asChild>
-            <Link to="/">Done</Link>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setViewMode(v => v === "summary" ? "orders" : "summary")} className="h-9 text-xs">
+            {viewMode === "summary" ? "View Order Details" : "View Financial Summary"}
+          </Button>
+          <Button size="sm" className="h-9 gap-1.5 font-semibold" onClick={handlePrintZReport}>
+            <Printer className="h-4 w-4" /> Print Z-Report
           </Button>
         </div>
-      </main>
-    </div>
-  );
-}
+      </header>
 
-function SummaryCard({
-  title,
-  rows,
-  total,
-  highlight,
-}: {
-  title: string;
-  rows: [string, number][];
-  total: number;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border border-border p-4 shadow-soft",
-        highlight ? "bg-primary text-primary-foreground" : "bg-card",
-      )}
-    >
-      <div className="mb-2 text-xs font-semibold uppercase tracking-wider opacity-80">{title}</div>
-      {rows.map(([label, value]) => (
-        <div key={label} className="flex justify-between py-1">
-          <span className={highlight ? "opacity-90" : "text-muted-foreground"}>{label}</span>
-          <span className="font-medium">{formatRs(value)}</span>
-        </div>
-      ))}
-      <div className="mt-2 border-t border-current border-opacity-20 pt-2">
-        <div className="flex justify-between text-lg font-semibold">
-          <span>Total</span>
-          <span>{formatRs(total)}</span>
-        </div>
-      </div>
+      <main className="mx-auto w-full max-w-3xl flex-1 p-4 sm:p-6">
+        {viewMode === "summary" ? (
+          <div className="space-y-4">
+            {/* Store & Shift Info */}
+            <div className="rounded-2xl border border-border bg-card p-5 text-center shadow-sm">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-primary text-xl font-black text-primary-foreground">
+                V
+              </div>
+              <h2 className="mt-2 text-lg font-bold text-foreground">{store.name || "Velora POS"}</h2>
+              <p className="text-xs text-muted-foreground">
+                {new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })} · {new Date().toLocaleTimeString()}
+              </p>
+              <div className="mt-2 flex items-center justify-center gap-4 text-xs text-muted-foreground font-medium">
+                <span>Cashier: <strong className="text-foreground">{currentUser?.name ?? store.cashier}</strong></span>
+                <span>Orders: <strong className="text-foreground">{paidOrders.length}</strong></span>
+              </div>
+            </div>
+
+            {/* Financial Summary Cards */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Sales Revenue */}
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Revenue Breakdown
+                </div>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Cash Sales:</span>
+                    <span className="font-mono font-medium text-foreground">{formatRs(cashPayments)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Card Sales:</span>
+                    <span className="font-mono font-medium text-foreground">{formatRs(cardPayments)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Customer Account:</span>
+                    <span className="font-mono font-medium text-foreground">{formatRs(accountPayments)}</span>
+                  </div>
+                  <div className="border-t border-border pt-2 flex justify-between font-bold text-sm">
+                    <span>Total Sales:</span>
+                    <span className="font-mono text-foreground">{formatRs(totalSales)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cash Drawer Flow */}
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Cash Flow Summary
+                </div>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Opening Float:</span>
+                    <span className="font-mono font-medium text-foreground">{formatRs(openingCash)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Cash In (+):</span>
+                    <span className="font-mono font-medium text-success">+{formatRs(cashIn)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Cash Out (-):</span>
+                    <span className="font-mono font-medium text-destructive">-{formatRs(cashOut)}</span>
+                  </div>
+                  <div className="border-t border-border pt-2 flex justify-between font-bold text-sm">
+                    <span>Expected Drawer:</span>
+                    <span className="font-mono text-primary">{formatRs(expectedCash)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Reconciliation Banner */}
+            <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-base text-foreground">Cash Drawer Reconciliation</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Physical count vs system calculated drawer expectation.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] uppercase font-bold text-muted-foreground">Variance</div>
+                  <div
+                    className={cn(
+                      "font-mono text-lg font-black",
+                      difference === 0 ? "text-success" : difference > 0 ? "text-primary" : "text-destructive",
+                    )}
+                  >
+                    {difference > 0 ? "+" : ""}{formatRs(difference)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 border-t border-border/60 pt-3 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Expected:</span>
+                  <div className="font-mono font-bold text-sm text-foreground">{formatRs(expectedCash)}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Counted:</span>
+                  <div className="font-mono font-bold text-sm text-foreground">{formatRs(counted)}</div>
+                </div>
+              </div>
+
+              {snapshot?.note && (
+                <div className="rounded-lg bg-card/60 p-2.5 text-xs text-muted-foreground border border-border/50">
+                  <strong>Closing Note:</strong> {snapshot.note}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button className="h-11 flex-1 font-bold" onClick={handlePrintZReport}>
+                <Printer className="mr-2 h-4 w-4" /> Print Thermal Z-Report
+              </Button>
+              <Button variant="outline" className="h-11 px-6" asChild>
+                <Link to="/till">Back to Register</Link>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          /* Order Breakdown Table */
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
+            <h2 className="text-base font-bold text-foreground">Shift Transactions ({paidOrders.length})</h2>
+            <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {paidOrders.map((o) => {
+                const orderTotal = o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
+                const itemCount = o.lines.reduce((s, l) => s + l.qty, 0);
+
+                return (
+                  <div key={o.id} className="flex items-center justify-between p-3 text-xs">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2 font-bold text-foreground">
+                        <span>{o.receipt || `RCP/${o.number}`}</span>
+                        <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+                          #{o.number}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        {o.time} · {itemCount} items · {o.payments.map((p) => p.method).join(", ")}
+                      </div>
+                    </div>
+                    <div className="font-mono font-bold text-sm text-foreground">
+                      {formatRs(orderTotal)}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {paidOrders.length === 0 && (
+                <div className="p-8 text-center text-xs text-muted-foreground">
+                  No orders completed during this session.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

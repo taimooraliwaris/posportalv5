@@ -1,9 +1,10 @@
 // @ts-nocheck
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Barcode, Search, PlusCircle, CheckCircle2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Barcode, Search, PlusCircle, CheckCircle2, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePos } from "@/lib/pos-context";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
@@ -36,18 +37,7 @@ function PriceCheckPage() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return productList.slice(0, 15);
-    return productList.filter((p) => {
-      const name = (p.name || "").toLowerCase();
-      const code = (p.item_code || "").toLowerCase();
-      const bar = (p.barcode || "").toLowerCase();
-      return name.includes(q) || code.includes(q) || bar.includes(q);
-    });
-  }, [productList, query]);
-
-  // Focus-free scanner listener: instantly selects product and displays price
+  // Focus-free scanner listener: instantly pops up the price modal on scan
   useScanTarget("price-check", ({ code }) => {
     const trimmed = code.trim().toLowerCase();
     const match = productList.find(
@@ -59,8 +49,8 @@ function PriceCheckPage() {
 
     if (match) {
       setSelected(match);
-      setQuery(match.barcode || match.item_code || match.name);
-      toast.success(`Price checked: ${match.name}`);
+      setQuery("");
+      toast.success(`Price: ${formatRs(match.price)} — ${match.name}`);
       return "info";
     }
 
@@ -70,9 +60,39 @@ function PriceCheckPage() {
     return "unknown";
   });
 
+  // Handle typing search with instant exact-match auto-popup
+  const handleQueryChange = (val: string) => {
+    setQuery(val);
+    const trimmed = val.trim().toLowerCase();
+    if (!trimmed) return;
+
+    // If exact barcode or item code is typed/scanned into input, open modal immediately
+    const exact = productList.find(
+      (p) =>
+        (p.barcode && p.barcode.toLowerCase() === trimmed) ||
+        (p.item_code && p.item_code.toLowerCase() === trimmed),
+    );
+    if (exact) {
+      setSelected(exact);
+      setQuery("");
+    }
+  };
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return productList.slice(0, 15);
+    return productList.filter((p) => {
+      const name = (p.name || "").toLowerCase();
+      const code = (p.item_code || "").toLowerCase();
+      const bar = (p.barcode || "").toLowerCase();
+      return name.includes(q) || code.includes(q) || bar.includes(q);
+    });
+  }, [productList, query]);
+
   const handleAddToCart = (product: Product) => {
     addProduct(product);
     toast.success(`${product.name} added to register cart`);
+    setSelected(null);
     navigate({ to: "/till" });
   };
 
@@ -92,19 +112,19 @@ function PriceCheckPage() {
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
-          <span className="hidden sm:inline">Scanner Active</span>
+          <span className="hidden sm:inline">Scanner Ready: Point barcode to check price</span>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-2xl flex-1 p-4 sm:p-6">
-        {/* Search Bar */}
+        {/* Search / Scan Input */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => handleQueryChange(e.target.value)}
               placeholder="Scan barcode or type product name/code..."
               className="h-12 pl-10 text-base shadow-sm"
             />
@@ -116,7 +136,6 @@ function PriceCheckPage() {
               const random = productList[Math.floor(Math.random() * productList.length)];
               if (random) {
                 setSelected(random);
-                setQuery(random.barcode || random.item_code || random.name);
               }
             }}
             title="Scan sample product"
@@ -126,68 +145,19 @@ function PriceCheckPage() {
           </Button>
         </div>
 
-        {/* SELECTED PRODUCT: DEDICATED PRICE DISPLAY ONLY */}
-        {selected ? (
-          <div className="mt-6 rounded-2xl border-2 border-primary/40 bg-card p-6 text-center shadow-lg animate-in fade-in zoom-in-95 duration-150">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Amount to Collect
-            </span>
-
-            {/* Huge Price Presentation */}
-            <div className="my-3 text-5xl font-black tracking-tight text-primary sm:text-6xl">
-              {formatRs(selected.price)}
-            </div>
-
-            {/* Clean Product Details */}
-            <div className="mt-2 space-y-1">
-              <h2 className="text-lg font-bold text-foreground sm:text-xl">{selected.name}</h2>
-              {selected.name_ur && (
-                <p className="text-sm font-urdu text-muted-foreground" dir="rtl">
-                  {selected.name_ur}
-                </p>
-              )}
-              <div className="mt-2 flex items-center justify-center gap-2 text-xs font-mono text-muted-foreground">
-                <span className="rounded bg-muted px-2 py-0.5 font-semibold">
-                  {selected.item_code || selected.barcode || "No Barcode"}
-                </span>
-                {selected.brand && <span>· {selected.brand}</span>}
-              </div>
-            </div>
-
-            {/* Quick Action Button */}
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <Button
-                className="h-11 gap-2 px-6 font-bold shadow-md"
-                onClick={() => handleAddToCart(selected)}
-              >
-                <PlusCircle className="h-4 w-4" /> Add to Current Sale
-              </Button>
-              <Button
-                variant="outline"
-                className="h-11 px-4 text-xs"
-                onClick={() => {
-                  setSelected(null);
-                  setQuery("");
-                }}
-              >
-                Clear &amp; Scan Next
-              </Button>
-            </div>
+        {/* Ready to Scan Banner */}
+        <div className="mt-6 rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Barcode className="h-8 w-8" />
           </div>
-        ) : (
-          <div className="mt-6 rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Barcode className="h-7 w-7" />
-            </div>
-            <h3 className="mt-3 text-base font-semibold text-foreground">Ready to Scan</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Scan any item with your barcode reader to instantly show its payable price.
-            </p>
-          </div>
-        )}
+          <h2 className="mt-4 text-lg font-bold text-foreground">Instant Price Scanner Active</h2>
+          <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
+            Scan any product barcode with your scanner. The price modal will automatically pop up with the exact amount to collect.
+          </p>
+        </div>
 
-        {/* Quick Product List */}
-        {!selected && results.length > 0 && (
+        {/* Catalog Search Results */}
+        {results.length > 0 && (
           <div className="mt-6">
             <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {query ? `Matching Products (${results.length})` : "Quick Catalog Lookup"}
@@ -215,6 +185,58 @@ function PriceCheckPage() {
           </div>
         )}
       </main>
+
+      {/* AUTOMATIC POPUP MODAL ON EXACT BARCODE SCAN / SELECTION */}
+      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="max-w-md p-6 text-center border-2 border-primary/30 shadow-2xl rounded-2xl">
+          <div className="space-y-4">
+            <div className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
+              Amount to Collect
+            </div>
+
+            {/* Massive Bold Price */}
+            <div className="py-2 text-5xl font-black tracking-tight text-primary sm:text-6xl">
+              {selected ? formatRs(selected.price) : "Rs. 0.00"}
+            </div>
+
+            {/* Product Details */}
+            {selected && (
+              <div className="space-y-1 rounded-xl border border-border bg-muted/40 p-4">
+                <h3 className="text-base font-bold text-foreground">{selected.name}</h3>
+                {selected.name_ur && (
+                  <p className="text-xs font-urdu text-muted-foreground" dir="rtl">
+                    {selected.name_ur}
+                  </p>
+                )}
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-mono text-muted-foreground">
+                  <span className="rounded bg-background px-2 py-0.5 font-semibold border border-border">
+                    {selected.item_code || selected.barcode || "No Barcode"}
+                  </span>
+                  {selected.brand && <span>· Brand: {selected.brand}</span>}
+                  <span>· Stock: {selected.stock_qty ?? 0}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-center">
+              <Button
+                className="h-11 flex-1 gap-2 font-bold shadow-md"
+                onClick={() => selected && handleAddToCart(selected)}
+              >
+                <PlusCircle className="h-4 w-4" /> Add to Sale &amp; Return to Register
+              </Button>
+              <Button
+                variant="outline"
+                className="h-11 px-5"
+                onClick={() => setSelected(null)}
+              >
+                Done / Next Scan
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
