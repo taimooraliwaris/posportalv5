@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
-  Barcode,
   Banknote,
+  Clock,
   LogOut,
   Menu,
   Moon,
@@ -14,7 +14,6 @@ import {
   Tag,
   UserRound,
   Undo2,
-  Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,8 +31,38 @@ import { useBackend, useStore } from "@/lib/backend-context";
 import { cn } from "@/lib/utils";
 import { CashInOutModal } from "./MenuModals";
 import { ProductForm } from "@/components/backend/ProductForm";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
+
+function LiveClock() {
+  const [time, setTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeString = time.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+
+  const dateString = time.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+
+  return (
+    <div className="flex shrink-0 items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-1.5 font-mono text-xs font-semibold shadow-xs">
+      <Clock className="h-3.5 w-3.5 text-primary" />
+      <span className="text-foreground">{timeString}</span>
+      <span className="hidden text-muted-foreground sm:inline">· {dateString}</span>
+    </div>
+  );
+}
 
 export function PosHeader({
   tab,
@@ -55,7 +84,12 @@ export function PosHeader({
   const [cashOpen, setCashOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
 
-  const openTabs = orders.filter((o) => o.status === "ongoing" || o.status === "payment");
+  const currentCashier = currentUser?.name ?? store.cashier;
+  const openTabs = orders.filter(
+    (o) =>
+      (o.status === "ongoing" || o.status === "payment") &&
+      (!o.cashier || o.cashier === currentCashier),
+  );
 
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-border bg-card px-3 py-2">
@@ -129,17 +163,8 @@ export function PosHeader({
       )}
 
       <div className="flex flex-1 items-center justify-end gap-2">
-        {onScan && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-11 w-11 shrink-0"
-            onClick={onScan}
-            aria-label="Scan barcode"
-          >
-            <Barcode className="h-6 w-6" />
-          </Button>
-        )}
+        <LiveClock />
+
         {lowStock.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -176,9 +201,7 @@ export function PosHeader({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 text-xs font-medium sm:flex">
-          <Wifi className="h-3.5 w-3.5" /> {store.network}
-        </span>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

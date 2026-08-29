@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, MessageCircle, Printer, QrCode, Mail, Smartphone } from "lucide-react";
+import { FileText, MessageCircle, Printer, QrCode, Mail, Smartphone, Settings2, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { formatRs } from "@/lib/pos-data";
@@ -7,6 +7,8 @@ import { useStore } from "@/lib/backend-context";
 import { usePos, orderTotals, type Order } from "@/lib/pos-context";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { printOrderReceipt, getPrinterSettings, savePrinterSettings, type PrinterProfile } from "@/lib/print-service";
+import { cn } from "@/lib/utils";
 
 export function PrintModal({
   open,
@@ -18,7 +20,33 @@ export function PrintModal({
   order: Order | null;
 }) {
   const { currentUser } = useAuth();
+  const store = useStore();
   const [mode, setMode] = useState<"full" | "simple" | null>(null);
+  const [profile, setProfile] = useState<PrinterProfile>(() => getPrinterSettings().defaultProfile);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const handlePrint = (simplified = false) => {
+    if (!order) {
+      toast.error("No active order to print");
+      return;
+    }
+
+    printOrderReceipt(order, {
+      simplified,
+      cashier: currentUser?.name ?? store.cashier,
+      profile,
+    });
+
+    toast.success(`Receipt sent to ${profile === "thermal-80" ? "80mm POS Printer" : profile === "thermal-58" ? "58mm Mini Printer" : "A4 Standard Printer"}`);
+    onOpenChange(false);
+    setMode(null);
+  };
+
+  const handleSetDefaultProfile = (newProfile: PrinterProfile) => {
+    setProfile(newProfile);
+    savePrinterSettings({ defaultProfile: newProfile });
+    toast.success(`Default printer layout set to ${newProfile === "thermal-80" ? "Thermal 80mm POS" : newProfile === "thermal-58" ? "Thermal 58mm Mini" : "Standard A4"}`);
+  };
   
   return (
     <Dialog
@@ -28,42 +56,81 @@ export function PrintModal({
         onOpenChange(o);
       }}
     >
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Print</DialogTitle>
-        </DialogHeader>
-        {!mode ? (
-          <div className="grid grid-cols-2 gap-3">
+      <DialogContent className="max-w-md p-5 rounded-2xl">
+        <DialogHeader className="border-b border-border pb-3">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Printer className="h-4 w-4 text-primary" /> Print Sales Receipt
+            </DialogTitle>
             <button
               type="button"
-              onClick={() => setMode("full")}
-              className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-xl bg-primary p-4 font-medium text-primary-foreground transition-transform duration-150 active:scale-[0.97]"
+              onClick={() => setShowSettings((v) => !v)}
+              className="text-xs flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground"
             >
-              <Printer className="h-8 w-8" />
-              Full Receipt
+              <Settings2 className="h-3.5 w-3.5" /> Printer Layout
+            </button>
+          </div>
+        </DialogHeader>
+
+        {/* Printer Profile Selector */}
+        {showSettings && (
+          <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2 text-xs animate-in fade-in duration-150">
+            <div className="font-semibold text-foreground">Select / Set Default Printer Format:</div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { id: "thermal-80", label: "80mm POS (Default)" },
+                { id: "thermal-58", label: "58mm Mini" },
+                { id: "standard-a4", label: "A4 Invoice" },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSetDefaultProfile(p.id as PrinterProfile)}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2 rounded-lg border text-center transition-all",
+                    profile === p.id
+                      ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                      : "border-border bg-card text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  <span>{p.label}</span>
+                  {profile === p.id && <Check className="h-3 w-3 mt-1" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!mode ? (
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => handlePrint(false)}
+              className="flex min-h-32 flex-col items-center justify-center gap-2.5 rounded-xl bg-primary p-4 font-semibold text-sm text-primary-foreground shadow-md transition-transform duration-150 active:scale-[0.97]"
+            >
+              <Printer className="h-7 w-7" />
+              <span>Full POS Receipt</span>
+              <span className="text-[10px] font-normal opacity-80">All items &amp; totals</span>
             </button>
             <button
               type="button"
-              onClick={() => setMode("simple")}
-              className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-xl bg-secondary p-4 font-medium text-secondary-foreground transition-transform duration-150 active:scale-[0.97]"
+              onClick={() => handlePrint(true)}
+              className="flex min-h-32 flex-col items-center justify-center gap-2.5 rounded-xl border border-border bg-secondary p-4 font-semibold text-sm text-secondary-foreground shadow-sm transition-transform duration-150 active:scale-[0.97]"
             >
-              <FileText className="h-8 w-8" />
-              Simplified Receipt
+              <FileText className="h-7 w-7 text-primary" />
+              <span>Simplified Receipt</span>
+              <span className="text-[10px] font-normal opacity-80">Quick total slip</span>
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 pt-2">
             <Receipt order={order} simple={mode === "simple"} />
             <div className="flex gap-2">
               <Button
-                className="h-11 flex-1"
-                onClick={() => {
-                  toast.success("Receipt sent to printer");
-                  onOpenChange(false);
-                  setMode(null);
-                }}
+                className="h-11 flex-1 font-bold gap-2"
+                onClick={() => handlePrint(mode === "simple")}
               >
-                <Printer className="h-4 w-4" /> Print
+                <Printer className="h-4 w-4" /> Print Now
               </Button>
               <Button variant="secondary" className="h-11" onClick={() => setMode(null)}>
                 Back

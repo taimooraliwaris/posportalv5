@@ -141,6 +141,10 @@ type PosState = {
   openRegister: (amount: number) => void;
   closeRegister: (counted: number, note: string) => void;
   closedSummary: { counted: number; note: string } | null;
+  pendingPreviousShiftClose: boolean;
+  dismissPreviousShiftClose: () => void;
+  showEndOfDayWarning: boolean;
+  dismissEndOfDayWarning: () => void;
   orders: Order[];
   activeOrderId: string;
   activeOrder: Order | undefined;
@@ -234,12 +238,81 @@ export function PosProvider({ children }: { children: ReactNode }) {
   const [localOrders, setLocalOrders] = useState<Order[] | null>(null);
   const [activeOrderId, setActiveOrderId] = useState("");
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
-  const [registerOpen, setRegisterOpen] = useState(false);
-  const [openingCash, setOpeningCash] = useState(0);
+
+  const getTodayStr = () => new Date().toISOString().slice(0, 10);
+
+  const [registerOpen, setRegisterOpen] = useState<boolean>(() => {
+    try {
+      const savedDate = localStorage.getItem("velora_register_date");
+      const savedOpen = localStorage.getItem("velora_register_open");
+      if (savedOpen === "true" && savedDate === new Date().toISOString().slice(0, 10)) {
+        return true;
+      }
+    } catch {}
+    return false;
+  });
+
+  const [openingCash, setOpeningCash] = useState<number>(() => {
+    try {
+      const savedDate = localStorage.getItem("velora_register_date");
+      const val = Number(localStorage.getItem("velora_opening_cash") || 0);
+      if (savedDate === new Date().toISOString().slice(0, 10) && val > 0) return val;
+    } catch {}
+    return 0;
+  });
+
+  const [pendingPreviousShiftClose, setPendingPreviousShiftClose] = useState<boolean>(() => {
+    try {
+      const savedDate = localStorage.getItem("velora_register_date");
+      const savedOpen = localStorage.getItem("velora_register_open");
+      if (savedOpen === "true" && savedDate && savedDate !== new Date().toISOString().slice(0, 10)) {
+        return true;
+      }
+    } catch {}
+    return false;
+  });
+
+  const [showEndOfDayWarning, setShowEndOfDayWarning] = useState<boolean>(false);
   const [lastPaidOrder, setLastPaidOrder] = useState<Order | null>(null);
   const [closedSummary, setClosedSummary] = useState<{ counted: number; note: string } | null>(
     null,
   );
+
+  // Monitor midnight date rollover & 15-min end-of-day alert
+  useEffect(() => {
+    const checkMidnightAndWarning = () => {
+      const now = new Date();
+      const today = now.toISOString().slice(0, 10);
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+
+      // 1. Date change soft-close:
+      const savedDate = localStorage.getItem("velora_register_date");
+      const savedOpen = localStorage.getItem("velora_register_open") === "true";
+      if (savedOpen && savedDate && savedDate !== today) {
+        setRegisterOpen(false);
+        setPendingPreviousShiftClose(true);
+        try {
+          localStorage.setItem("velora_register_open", "false");
+        } catch {}
+        toast.info("Date changed. Yesterday's shift soft-closed. Please review previous shift before starting today's register.");
+      }
+
+      // 2. 15-minute end-of-day warning:
+      if (registerOpen && hours === 23 && minutes >= 45) {
+        const warnedTonight = sessionStorage.getItem(`velora_warned_${today}`);
+        if (!warnedTonight) {
+          setShowEndOfDayWarning(true);
+          sessionStorage.setItem(`velora_warned_${today}`, "true");
+          toast.warning("Day ends in 15 minutes. Please reconcile and close the cash register.");
+        }
+      }
+    };
+
+    checkMidnightAndWarning();
+    const interval = setInterval(checkMidnightAndWarning, 15000);
+    return () => clearInterval(interval);
+  }, [registerOpen]);
 
   const cashMoves = cashQuery.data ?? [];
   const returns = returnsQuery.data ?? [];
@@ -399,15 +472,37 @@ export function PosProvider({ children }: { children: ReactNode }) {
     registerOpen,
     openingCash,
     openRegister: (amount) => {
+      const today = new Date().toISOString().slice(0, 10);
       setOpeningCash(amount);
       setRegisterOpen(true);
+      setPendingPreviousShiftClose(false);
       setClosedSummary(null);
+      try {
+        localStorage.setItem("velora_register_open", "true");
+        localStorage.setItem("velora_register_date", today);
+        localStorage.setItem("velora_opening_cash", String(amount));
+        localStorage.setItem("velora_session_opened_at", new Date().toISOString());
+      } catch {}
     },
     closeRegister: (counted, note) => {
       setRegisterOpen(false);
+      setPendingPreviousShiftClose(false);
       setClosedSummary({ counted, note });
+      try {
+        localStorage.setItem("velora_register_open", "false");
+        localStorage.setItem("velora_register_date", new Date().toISOString().slice(0, 10));
+        localStorage.removeItem("velora_opening_cash");
+      } catch {}
     },
     closedSummary,
+    pendingPreviousShiftClose,
+    dismissPreviousShiftClose: () => {
+      setPendingPreviousShiftClose(false);
+    },
+    showEndOfDayWarning,
+    dismissEndOfDayWarning: () => {
+      setShowEndOfDayWarning(false);
+    },
     orders,
     activeOrderId,
     activeOrder,

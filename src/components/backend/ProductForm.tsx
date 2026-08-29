@@ -4,12 +4,14 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { usePos } from "@/lib/pos-context";
 import { useBackend } from "@/lib/backend-context";
+import { useScanTarget, useScanMode } from "@/lib/scan-mode-context";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Circle, Droplet, Wrench } from "lucide-react";
+import { ArrowLeft, Barcode, Circle, Droplet, Wrench } from "lucide-react";
 
 export function ProductForm({ onSaved }: { onSaved?: () => void }) {
   const { addProductToCatalog, productList, categoryList } = usePos();
   const { suppliers, updateSupplier } = useBackend();
+  const { openCamera } = useScanMode();
 
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
@@ -25,6 +27,42 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
   const [salePrice, setSalePrice] = useState("");
   const [stockQty, setStockQty] = useState("");
   const [ctnQty, setCtnQty] = useState("");
+
+  // Barcode scan listener in ProductForm to autofill or load existing product
+  useScanTarget("product-dialog", ({ code }) => {
+    const trimmed = code.trim();
+    if (!trimmed) return "unknown";
+
+    const existing = productList.find(
+      (p) =>
+        (p.barcode && p.barcode.toLowerCase() === trimmed.toLowerCase()) ||
+        (p.item_code && p.item_code.toLowerCase() === trimmed.toLowerCase()),
+    );
+
+    if (existing) {
+      setItemCode(existing.item_code || existing.barcode || trimmed);
+      setNameEn(existing.name || "");
+      setNameUr(existing.name_ur || "");
+      setCostPrice(existing.cost_price ? String(existing.cost_price) : "");
+      setSalePrice(existing.price ? String(existing.price) : "");
+      setStockQty(existing.stock_qty !== undefined ? String(existing.stock_qty) : "");
+      if (existing.category) {
+        const cat = categoryList.find(
+          (c) => c.id === existing.category || c.slug === existing.category,
+        );
+        if (cat?.slug) setSelectedCategorySlug(cat.slug as any);
+      }
+      setManualBrand(existing.brand || "");
+      setStep(2);
+      toast.success(`Loaded existing product: ${existing.name}`);
+      return "added";
+    }
+
+    setItemCode(trimmed);
+    setStep(2);
+    toast.success(`Barcode scanned: ${trimmed}`);
+    return "added";
+  });
 
   // Custom manual overrides for auto-parsing
   const [manualBrand, setManualBrand] = useState("");
@@ -220,19 +258,32 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
       <form className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Core details column */}
         <div className="space-y-3">
-          <div>
-            <label className="text-[11px] text-muted-foreground block mb-1">
-              Barcode / Item code <span className="text-destructive">*</span>
+            <label className="text-[11px] text-muted-foreground flex items-center justify-between mb-1">
+              <span>Barcode / Item code <span className="text-destructive">*</span></span>
+              <span className="text-[10px] text-success flex items-center gap-1 font-mono">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> Scanner Ready
+              </span>
             </label>
-            <Input
-              ref={inputRef}
-              value={itemCode}
-              onChange={(e) => setItemCode(e.target.value)}
-              onKeyDown={handleBarcodeKeyDown}
-              className={cn("font-mono h-9", itemCode && "border-primary")}
-              placeholder="Scan or type..."
-            />
-          </div>
+            <div className="flex gap-2">
+              <Input
+                ref={inputRef}
+                value={itemCode}
+                onChange={(e) => setItemCode(e.target.value)}
+                onKeyDown={handleBarcodeKeyDown}
+                className={cn("font-mono h-9 flex-1", itemCode && "border-primary")}
+                placeholder="Scan with reader or type SKU..."
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => openCamera("single")}
+                title="Scan barcode with camera"
+              >
+                <Barcode className="h-4 w-4" />
+              </Button>
+            </div>
 
           <div>
             <label className="text-[11px] text-muted-foreground block mb-1">

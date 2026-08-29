@@ -8,7 +8,7 @@ import { formatRs } from "@/lib/pos-data";
 import { useStore } from "@/lib/backend-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
-import { printReport, escapeHtml } from "@/lib/print-report";
+import { printZReportDocument } from "@/lib/print-service";
 
 export const Route = createFileRoute("/z-report")({
   head: () => ({
@@ -85,55 +85,21 @@ function ZReportPage() {
   const difference = counted - expectedCash;
 
   const handlePrintZReport = () => {
-    const reportHtml = `
-      <div class="head">
-        <h1>${escapeHtml(store.name || "Velora POS")}</h1>
-        <div class="meta">${escapeHtml(store.tagline || "Retail & Wholesale Portal")}</div>
-        <h2>OFFICIAL Z-REPORT (DAILY SHIFT CLOSING)</h2>
-        <div class="meta">Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
-        <div class="meta">Cashier: ${escapeHtml(currentUser?.name ?? store.cashier)}</div>
-      </div>
-
-      <div style="margin: 16px 0; border-top: 1px dashed #000; padding-top: 8px;">
-        <div class="row strong"><span>REVENUE BREAKDOWN</span></div>
-        <div class="row"><span>Cash Sales:</span><span>${formatRs(cashPayments)}</span></div>
-        <div class="row"><span>Card Sales:</span><span>${formatRs(cardPayments)}</span></div>
-        <div class="row"><span>Customer Account:</span><span>${formatRs(accountPayments)}</span></div>
-        <div class="row strong" style="border-top: 1px solid #ccc; padding-top: 4px;">
-          <span>TOTAL GROSS SALES:</span>
-          <span>${formatRs(totalSales)}</span>
-        </div>
-      </div>
-
-      <div style="margin: 16px 0; border-top: 1px dashed #000; padding-top: 8px;">
-        <div class="row strong"><span>CASH DRAWER RECONCILIATION</span></div>
-        <div class="row"><span>Opening Float:</span><span>${formatRs(openingCash)}</span></div>
-        <div class="row"><span>Cash Sales (+):</span><span>+${formatRs(cashPayments)}</span></div>
-        <div class="row"><span>Cash Inflows (+):</span><span>+${formatRs(cashIn)}</span></div>
-        <div class="row"><span>Cash Outflows (-):</span><span>-${formatRs(cashOut)}</span></div>
-        <div class="row strong" style="border-top: 1px solid #ccc; padding-top: 4px;">
-          <span>EXPECTED CASH:</span>
-          <span>${formatRs(expectedCash)}</span>
-        </div>
-        <div class="row strong">
-          <span>ACTUAL COUNTED:</span>
-          <span>${formatRs(counted)}</span>
-        </div>
-        <div class="row strong" style="color: ${difference >= 0 ? '#047857' : '#b91c1c'};">
-          <span>VARIANCE / DIFFERENCE:</span>
-          <span>${difference > 0 ? "+" : ""}${formatRs(difference)}</span>
-        </div>
-      </div>
-
-      ${snapshot?.note ? `<div style="margin: 10px 0; font-size: 11px;"><strong>Shift Note:</strong> ${escapeHtml(snapshot.note)}</div>` : ""}
-
-      <div class="foot">
-        <div>Completed Orders: ${paidOrders.length}</div>
-        <div>End of Shift Financial Report Generated</div>
-      </div>
-    `;
-
-    printReport("Z-Report Summary", reportHtml);
+    printZReportDocument({
+      openingCash,
+      cashSales: cashPayments,
+      cardSales: cardPayments,
+      accountSales: accountPayments,
+      totalSales,
+      cashIn,
+      cashOut,
+      expectedCash,
+      counted,
+      difference,
+      ordersCount: paidOrders.length,
+      cashier: currentUser?.name ?? store.cashier,
+      note: snapshot?.note,
+    });
   };
 
   return (

@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePersistentState } from "@/lib/use-persistent-state";
+import { useScanTarget } from "@/lib/scan-mode-context";
 
 export const Route = createFileRoute("/backend/inventory")({
   component: InventoryPage,
@@ -34,6 +35,27 @@ function InventoryPage() {
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [adjustValue, setAdjustValue] = useState("");
   const [adjustReason, setAdjustReason] = useState("count");
+
+  // Barcode scanner support for instant stock lookup & adjustment
+  useScanTarget("inventory", ({ code }) => {
+    const trimmed = code.trim().toLowerCase();
+    const product = productList.find(
+      (p) =>
+        (p.barcode && p.barcode.toLowerCase() === trimmed) ||
+        (p.item_code && p.item_code.toLowerCase() === trimmed) ||
+        p.id === code,
+    );
+
+    if (product) {
+      setQuery(product.item_code || product.barcode || product.name);
+      openAdjust(product.id);
+      toast.success(`Scanned: ${product.name} (Stock: ${product.stock_qty})`);
+      return "added";
+    }
+
+    toast.error(`No product matches barcode ${code}`);
+    return "unknown";
+  });
 
   // Keep track of adjustments in local storage since the DB table is missing
   const [adjustmentLog, setAdjustmentLog] = usePersistentState<LocalAdjustment[]>("velora.adjustments", []);

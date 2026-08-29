@@ -12,6 +12,15 @@ import { useBackend } from "@/lib/backend-context";
 import { formatDate, rolePermissions, type SessionRecord, type StaffUser, type TaxRate } from "@/lib/backend-data";
 import { formatRs } from "@/lib/pos-data";
 import { useHydrated } from "@/lib/use-hydrated";
+import {
+  getPrinterSettings,
+  savePrinterSettings,
+  printOrderReceipt,
+  type PrinterProfile,
+  type PrinterSettings,
+} from "@/lib/print-service";
+import { Check, FileText, Printer } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/backend/settings")({
@@ -47,8 +56,8 @@ function SettingsPage() {
       <Tabs defaultValue="users">
         <TabsList>
           <TabsTrigger value="users">Users &amp; roles</TabsTrigger>
-          
           <TabsTrigger value="store">Store details</TabsTrigger>
+          <TabsTrigger value="printers">Printers &amp; Hardware</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="sessions">Session history</TabsTrigger>
         </TabsList>
@@ -99,6 +108,10 @@ function SettingsPage() {
               Save details
             </Button>
           </DataCard>
+        </TabsContent>
+
+        <TabsContent value="printers">
+          <PrinterSettingsCard />
         </TabsContent>
 
         <TabsContent value="security">
@@ -203,3 +216,176 @@ const sessionColumns: Column<SessionRecord>[] = [
     ),
   },
 ];
+
+function PrinterSettingsCard() {
+  const [settings, setSettings] = useState<PrinterSettings>(() => getPrinterSettings());
+
+  const handleUpdate = (patch: Partial<PrinterSettings>) => {
+    const updated = savePrinterSettings(patch);
+    setSettings(updated);
+    toast.success("Printer settings saved");
+  };
+
+  const handleTestPrint = () => {
+    printOrderReceipt(
+      {
+        id: "test-order-1",
+        number: "1001",
+        receipt: "RCP/1001",
+        date: new Date().toISOString().slice(0, 10),
+        time: new Date().toLocaleTimeString(),
+        status: "paid",
+        cashier: "Test Cashier",
+        lines: [
+          { id: "tl-1", productId: "p-1", name: "Servis 2.50-17 6PR Tyre", qty: 2, unitPrice: 3200, discount: 0 },
+          { id: "tl-2", productId: "p-2", name: "Crown CG-125 Brake Shoe", qty: 1, unitPrice: 850, discount: 5 },
+        ],
+        payments: [{ id: "tp-1", method: "Cash", amount: 7250 }],
+        noteTags: [],
+        pricelistId: "pl1",
+      },
+      { change: 50, cashier: "Test Cashier", profile: settings.defaultProfile },
+    );
+    toast.success("Test receipt sent to printer");
+  };
+
+  return (
+    <DataCard className="max-w-2xl space-y-5 p-5">
+      <div>
+        <h3 className="text-base font-bold flex items-center gap-2">
+          <Printer className="h-5 w-5 text-primary" /> POS Receipt &amp; Printer Configuration
+        </h3>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Configure default hardware printer profile, paper dimensions, and automated print options.
+        </p>
+      </div>
+
+      {/* Profile Picker */}
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold">Default Printer Hardware Profile</Label>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            {
+              id: "thermal-80",
+              title: "Thermal 80mm POS",
+              desc: "Standard thermal receipt roll (80mm / 3.15 in). Ideal for all commercial POS counters.",
+              badge: "Default",
+            },
+            {
+              id: "thermal-58",
+              title: "Thermal 58mm Mini",
+              desc: "Compact 58mm roll (2.28 in) for mini desktop & portable Bluetooth thermal printers.",
+            },
+            {
+              id: "standard-a4",
+              title: "Standard A4 / Laser",
+              desc: "Full page portrait invoice for laser / inkjet office printers.",
+            },
+          ].map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => handleUpdate({ defaultProfile: p.id as PrinterProfile })}
+              className={cn(
+                "flex flex-col items-start p-3.5 rounded-xl border-2 text-left transition-all",
+                settings.defaultProfile === p.id
+                  ? "border-primary bg-primary/10 shadow-xs"
+                  : "border-border bg-card hover:bg-muted/50",
+              )}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="font-bold text-sm text-foreground">{p.title}</span>
+                {settings.defaultProfile === p.id && (
+                  <Check className="h-4 w-4 text-primary shrink-0" />
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{p.desc}</p>
+              {p.badge && (
+                <span className="mt-2 text-[10px] font-semibold bg-primary/20 text-primary px-2 py-0.5 rounded-md">
+                  {p.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Auto-print toggle */}
+      <div className="flex items-center justify-between rounded-xl border border-border p-3.5 bg-muted/20">
+        <div>
+          <div className="text-sm font-semibold text-foreground">Auto-Print Receipt on Checkout</div>
+          <div className="text-xs text-muted-foreground">
+            Automatically trigger physical print job upon validating payment.
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          checked={settings.autoPrintOnCheckout}
+          onChange={(e) => handleUpdate({ autoPrintOnCheckout: e.target.checked })}
+          className="h-5 w-5 rounded border-border text-primary focus:ring-primary"
+        />
+      </div>
+
+      {/* Store Header Details for Receipts */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="pr-store-name" className="text-xs font-semibold">Store / Business Name</Label>
+          <Input
+            id="pr-store-name"
+            value={settings.storeName}
+            onChange={(e) => setSettings({ ...settings, storeName: e.target.value })}
+            onBlur={() => handleUpdate({ storeName: settings.storeName })}
+            className="h-10 text-sm"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="pr-phone" className="text-xs font-semibold">Store Contact / Phone</Label>
+          <Input
+            id="pr-phone"
+            value={settings.storePhone}
+            onChange={(e) => setSettings({ ...settings, storePhone: e.target.value })}
+            onBlur={() => handleUpdate({ storePhone: settings.storePhone })}
+            className="h-10 text-sm"
+          />
+        </div>
+
+        <div className="space-y-1.5 col-span-2">
+          <Label htmlFor="pr-tagline" className="text-xs font-semibold">Receipt Subtitle / Tagline</Label>
+          <Input
+            id="pr-tagline"
+            value={settings.storeTagline}
+            onChange={(e) => setSettings({ ...settings, storeTagline: e.target.value })}
+            onBlur={() => handleUpdate({ storeTagline: settings.storeTagline })}
+            className="h-10 text-sm"
+          />
+        </div>
+
+        <div className="space-y-1.5 col-span-2">
+          <Label htmlFor="pr-footer" className="text-xs font-semibold">Receipt Footer Message</Label>
+          <Input
+            id="pr-footer"
+            value={settings.receiptFooter}
+            onChange={(e) => setSettings({ ...settings, receiptFooter: e.target.value })}
+            onBlur={() => handleUpdate({ receiptFooter: settings.receiptFooter })}
+            className="h-10 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Test Print Action */}
+      <div className="flex items-center gap-3 pt-2 border-t border-border">
+        <Button
+          type="button"
+          className="h-11 font-bold gap-2"
+          onClick={handleTestPrint}
+        >
+          <Printer className="h-4 w-4" /> Run Test Print on {settings.defaultProfile === "thermal-80" ? "80mm POS" : settings.defaultProfile === "thermal-58" ? "58mm Mini" : "A4 Standard"}
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Sends a sample formatted receipt to verify printer connection and roll margin.
+        </p>
+      </div>
+    </DataCard>
+  );
+}

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BackendLayout } from "@/components/backend/backend-layout";
@@ -10,6 +11,9 @@ import { formatDate, type HistoricalSale } from "@/lib/backend-data";
 import { usePos, type ReturnRecord } from "@/lib/pos-context";
 import { formatRs } from "@/lib/pos-data";
 import { useHydrated } from "@/lib/use-hydrated";
+import { printOrderReceipt } from "@/lib/print-service";
+import { Printer } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/backend/sales")({
   head: () => ({
@@ -115,6 +119,36 @@ function SalesPage() {
             <div className="border-t border-dashed border-border pt-2">
               <Field label="Paid by" value={selected.method} />
               <Field label="Total" value={formatRs(selected.total)} />
+            </div>
+            <div className="pt-2">
+              <Button
+                className="w-full h-11 font-semibold gap-2"
+                onClick={() => {
+                  printOrderReceipt({
+                    id: selected.id,
+                    number: selected.receipt.replace("RCP/", ""),
+                    receipt: selected.receipt,
+                    date: selected.date,
+                    time: selected.time,
+                    cashier: selected.cashier,
+                    lines: selected.lines.map((l, idx) => ({
+                      id: `sl-${idx}`,
+                      productId: `p-${idx}`,
+                      name: l.name,
+                      qty: l.qty,
+                      unitPrice: l.unitPrice,
+                      discount: 0,
+                    })),
+                    payments: [{ id: "pm-1", method: selected.method as any, amount: selected.total }],
+                    noteTags: [],
+                    status: "paid",
+                    pricelistId: "pl1",
+                  });
+                  toast.success(`Receipt ${selected.receipt} sent to printer`);
+                }}
+              >
+                <Printer className="h-4 w-4" /> Print Duplicate Receipt
+              </Button>
             </div>
           </DataCard>
         )}

@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Search, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Barcode, Search, Plus, Trash2 } from "lucide-react";
 import { useBackend } from "@/lib/backend-context";
 import { usePos } from "@/lib/pos-context";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { formatRs } from "@/lib/pos-data";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,26 @@ export function POBuilder({ onBack }: { onBack: () => void }) {
   >([]);
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
+
+  // Barcode scanner support in Purchase Order Builder
+  useScanTarget("purchases", ({ code }) => {
+    const trimmed = code.trim().toLowerCase();
+    const product = productList.find(
+      (p) =>
+        (p.barcode && p.barcode.toLowerCase() === trimmed) ||
+        (p.item_code && p.item_code.toLowerCase() === trimmed) ||
+        p.id === code,
+    );
+
+    if (product) {
+      addLine(product.id);
+      toast.success(`Added ${product.name} to PO lines`);
+      return "added";
+    }
+
+    toast.error(`No product matches barcode ${code}`);
+    return "unknown";
+  });
 
   // Strictly filter products to those supplied by the selected supplier
   const availableProducts = useMemo(() => {
