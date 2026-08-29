@@ -5,7 +5,8 @@ import { usePos } from "@/lib/pos-context";
 import { emitScan } from "@/lib/scanner-router";
 import { beep } from "@/lib/audio-service";
 import { formatRs, type Product } from "@/lib/pos-data";
-import { NewProductModal } from "./MenuModals";
+import { ProductForm } from "@/components/backend/ProductForm";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 type BatchLine = { product: Product; qty: number };
@@ -293,14 +294,22 @@ export function ScannerOverlay({
         </p>
       </div>
 
-      <NewProductModal
+      <Dialog
         open={createOpen}
         onOpenChange={(o) => {
           setCreateOpen(o);
           if (!o) setUnknown(null);
         }}
-        presetBarcode={unknown ?? ""}
-      />
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 border border-border">
+          <ProductForm
+            onSaved={() => {
+              setCreateOpen(false);
+              setUnknown(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
