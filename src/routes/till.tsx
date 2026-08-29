@@ -8,6 +8,11 @@ import { ProductTile } from "@/components/pos/ProductTile";
 import { Keypad } from "@/components/pos/Keypad";
 import { ChooseCustomerModal } from "@/components/pos/CustomerModals";
 import { CustomerNoteModal, OrderActionsModal } from "@/components/pos/OrderActionModals";
+import {
+  OpenRegisterModal,
+  PreviousShiftReviewModal,
+  EndOfDayWarningModal,
+} from "@/components/pos/RegisterSessionModals";
 import { usePos, orderTotals, type CartLine } from "@/lib/pos-context";
 import { useScanMode, useScanTarget } from "@/lib/scan-mode-context";
 import { applyNumericKey, useNumericKeyboard } from "@/lib/use-numeric-entry";
@@ -55,7 +60,10 @@ function Till() {
     addByBarcode,
     productList,
     categoryList,
-    
+    registerOpen,
+    pendingPreviousShiftClose,
+    showEndOfDayWarning,
+    dismissEndOfDayWarning,
     loading,
   } = usePos();
   const { cameraOpen, openCamera } = useScanMode();
@@ -366,6 +374,11 @@ function Till() {
       />
       <CustomerNoteModal open={noteOpen} onOpenChange={setNoteOpen} />
       <OrderActionsModal open={actionsOpen} onOpenChange={setActionsOpen} />
+
+      {/* Mandatory Start Shift & Handover Session Lifecycle Modals */}
+      <OpenRegisterModal open={!registerOpen && !pendingPreviousShiftClose} />
+      <PreviousShiftReviewModal open={pendingPreviousShiftClose} />
+      <EndOfDayWarningModal open={showEndOfDayWarning} onClose={dismissEndOfDayWarning} />
     </div>
   );
 }

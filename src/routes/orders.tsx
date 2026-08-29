@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Info, Search, Trash2 } from "lucide-react";
+import { Info, Printer, Search, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PosHeader } from "@/components/pos/PosHeader";
 import { usePos, orderTotals, type Order } from "@/lib/pos-context";
+import { useAuth } from "@/lib/auth-context";
+import { useStore } from "@/lib/backend-context";
+import { printOrderReceipt } from "@/lib/print-service";
 import { formatRs } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -35,14 +38,22 @@ const statusFilters = [
 ] as const;
 
 function Orders() {
-  const { orders, deleteOrder,  productList, categoryList } = usePos();
+  const { orders, deleteOrder, productList, categoryList } = usePos();
+  const { currentUser } = useAuth();
+  const store = useStore();
+  const currentCashier = currentUser?.name ?? store.cashier;
+
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("All");
+  const [scope, setScope] = useState<"mine" | "all">("mine");
   const [selected, setSelected] = useState<Order | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Order | null>(null);
 
   const filtered = useMemo(() => {
     let list = orders;
+    if (scope === "mine" && currentCashier) {
+      list = list.filter((o) => !o.cashier || o.cashier === currentCashier);
+    }
     if (filter !== "All") list = list.filter((o) => o.status === filter);
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -50,11 +61,12 @@ function Orders() {
         (o) =>
           o.number.toLowerCase().includes(q) ||
           o.receipt.toLowerCase().includes(q) ||
-          o.time.includes(q),
+          o.time.includes(q) ||
+          (o.cashier && o.cashier.toLowerCase().includes(q)),
       );
     }
     return list.sort((a, b) => b.time.localeCompare(a.time));
-  }, [orders, filter, search]);
+  }, [orders, filter, search, scope, currentCashier]);
 
   const handleDelete = (o: Order) => {
     deleteOrder(o.id);
@@ -67,25 +79,51 @@ function Orders() {
     <div className="flex min-h-screen flex-col bg-background">
       <PosHeader tab="orders" />
       <main className="mx-auto w-full max-w-5xl p-4">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search orders..."
-              className="h-11 pl-9"
-            />
+        <div className="mb-4 flex flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search orders, receipts, cashier..."
+                className="h-11 pl-9"
+              />
+            </div>
+            {/* Cashier Scope Toggle */}
+            <div className="flex shrink-0 items-center rounded-xl border border-border bg-card p-1">
+              <button
+                type="button"
+                onClick={() => setScope("mine")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                  scope === "mine" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <User className="h-3.5 w-3.5" /> My Orders ({currentCashier})
+              </button>
+              <button
+                type="button"
+                onClick={() => setScope("all")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                  scope === "all" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                All Registers
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2 overflow-x-auto">
+
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {statusFilters.map((f) => (
               <button
                 key={f}
                 type="button"
                 onClick={() => setFilter(f)}
                 className={cn(
-                  "min-h-11 shrink-0 rounded-full border border-border px-4 text-sm font-medium capitalize",
-                  filter === f ? "bg-primary text-primary-foreground" : "bg-card",
+                  "min-h-9 shrink-0 rounded-full border border-border px-3.5 text-xs font-semibold capitalize transition-colors",
+                  filter === f ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted",
                 )}
               >
                 {f}
@@ -167,18 +205,35 @@ function Orders() {
               <span className="capitalize">{selected?.status}</span>
             </div>
             <div className="flex justify-between">
+              <span className="text-muted-foreground">Cashier</span>
+              <span className="font-medium">{selected?.cashier || store.cashier}</span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-muted-foreground">Items</span>
               <span>{selected?.lines.reduce((s, l) => s + l.qty, 0)}</span>
             </div>
-            <div className="flex justify-between text-base font-semibold">
+            <div className="flex justify-between text-base font-semibold border-t border-dashed border-border pt-2">
               <span>Total</span>
-              <span>
+              <span className="text-primary font-bold">
                 {selected
                   ? formatRs(
                       orderTotals(selected, 0).total,
                     )
                   : "Rs. 0.00"}
               </span>
+            </div>
+            <div className="pt-3">
+              <Button
+                className="w-full h-11 font-semibold gap-2"
+                onClick={() => {
+                  if (selected) {
+                    printOrderReceipt(selected, { cashier: selected.cashier || currentCashier });
+                    toast.success(`Receipt #${selected.receipt} sent to printer`);
+                  }
+                }}
+              >
+                <Printer className="h-4 w-4" /> Print Order Receipt
+              </Button>
             </div>
           </div>
         </DialogContent>
