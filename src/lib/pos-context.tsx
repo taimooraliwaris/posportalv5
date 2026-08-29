@@ -256,7 +256,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
       setActiveOrderId(ongoing.id);
       return;
     }
-    const next = nextOrderNumber(cloudOrders);
+    const next = nextOrderNumber(cloudOrders, returnsQuery.data ?? []);
     const fresh = makeOrder(next, currentUser?.name ?? "");
     setLocalOrders([fresh, ...cloudOrders]);
     setActiveOrderId(fresh.id);
@@ -413,14 +413,14 @@ export function PosProvider({ children }: { children: ReactNode }) {
     activeOrder,
     setActiveOrderId,
     newOrder: () => {
-      const order = makeOrder(nextOrderNumber(orders), currentUser?.name ?? "");
+      const order = makeOrder(nextOrderNumber(orders, returns), currentUser?.name ?? "");
       mutateOrders((prev) => [order, ...prev], [order.id]);
       setActiveOrderId(order.id);
     },
     deleteOrder: (id) => {
       const remaining = orders.filter((o) => o.id !== id);
       if (remaining.length === 0) {
-        const order = makeOrder(nextOrderNumber(orders), currentUser?.name ?? "");
+        const order = makeOrder(nextOrderNumber(orders, returns), currentUser?.name ?? "");
         setLocalOrders([order]);
         setActiveOrderId(order.id);
         persist(order);
@@ -523,7 +523,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
           setSelectedLineId(null);
           return updated;
         }
-        const fresh = makeOrder(nextOrderNumber(updated), currentUser?.name ?? "");
+        const fresh = makeOrder(nextOrderNumber(updated, returns), currentUser?.name ?? "");
         setActiveOrderId(fresh.id);
         setSelectedLineId(null);
         persist(fresh);
@@ -609,14 +609,18 @@ export function PosProvider({ children }: { children: ReactNode }) {
     lastPaidOrder,
     returns,
     processReturn: (input) => {
-      const seq = returns.length + 1;
+      const prefix = input.kind === "return" ? "RET" : "EXC";
+      const cleanOriginalNum = String(input.originalNumber).replace(/^(ORD-|RCP-)/i, "");
+      const recordNumber = `${prefix}-${cleanOriginalNum}`;
+
       const record: ReturnRecord = {
         ...input,
-        id: randomId("ret"),
-        number: `${input.kind === "return" ? "R" : "X"}/${String(1000 + seq)}`,
+        id: randomId(input.kind === "return" ? "ret" : "exc"),
+        number: recordNumber,
         date: new Date().toISOString().slice(0, 10),
         time: now(),
       };
+
       queryClient.setQueryData<ReturnRecord[]>(cloudKeys.returns, (prev) => [
         record,
         ...(prev ?? []),
@@ -664,7 +668,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
             id: randomId("cm"),
             type: "out",
             amount: input.refundAmount,
-            reason: `Refund for Return ${record.number} (Order ${input.originalNumber})`,
+            reason: `Refund for Return ${record.number} (Order #${input.originalNumber})`,
           };
           queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
             cashMove,
@@ -684,7 +688,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
               id: randomId("cm"),
               type: "out",
               amount: Math.abs(input.difference),
-              reason: `Exchange Refund ${record.number} (Order ${input.originalNumber})`,
+              reason: `Exchange Refund ${record.number} (Order #${input.originalNumber})`,
             };
             queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
               cashMove,
@@ -703,7 +707,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
               id: randomId("cm"),
               type: "in",
               amount: input.difference,
-              reason: `Exchange Payment ${record.number} (Order ${input.originalNumber})`,
+              reason: `Exchange Payment ${record.number} (Order #${input.originalNumber})`,
             };
             queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
               cashMove,
@@ -721,10 +725,20 @@ export function PosProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // 4. Mirror order for accounting / sales history
+      // 4. Update the original order with detailed audit information
       const status: OrderStatus = input.kind === "return" ? "returned" : "exchanged";
       const netPaymentAmount =
         input.kind === "return" ? -input.refundAmount : input.difference;
+
+      const returnDetailsText = input.lines
+        .map((l) => `${l.qty}x ${l.name} (Reason: ${l.reason})`)
+        .join(", ");
+      const replacementDetailsText =
+        input.kind === "exchange" && input.replacements && input.replacements.length > 0
+          ? ` | Replaced with: ` +
+            input.replacements.map((r) => `${r.qty}x ${r.name}`).join(", ")
+          : "";
+      const auditLog = `[${record.number}] Returned: ${returnDetailsText}${replacementDetailsText} (Settled via ${input.method})`;
 
       const mirror: Order = {
         id: record.id,
@@ -748,14 +762,26 @@ export function PosProvider({ children }: { children: ReactNode }) {
             amount: netPaymentAmount,
           },
         ],
-        note: `${input.kind === "return" ? "Return" : "Exchange"} against Order ${input.originalNumber}`,
+        note: auditLog,
         noteTags: [input.kind],
         pricelistId: "pl1",
       };
 
+      // Mutate local state and persist both the updated original order and the mirror order
       mutateOrders(
         (prev) => [
-          ...prev.map((o) => (o.id === input.originalOrderId ? { ...o, status } : o)),
+          ...prev.map((o) => {
+            if (o.id === input.originalOrderId) {
+              const updatedNote = o.note ? `${o.note} | ${auditLog}` : auditLog;
+              return {
+                ...o,
+                status,
+                note: updatedNote,
+                noteTags: Array.from(new Set([...(o.noteTags || []), input.kind])),
+              };
+            }
+            return o;
+          }),
           mirror,
         ],
         [input.originalOrderId, mirror.id],
@@ -782,12 +808,42 @@ export function PosProvider({ children }: { children: ReactNode }) {
   return <PosContext.Provider value={value}>{children}</PosContext.Provider>;
 }
 
-function nextOrderNumber(orders: Order[]) {
-  const highest = orders.reduce((max, o) => {
-    const n = Number(o.number);
-    return Number.isFinite(n) && n > max ? n : max;
-  }, 1000);
-  return String(highest + 1);
+function extractDigitsNumber(val: any): number {
+  if (!val) return 0;
+  const str = String(val);
+  const digits = str.replace(/[^\d]/g, "");
+  const num = parseInt(digits, 10);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function nextOrderNumber(orders: Order[] = [], extra: { number?: string }[] = []) {
+  let highest = 1000;
+
+  for (const o of orders) {
+    const n = extractDigitsNumber(o.number);
+    if (n > highest) highest = n;
+    const r = extractDigitsNumber(o.receipt);
+    if (r > highest) highest = r;
+  }
+
+  for (const x of extra) {
+    const n = extractDigitsNumber(x?.number);
+    if (n > highest) highest = n;
+  }
+
+  try {
+    const saved = parseInt(localStorage.getItem("velora_last_order_seq") || "0", 10);
+    if (Number.isFinite(saved) && saved > highest) {
+      highest = saved;
+    }
+  } catch {}
+
+  const next = highest + 1;
+  try {
+    localStorage.setItem("velora_last_order_seq", String(next));
+  } catch {}
+
+  return String(next);
 }
 
 export function usePos() {
@@ -805,3 +861,4 @@ export function useCatalog() {
   const { productList, categoryList } = usePos();
   return useMemo(() => ({ productList, categoryList }), [productList, categoryList]);
 }
+
