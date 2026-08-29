@@ -497,6 +497,22 @@ export function PosProvider({ children }: { children: ReactNode }) {
         supabase.from("orders").upsert(fromOrder(settled, currentUser?.name ?? "")),
       );
 
+      // Deduct stock for each item sold
+      for (const line of settled.lines) {
+        const prod = productList.find((p) => p.id === line.productId);
+        if (prod) {
+          const nextStock = Math.max(0, prod.stock_qty - line.qty);
+          queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
+            (prev ?? productList).map((p) =>
+              p.id === line.productId ? { ...p, stock_qty: nextStock } : p,
+            ),
+          );
+          write.mutate(() =>
+            supabase.from("products").update({ stock_qty: nextStock }).eq("id", line.productId),
+          );
+        }
+      }
+
       mutateOrders((prev) => {
         const updated = prev.map((o) => (o.id === settled.id ? settled : o));
         const otherOngoing = updated.find(
@@ -607,12 +623,115 @@ export function PosProvider({ children }: { children: ReactNode }) {
       ]);
       write.mutate(() => supabase.from("return_records").insert(fromReturnRecord(record)));
 
+      // 1. Add back stock for returned products
+      for (const line of input.lines) {
+        const prod = productList.find((p) => p.id === line.productId);
+        if (prod) {
+          const nextStock = prod.stock_qty + line.qty;
+          queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
+            (prev ?? productList).map((p) =>
+              p.id === line.productId ? { ...p, stock_qty: nextStock } : p,
+            ),
+          );
+          write.mutate(() =>
+            supabase.from("products").update({ stock_qty: nextStock }).eq("id", line.productId),
+          );
+        }
+      }
+
+      // 2. Deduct stock for replacement items if exchanged
+      if (input.kind === "exchange" && input.replacements && input.replacements.length > 0) {
+        for (const line of input.replacements) {
+          const prod = productList.find((p) => p.id === line.productId);
+          if (prod) {
+            const nextStock = Math.max(0, prod.stock_qty - line.qty);
+            queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
+              (prev ?? productList).map((p) =>
+                p.id === line.productId ? { ...p, stock_qty: nextStock } : p,
+              ),
+            );
+            write.mutate(() =>
+              supabase.from("products").update({ stock_qty: nextStock }).eq("id", line.productId),
+            );
+          }
+        }
+      }
+
+      // 3. Track cash drawer movements for cash returns / exchanges
+      if (input.method === "Cash") {
+        if (input.kind === "return" && input.refundAmount > 0) {
+          const cashMove: CashMove = {
+            id: randomId("cm"),
+            type: "out",
+            amount: input.refundAmount,
+            reason: `Refund for Return ${record.number} (Order ${input.originalNumber})`,
+          };
+          queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
+            cashMove,
+            ...(prev ?? []),
+          ]);
+          write.mutate(() =>
+            supabase.from("cash_moves").insert({
+              id: cashMove.id,
+              move_type: cashMove.type,
+              amount: cashMove.amount,
+              reason: cashMove.reason,
+            }),
+          );
+        } else if (input.kind === "exchange") {
+          if (input.difference < 0) {
+            const cashMove: CashMove = {
+              id: randomId("cm"),
+              type: "out",
+              amount: Math.abs(input.difference),
+              reason: `Exchange Refund ${record.number} (Order ${input.originalNumber})`,
+            };
+            queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
+              cashMove,
+              ...(prev ?? []),
+            ]);
+            write.mutate(() =>
+              supabase.from("cash_moves").insert({
+                id: cashMove.id,
+                move_type: cashMove.type,
+                amount: cashMove.amount,
+                reason: cashMove.reason,
+              }),
+            );
+          } else if (input.difference > 0) {
+            const cashMove: CashMove = {
+              id: randomId("cm"),
+              type: "in",
+              amount: input.difference,
+              reason: `Exchange Payment ${record.number} (Order ${input.originalNumber})`,
+            };
+            queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
+              cashMove,
+              ...(prev ?? []),
+            ]);
+            write.mutate(() =>
+              supabase.from("cash_moves").insert({
+                id: cashMove.id,
+                move_type: cashMove.type,
+                amount: cashMove.amount,
+                reason: cashMove.reason,
+              }),
+            );
+          }
+        }
+      }
+
+      // 4. Mirror order for accounting / sales history
       const status: OrderStatus = input.kind === "return" ? "returned" : "exchanged";
+      const netPaymentAmount =
+        input.kind === "return" ? -input.refundAmount : input.difference;
+
       const mirror: Order = {
         id: record.id,
         number: record.number,
         receipt: `RCP/${record.number}`,
         time: record.time,
+        date: record.date,
         status,
         lines: (input.kind === "return" ? input.lines : input.replacements).map((l, index) => ({
           id: `${record.id}-l${index}`,
@@ -622,10 +741,18 @@ export function PosProvider({ children }: { children: ReactNode }) {
           unitPrice: l.unitPrice,
           discount: 0,
         })),
-        payments: [],
-        noteTags: [],
+        payments: [
+          {
+            id: `pay-${record.id}`,
+            method: input.method,
+            amount: netPaymentAmount,
+          },
+        ],
+        note: `${input.kind === "return" ? "Return" : "Exchange"} against Order ${input.originalNumber}`,
+        noteTags: [input.kind],
         pricelistId: "pl1",
       };
+
       mutateOrders(
         (prev) => [
           ...prev.map((o) => (o.id === input.originalOrderId ? { ...o, status } : o)),
@@ -633,6 +760,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
         ],
         [input.originalOrderId, mirror.id],
       );
+
       return record;
     },
     updateProductInCatalog: (id, patch) => {

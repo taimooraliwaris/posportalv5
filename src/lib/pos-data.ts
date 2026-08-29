@@ -63,7 +63,7 @@ export const STORE = {
   network: "VeloraNet",
 };
 
-export const TAX_RATE = 0.18;
+export const TAX_RATE = 0;
 
 export const categories: Category[] = [];
 
@@ -108,6 +108,9 @@ export const noteTags = [
 ] as const;
 
 export function formatRs(amount: number) {
+  if (amount < 0) {
+    return `-Rs. ${Math.abs(amount).toFixed(2)}`;
+  }
   return `Rs. ${amount.toFixed(2)}`;
 }
 
