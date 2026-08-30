@@ -404,7 +404,18 @@ export function BackendProvider({ children }: { children: ReactNode }) {
             return p;
           });
         });
+        queryClient.setQueryData<StockItem[]>(cloudKeys.stock, (prev) => {
+          if (!prev) return prev;
+          return prev.map((s) => {
+            const matchLine = po.lines.find((l) => l.productId === s.productId);
+            if (matchLine) {
+              return { ...s, onHand: s.onHand + matchLine.qty };
+            }
+            return s;
+          });
+        });
         void queryClient.invalidateQueries({ queryKey: cloudKeys.products });
+        void queryClient.invalidateQueries({ queryKey: cloudKeys.stock });
       }
     },
 

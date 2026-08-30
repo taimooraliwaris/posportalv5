@@ -11,6 +11,7 @@ import { useStore } from "@/lib/backend-context";
 import { printOrderReceipt } from "@/lib/print-service";
 import { formatRs } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
+import { PrintModal } from "@/components/pos/ReceiptModals";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/orders")({
@@ -186,58 +187,12 @@ function Orders() {
         </div>
       </main>
 
-      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Order {selected?.number}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Receipt</span>
-              <span>{selected?.receipt}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Time</span>
-              <span>{selected?.time}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Status</span>
-              <span className="capitalize">{selected?.status}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Cashier</span>
-              <span className="font-medium">{selected?.cashier || store.cashier}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Items</span>
-              <span>{selected?.lines.reduce((s, l) => s + l.qty, 0)}</span>
-            </div>
-            <div className="flex justify-between text-base font-semibold border-t border-dashed border-border pt-2">
-              <span>Total</span>
-              <span className="text-primary font-bold">
-                {selected
-                  ? formatRs(
-                      orderTotals(selected, 0).total,
-                    )
-                  : "Rs. 0.00"}
-              </span>
-            </div>
-            <div className="pt-3">
-              <Button
-                className="w-full h-11 font-semibold gap-2"
-                onClick={() => {
-                  if (selected) {
-                    printOrderReceipt(selected, { cashier: selected.cashier || currentCashier });
-                    toast.success(`Receipt #${selected.receipt} sent to printer`);
-                  }
-                }}
-              >
-                <Printer className="h-4 w-4" /> Print Order Receipt
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Render the POS like receipt modal when selected */}
+      <PrintModal 
+        open={!!selected} 
+        onOpenChange={(o) => { if (!o) setSelected(null); }} 
+        order={selected} 
+      />
 
       <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
         <DialogContent className="max-w-sm">

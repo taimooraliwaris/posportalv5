@@ -64,7 +64,7 @@ function CloseRegisterPage() {
   // Exact real-time figures scoped strictly to the current active session
   const completedOrders = useMemo(() => {
     return orders.filter((o) => {
-      const isPaid = o.status === "paid" || o.status === "exchanged";
+      const isPaid = o.status === "paid";
       if (!isPaid) return false;
       if (activeSessionId && o.sessionId) {
         return o.sessionId === activeSessionId;
