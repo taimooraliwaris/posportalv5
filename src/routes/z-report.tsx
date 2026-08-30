@@ -25,7 +25,7 @@ export const Route = createFileRoute("/z-report")({
 });
 
 function ZReportPage() {
-  const { closedSummary, orders, cashMoves, openingCash } = usePos();
+  const { closedSummary, orders, cashMoves, openingCash, activeSessionId, sessionOpenedAt } = usePos();
   const { currentUser } = useAuth();
   const store = useStore();
   const [viewMode, setViewMode] = useState<"summary" | "orders">("summary");
@@ -45,8 +45,26 @@ function ZReportPage() {
       const match = orders.filter((o) => o.sessionId === snapshot.id && (o.status === "paid" || o.status === "exchanged"));
       if (match.length > 0) return match;
     }
-    return orders.filter((o) => o.status === "paid" || o.status === "exchanged");
-  }, [orders, snapshot?.id]);
+    return orders.filter((o) => {
+      const isPaid = o.status === "paid" || o.status === "exchanged";
+      if (!isPaid) return false;
+      if (activeSessionId && o.sessionId) return o.sessionId === activeSessionId;
+      if (sessionOpenedAt && o.createdAt) return new Date(o.createdAt).getTime() >= new Date(sessionOpenedAt).getTime();
+      return true;
+    });
+  }, [orders, snapshot?.id, activeSessionId, sessionOpenedAt]);
+
+  const cashMovesInSession = useMemo(() => {
+    if (snapshot?.id) {
+      const match = cashMoves.filter((m) => m.sessionId === snapshot.id);
+      if (match.length > 0) return match;
+    }
+    return cashMoves.filter((m) => {
+      if (activeSessionId && m.sessionId) return m.sessionId === activeSessionId;
+      if (sessionOpenedAt && m.createdAt) return new Date(m.createdAt).getTime() >= new Date(sessionOpenedAt).getTime();
+      return false;
+    });
+  }, [cashMoves, snapshot?.id, activeSessionId, sessionOpenedAt]);
 
   const totalSales = snapshot?.totalSales ?? paidOrders.reduce(
     (sum, o) => sum + o.lines.reduce((l, li) => l + li.qty * li.unitPrice, 0),
@@ -68,8 +86,8 @@ function ZReportPage() {
     .filter((p) => p.method === "Customer Account")
     .reduce((s, p) => s + p.amount, 0);
 
-  const cashIn = snapshot?.cashIn ?? cashMoves.filter((m) => m.type === "in").reduce((s, m) => s + m.amount, 0);
-  const cashOut = snapshot?.cashOut ?? cashMoves.filter((m) => m.type === "out").reduce((s, m) => s + m.amount, 0);
+  const cashIn = snapshot?.cashIn ?? cashMovesInSession.filter((m) => m.type === "in").reduce((s, m) => s + m.amount, 0);
+  const cashOut = snapshot?.cashOut ?? cashMovesInSession.filter((m) => m.type === "out").reduce((s, m) => s + m.amount, 0);
   const openingFloatVal = snapshot?.openingCash ?? openingCash;
 
   const expectedCash = snapshot?.expectedCash ?? (openingFloatVal + cashPayments + cashIn - cashOut);

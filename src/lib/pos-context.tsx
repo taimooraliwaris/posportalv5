@@ -751,8 +751,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString(),
       };
       queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
-        ...(prev ?? []),
         created,
+        ...(prev ?? []),
       ]);
       write.mutate(() =>
         supabase.from("cash_moves").insert({
@@ -760,6 +760,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
           move_type: created.type,
           amount: created.amount,
           reason: created.reason,
+          cashier: currentUser?.name ?? "Cashier",
+          created_at: created.createdAt,
         }),
       );
     },
@@ -826,6 +828,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
             type: "out",
             amount: input.refundAmount,
             reason: `Refund for Return ${record.number} (Order #${input.originalNumber})`,
+            sessionId: activeSessionId || "",
+            date: new Date().toISOString().slice(0, 10),
+            createdAt: new Date().toISOString(),
           };
           queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
             cashMove,
@@ -837,6 +842,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
               move_type: cashMove.type,
               amount: cashMove.amount,
               reason: cashMove.reason,
+              cashier: currentUser?.name ?? "Cashier",
+              created_at: cashMove.createdAt,
             }),
           );
         } else if (input.kind === "exchange") {
@@ -846,6 +853,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
               type: "out",
               amount: Math.abs(input.difference),
               reason: `Exchange Refund ${record.number} (Order #${input.originalNumber})`,
+              sessionId: activeSessionId || "",
+              date: new Date().toISOString().slice(0, 10),
+              createdAt: new Date().toISOString(),
             };
             queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
               cashMove,
@@ -857,6 +867,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
                 move_type: cashMove.type,
                 amount: cashMove.amount,
                 reason: cashMove.reason,
+                cashier: currentUser?.name ?? "Cashier",
+                created_at: cashMove.createdAt,
               }),
             );
           } else if (input.difference > 0) {
@@ -865,6 +877,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
               type: "in",
               amount: input.difference,
               reason: `Exchange Payment ${record.number} (Order #${input.originalNumber})`,
+              sessionId: activeSessionId || "",
+              date: new Date().toISOString().slice(0, 10),
+              createdAt: new Date().toISOString(),
             };
             queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
               cashMove,
@@ -876,6 +891,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
                 move_type: cashMove.type,
                 amount: cashMove.amount,
                 reason: cashMove.reason,
+                cashier: currentUser?.name ?? "Cashier",
+                created_at: cashMove.createdAt,
               }),
             );
           }
