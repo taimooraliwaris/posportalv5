@@ -98,6 +98,8 @@ export type Order = {
   receipt: string;
   time: string;
   date?: string;
+  createdAt?: string;
+  sessionId?: string;
   cashier?: string;
   status: OrderStatus;
   lines: CartLine[];
@@ -108,19 +110,29 @@ export type Order = {
   pricelistId: string;
 };
 
-export type CashMove = { id: string; type: "in" | "out"; amount: number; reason: string };
+export type CashMove = {
+  id: string;
+  type: "in" | "out";
+  amount: number;
+  reason: string;
+  date?: string;
+  createdAt?: string;
+  sessionId?: string;
+};
 
 function now() {
   return new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-function makeOrder(number: string, cashierName = ""): Order {
+function makeOrder(number: string, cashierName = "", sessionId?: string): Order {
   return {
     id: `o-${number}-${Math.random().toString(36).slice(2, 6)}`,
     number,
     receipt: `RCP/${number}`,
     time: now(),
     date: new Date().toISOString().slice(0, 10),
+    createdAt: new Date().toISOString(),
+    sessionId: sessionId || "",
     status: "ongoing",
     lines: [],
     payments: [],
@@ -137,6 +149,8 @@ export function orderTotals(order: Order | undefined, discountRate = 0) {
 
 type PosState = {
   registerOpen: boolean;
+  activeSessionId: string | null;
+  sessionOpenedAt: string | null;
   openingCash: number;
   openRegister: (amount: number) => void;
   closeRegister: (counted: number, note: string) => void;
@@ -250,6 +264,24 @@ export function PosProvider({ children }: { children: ReactNode }) {
       }
     } catch {}
     return false;
+  });
+
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    try {
+      const savedOpen = localStorage.getItem("velora_register_open");
+      const savedId = localStorage.getItem("velora_active_session_id");
+      if (savedOpen === "true" && savedId) return savedId;
+    } catch {}
+    return null;
+  });
+
+  const [sessionOpenedAt, setSessionOpenedAt] = useState<string | null>(() => {
+    try {
+      const savedOpen = localStorage.getItem("velora_register_open");
+      const savedTime = localStorage.getItem("velora_session_opened_at");
+      if (savedOpen === "true" && savedTime) return savedTime;
+    } catch {}
+    return null;
   });
 
   const [openingCash, setOpeningCash] = useState<number>(() => {
@@ -470,18 +502,26 @@ export function PosProvider({ children }: { children: ReactNode }) {
 
   const value: PosState = {
     registerOpen,
+    activeSessionId,
+    sessionOpenedAt,
     openingCash,
     openRegister: (amount) => {
       const today = new Date().toISOString().slice(0, 10);
+      const openedAt = new Date().toISOString();
+      const newSessionId = `ses-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+      setActiveSessionId(newSessionId);
+      setSessionOpenedAt(openedAt);
       setOpeningCash(amount);
       setRegisterOpen(true);
       setPendingPreviousShiftClose(false);
       setClosedSummary(null);
       try {
         localStorage.setItem("velora_register_open", "true");
+        localStorage.setItem("velora_active_session_id", newSessionId);
+        localStorage.setItem("velora_session_opened_at", openedAt);
         localStorage.setItem("velora_register_date", today);
         localStorage.setItem("velora_opening_cash", String(amount));
-        localStorage.setItem("velora_session_opened_at", new Date().toISOString());
       } catch {}
     },
     closeRegister: (counted, note) => {
@@ -492,7 +532,11 @@ export function PosProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("velora_register_open", "false");
         localStorage.setItem("velora_register_date", new Date().toISOString().slice(0, 10));
         localStorage.removeItem("velora_opening_cash");
+        localStorage.removeItem("velora_active_session_id");
+        localStorage.removeItem("velora_session_opened_at");
       } catch {}
+      setActiveSessionId(null);
+      setSessionOpenedAt(null);
     },
     closedSummary,
     pendingPreviousShiftClose,
@@ -508,7 +552,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
     activeOrder,
     setActiveOrderId,
     newOrder: () => {
-      const order = makeOrder(nextOrderNumber(orders, returns), currentUser?.name ?? "");
+      const order = makeOrder(nextOrderNumber(orders, returns), currentUser?.name ?? "", activeSessionId ?? undefined);
       mutateOrders((prev) => [order, ...prev], [order.id]);
       setActiveOrderId(order.id);
     },
@@ -584,7 +628,14 @@ export function PosProvider({ children }: { children: ReactNode }) {
     validateOrder: () => {
       const paid = orders.find((o) => o.id === activeOrderId);
       if (!paid) return;
-      const settled: Order = { ...paid, status: "paid", time: now() };
+      const settled: Order = {
+        ...paid,
+        status: "paid",
+        time: now(),
+        date: paid.date || new Date().toISOString().slice(0, 10),
+        createdAt: paid.createdAt || new Date().toISOString(),
+        sessionId: paid.sessionId || activeSessionId || "",
+      };
       setLastPaidOrder(settled);
 
       // Persist the settled order immediately to Supabase
@@ -618,7 +669,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
           setSelectedLineId(null);
           return updated;
         }
-        const fresh = makeOrder(nextOrderNumber(updated, returns), currentUser?.name ?? "");
+        const fresh = makeOrder(nextOrderNumber(updated, returns), currentUser?.name ?? "", activeSessionId ?? undefined);
         setActiveOrderId(fresh.id);
         setSelectedLineId(null);
         persist(fresh);
@@ -687,7 +738,13 @@ export function PosProvider({ children }: { children: ReactNode }) {
     },
     cashMoves,
     addCashMove: (m) => {
-      const created: CashMove = { ...m, id: randomId("cm") };
+      const created: CashMove = {
+        ...m,
+        id: randomId("cm"),
+        sessionId: activeSessionId || "",
+        date: new Date().toISOString().slice(0, 10),
+        createdAt: new Date().toISOString(),
+      };
       queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
         ...(prev ?? []),
         created,
