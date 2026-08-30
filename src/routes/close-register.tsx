@@ -70,7 +70,15 @@ function CloseRegisterPage() {
         return o.sessionId === activeSessionId;
       }
       if (sessionOpenedAt) {
-        return new Date(o.createdAt || `${o.date}T${o.time}`) >= new Date(sessionOpenedAt);
+        const orderTime = o.createdAt
+          ? new Date(o.createdAt).getTime()
+          : o.date && o.time
+            ? new Date(`${o.date}T${o.time}`).getTime()
+            : o.date
+              ? new Date(o.date).getTime()
+              : 0;
+        const openTime = new Date(sessionOpenedAt).getTime();
+        return Number.isFinite(orderTime) && orderTime >= openTime && orderTime > 0;
       }
       return false;
     });
@@ -82,7 +90,13 @@ function CloseRegisterPage() {
         return m.sessionId === activeSessionId;
       }
       if (sessionOpenedAt) {
-        return new Date(m.createdAt || m.date || sessionOpenedAt) >= new Date(sessionOpenedAt);
+        const moveTime = m.createdAt
+          ? new Date(m.createdAt).getTime()
+          : m.date
+            ? new Date(m.date).getTime()
+            : 0;
+        const openTime = new Date(sessionOpenedAt).getTime();
+        return Number.isFinite(moveTime) && moveTime >= openTime && moveTime > 0;
       }
       return false;
     });

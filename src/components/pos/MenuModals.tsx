@@ -39,33 +39,73 @@ export function CashInOutModal({
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
-  const { addCashMove, cashMoves, openingCash, orders } = usePos();
+  const { addCashMove, cashMoves, openingCash, orders, activeSessionId, sessionOpenedAt } = usePos();
   const [tab, setTab] = useState<"entry" | "history">("entry");
   const [type, setType] = useState<"in" | "out">("in");
   const [amount, setAmount] = useState("");
   const [selectedReason, setSelectedReason] = useState(commonReasons.in[0]!);
   const [customNote, setCustomNote] = useState("");
 
-  // Calculate current estimated cash drawer balance
+  // Scope orders and cash moves strictly to the current active shift session
+  const sessionOrders = useMemo(() => {
+    return orders.filter((o) => {
+      const isPaid = o.status === "paid" || o.status === "exchanged";
+      if (!isPaid) return false;
+      if (activeSessionId && o.sessionId) {
+        return o.sessionId === activeSessionId;
+      }
+      if (sessionOpenedAt) {
+        const orderTime = o.createdAt
+          ? new Date(o.createdAt).getTime()
+          : o.date && o.time
+            ? new Date(`${o.date}T${o.time}`).getTime()
+            : o.date
+              ? new Date(o.date).getTime()
+              : 0;
+        const openTime = new Date(sessionOpenedAt).getTime();
+        return Number.isFinite(orderTime) && orderTime >= openTime && orderTime > 0;
+      }
+      return false;
+    });
+  }, [orders, activeSessionId, sessionOpenedAt]);
+
+  const sessionCashMoves = useMemo(() => {
+    return cashMoves.filter((m) => {
+      if (activeSessionId && m.sessionId) {
+        return m.sessionId === activeSessionId;
+      }
+      if (sessionOpenedAt) {
+        const moveTime = m.createdAt
+          ? new Date(m.createdAt).getTime()
+          : m.date
+            ? new Date(m.date).getTime()
+            : 0;
+        const openTime = new Date(sessionOpenedAt).getTime();
+        return Number.isFinite(moveTime) && moveTime >= openTime && moveTime > 0;
+      }
+      return false;
+    });
+  }, [cashMoves, activeSessionId, sessionOpenedAt]);
+
+  // Calculate current estimated cash drawer balance for this shift
   const cashSalesTotal = useMemo(() => {
-    return orders
-      .filter((o) => o.status === "paid" || o.status === "exchanged")
+    return sessionOrders
       .flatMap((o) => o.payments || [])
       .filter((p) => p.method === "Cash")
       .reduce((sum, p) => sum + p.amount, 0);
-  }, [orders]);
+  }, [sessionOrders]);
 
   const cashInTotal = useMemo(() => {
-    return cashMoves
+    return sessionCashMoves
       .filter((m) => m.type === "in")
       .reduce((sum, m) => sum + m.amount, 0);
-  }, [cashMoves]);
+  }, [sessionCashMoves]);
 
   const cashOutTotal = useMemo(() => {
-    return cashMoves
+    return sessionCashMoves
       .filter((m) => m.type === "out")
       .reduce((sum, m) => sum + m.amount, 0);
-  }, [cashMoves]);
+  }, [sessionCashMoves]);
 
   const estimatedDrawerCash = openingCash + cashSalesTotal + cashInTotal - cashOutTotal;
 
@@ -132,7 +172,7 @@ export function CashInOutModal({
                 <Plus className="h-3.5 w-3.5" /> Record Cash Move
               </TabsTrigger>
               <TabsTrigger value="history" className="gap-1.5 text-xs font-semibold">
-                <History className="h-3.5 w-3.5" /> Transaction History ({cashMoves.length})
+                <History className="h-3.5 w-3.5" /> Transaction History ({sessionCashMoves.length})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -257,7 +297,7 @@ export function CashInOutModal({
 
           <TabsContent value="history" className="p-4 mt-0">
             <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-              {cashMoves.map((m) => (
+              {sessionCashMoves.map((m) => (
                 <div
                   key={m.id}
                   className="flex items-center justify-between rounded-lg border border-border bg-card p-3 text-xs"
@@ -291,7 +331,7 @@ export function CashInOutModal({
                 </div>
               ))}
 
-              {cashMoves.length === 0 && (
+              {sessionCashMoves.length === 0 && (
                 <div className="py-8 text-center text-xs text-muted-foreground">
                   No cash movements recorded yet in this session.
                 </div>

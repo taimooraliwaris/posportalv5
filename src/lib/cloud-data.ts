@@ -216,6 +216,8 @@ export const toCashMove = (row: Row<"cash_moves">): CashMove => ({
   type: row.move_type as CashMove["type"],
   amount: Number(row.amount),
   reason: row.reason,
+  createdAt: row.created_at,
+  date: row.created_at ? row.created_at.slice(0, 10) : "",
 });
 
 /* ------------------------------------------------------------------ fetchers */
