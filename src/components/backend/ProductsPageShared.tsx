@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 import { useState } from "react";
 import { BackendLayout } from "@/components/backend/backend-layout";
 import { usePos } from "@/lib/pos-context";
@@ -8,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ProductForm } from "@/components/backend/ProductForm";
 import { formatRs, type Product } from "@/lib/pos-data";
+import { useScanTarget } from "@/lib/scan-mode-context";
 import { cn } from "@/lib/utils";
-import { Search, Plus, LayoutGrid, List } from "lucide-react";
+import { Search, Plus, LayoutGrid, List, Barcode } from "lucide-react";
+import { toast } from "sonner";
 
 export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
   const { productList, categoryList, updateProductInCatalog } = usePos();
@@ -18,6 +18,30 @@ export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
   const [isAddOpen, setIsAddOpen] = useState(false);
+
+  // Barcode scanner support on Products Catalog
+  useScanTarget(
+    "products",
+    ({ code }) => {
+      if (isAddOpen) return "ignored";
+      const trimmed = code.trim().toLowerCase();
+      const match = productList.find(
+        (p) =>
+          (p.barcode && p.barcode.toLowerCase() === trimmed) ||
+          (p.item_code && p.item_code.toLowerCase() === trimmed) ||
+          p.id.toLowerCase() === trimmed ||
+          p.name.toLowerCase().includes(trimmed),
+      );
+      if (match) {
+        setQuery(match.item_code || match.barcode || match.name);
+        toast.success(`Scanned: ${match.name} (Stock: ${match.stock_qty ?? 0})`);
+        return "added";
+      }
+      toast.error(`No product found with barcode ${code}`);
+      return "unknown";
+    },
+    !isAddOpen,
+  );
 
   // Filter products based on selected category / subcategory
   const visibleProducts = productList.filter((p) => {

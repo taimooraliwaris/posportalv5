@@ -19,11 +19,15 @@ export type ScanMode =
   | "inventory"
   /** Mode E — fill product barcode in create/edit modal. */
   | "product-dialog"
-  /** Mode F — add product to purchase order by scanning barcode. */
+  /** Mode F — lookup or focus product by barcode in catalog. */
+  | "products"
+  /** Mode G — add product to purchase order by scanning barcode or search PO by invoice. */
   | "purchases"
-  /** Mode G — search or assign customer by member card / barcode. */
+  /** Mode H — search or assign customer by member card / barcode. */
   | "customers"
-  /** Mode H — scan voucher / loyalty card / receipt at payment. */
+  /** Mode I — search sales and returns by receipt / invoice barcode. */
+  | "sales"
+  /** Mode J — scan voucher / loyalty card / receipt at payment. */
   | "payment";
 
 export type ScanOutcome = "added" | "info" | "unknown" | "rejected" | "ignored";

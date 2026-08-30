@@ -14,6 +14,9 @@ import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
 import { POBuilder } from "@/components/backend/POBuilder";
 
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+
 export const Route = createFileRoute("/backend/purchases")({
   head: () => ({
     meta: [
@@ -38,9 +41,48 @@ function PurchasesPage() {
   const { suppliers, purchaseOrders, setPurchaseOrderStatus } = useBackend();
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  // Barcode / PO scan listener on Purchases page
+  useScanTarget(
+    "purchases",
+    ({ code }) => {
+      if (builderOpen) return "ignored";
+      const trimmed = code.trim().toLowerCase();
+      const cleanNum = trimmed.replace(/^po\/?/i, "");
+
+      const match = purchaseOrders.find((po) => {
+        const num = po.number?.toLowerCase() || "";
+        const id = po.id?.toLowerCase() || "";
+        return num === trimmed || num.includes(cleanNum) || id === trimmed;
+      });
+
+      if (match) {
+        setQuery(match.number);
+        toast.success(`Purchase Order found: ${match.number}`);
+        return "added";
+      }
+
+      toast.error(`No purchase order found for code ${code}`);
+      return "unknown";
+    },
+    !builderOpen,
+  );
 
   const totalFor = (lines: { qty: number; cost: number }[]) =>
     lines.reduce((sum, l) => sum + l.qty * l.cost, 0);
+
+  const filteredPOs = purchaseOrders.filter((po) => {
+    if (!query) return true;
+    const q = query.toLowerCase().trim();
+    const cleanQ = q.replace(/^po\/?/i, "");
+    const supplierName = suppliers.find((s) => s.id === po.supplierId)?.name.toLowerCase() || "";
+    return (
+      po.number.toLowerCase().includes(q) ||
+      po.number.toLowerCase().includes(cleanQ) ||
+      supplierName.includes(q)
+    );
+  });
 
   if (builderOpen) {
     return (
@@ -59,7 +101,17 @@ function PurchasesPage() {
         </TabsList>
 
         <TabsContent value="orders">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search / Scan PO # (e.g. PO/0001, 0001)..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="h-11 pl-9 pr-3 text-xs"
+              />
+            </div>
             <Button
               className="h-11"
               onClick={() => setBuilderOpen(true)}
@@ -70,7 +122,7 @@ function PurchasesPage() {
 
           <DataTable
             columns={orderColumns(suppliers, setPurchaseOrderStatus)}
-            rows={purchaseOrders}
+            rows={filteredPOs}
             getKey={(po) => po.id}
             empty="No purchase orders yet."
           />

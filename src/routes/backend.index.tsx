@@ -28,7 +28,7 @@ export const Route = createFileRoute("/backend/")({
 });
 
 function Dashboard() {
-  const { productList } = usePos();
+  const { productList, orders } = usePos();
   const hydrated = useHydrated();
   const { sessions, sales } = useBackend();
 
@@ -73,16 +73,39 @@ function Dashboard() {
   // Real product catalog low/out-of-stock count
   const lowStock = productList.filter((p) => Number(p.stock_qty ?? 0) <= 5).length;
 
+  // Compute Net units sold and net revenue per product (net of returns)
   const unitsByProduct = new Map<string, { units: number; revenue: number }>();
-  sales.forEach((sale) =>
-    sale.lines.forEach((line) => {
-      const entry = unitsByProduct.get(line.productId) ?? { units: 0, revenue: 0 };
-      entry.units += line.qty;
-      entry.revenue += line.qty * line.unitPrice;
-      unitsByProduct.set(line.productId, entry);
-    }),
-  );
+  
+  // 1. Process from completed live orders
+  const completedOrders = orders.filter((o) => o.status === "paid" || o.status === "exchanged");
+  if (completedOrders.length > 0) {
+    completedOrders.forEach((order) => {
+      const isReturn = order.number.startsWith("RET-") || (order.payments && order.payments.some((p) => p.amount < 0));
+      const multiplier = isReturn ? -1 : 1;
+      order.lines.forEach((line) => {
+        const entry = unitsByProduct.get(line.productId) ?? { units: 0, revenue: 0 };
+        const lineRevenue = line.qty * line.unitPrice * (1 - (line.discount || 0) / 100);
+        entry.units += line.qty * multiplier;
+        entry.revenue += lineRevenue * multiplier;
+        unitsByProduct.set(line.productId, entry);
+      });
+    });
+  } else {
+    // Fallback to sales table if no local orders
+    sales.forEach((sale) => {
+      const isReturn = sale.number.startsWith("RET-") || sale.total < 0;
+      const multiplier = isReturn ? -1 : 1;
+      sale.lines.forEach((line) => {
+        const entry = unitsByProduct.get(line.productId) ?? { units: 0, revenue: 0 };
+        entry.units += line.qty * multiplier;
+        entry.revenue += line.qty * line.unitPrice * multiplier;
+        unitsByProduct.set(line.productId, entry);
+      });
+    });
+  }
+
   const top = [...unitsByProduct.entries()]
+    .filter(([_, v]) => v.units > 0)
     .sort((a, b) => b[1].units - a[1].units)
     .slice(0, 5)
     .map(([id, v]) => ({ name: productList.find((p) => p.id === id)?.name ?? id, ...v }));
