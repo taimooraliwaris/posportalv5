@@ -214,9 +214,24 @@ export function BackendProvider({ children }: { children: ReactNode }) {
       byDate.set(s.date, bucket);
     }
 
-    const sessions: SessionRecord[] = Array.from(byDate.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, dateSales]) => {
+    // ── Load explicitly saved shift sessions from persistent history ────────
+    let storedSessions: SessionRecord[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("velora_session_history");
+        if (raw) storedSessions = JSON.parse(raw);
+      } catch {}
+    }
+
+    const sessionsMap = new Map<string, SessionRecord>();
+    for (const s of storedSessions) {
+      sessionsMap.set(s.id, s);
+    }
+
+    // Ensure dates with sales are represented if not explicitly in stored history
+    for (const [date, dateSales] of byDate.entries()) {
+      const existingForDate = storedSessions.filter((s) => s.date === date);
+      if (existingForDate.length === 0) {
         const cashSales =
           Math.round(
             dateSales
@@ -232,7 +247,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
         const totalSales =
           Math.round(dateSales.reduce((sum, s) => sum + s.total, 0) * 100) / 100;
 
-        return {
+        sessionsMap.set(`sess-${date}`, {
           id: `sess-${date}`,
           date,
           cashier: dateSales[0]?.cashier ?? cashierFallback,
@@ -244,8 +259,13 @@ export function BackendProvider({ children }: { children: ReactNode }) {
           cardSales,
           variance: 0,
           orderCount: dateSales.length,
-        };
-      });
+        });
+      }
+    }
+
+    const sessions: SessionRecord[] = Array.from(sessionsMap.values()).sort((a, b) =>
+      a.date === b.date ? a.openedAt.localeCompare(b.openedAt) : a.date.localeCompare(b.date),
+    );
 
     return { sessions, sales };
   }, [ordersQuery.data, settingsQuery.data]);

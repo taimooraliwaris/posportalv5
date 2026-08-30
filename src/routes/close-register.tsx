@@ -51,7 +51,7 @@ export const Route = createFileRoute("/close-register")({
 const denominations = [5000, 1000, 500, 100, 50, 20, 10, 5, 2, 1];
 
 function CloseRegisterPage() {
-  const { openingCash, cashMoves, orders, closeRegister } = usePos();
+  const { openingCash, cashMoves, orders, closeRegister, activeSessionId, sessionOpenedAt } = usePos();
   const { currentUser } = useAuth();
   const store = useStore();
   const navigate = useNavigate();
@@ -61,10 +61,32 @@ function CloseRegisterPage() {
   const [denomCounts, setDenomCounts] = useState<Record<number, number>>({});
   const [showDenomCalc, setShowDenomCalc] = useState(false);
 
-  // Exact real-time figures from session orders
+  // Exact real-time figures scoped strictly to the current active session
   const completedOrders = useMemo(() => {
-    return orders.filter((o) => o.status === "paid" || o.status === "exchanged");
-  }, [orders]);
+    return orders.filter((o) => {
+      const isPaid = o.status === "paid" || o.status === "exchanged";
+      if (!isPaid) return false;
+      if (activeSessionId && o.sessionId) {
+        return o.sessionId === activeSessionId;
+      }
+      if (sessionOpenedAt) {
+        return new Date(o.createdAt || `${o.date}T${o.time}`) >= new Date(sessionOpenedAt);
+      }
+      return false;
+    });
+  }, [orders, activeSessionId, sessionOpenedAt]);
+
+  const cashMovesInSession = useMemo(() => {
+    return cashMoves.filter((m) => {
+      if (activeSessionId && m.sessionId) {
+        return m.sessionId === activeSessionId;
+      }
+      if (sessionOpenedAt) {
+        return new Date(m.createdAt || m.date || sessionOpenedAt) >= new Date(sessionOpenedAt);
+      }
+      return false;
+    });
+  }, [cashMoves, activeSessionId, sessionOpenedAt]);
 
   const totalItemsSold = useMemo(() => {
     return completedOrders.reduce((sum, o) => sum + o.lines.reduce((s, l) => s + l.qty, 0), 0);
@@ -94,16 +116,16 @@ function CloseRegisterPage() {
   const totalGrossSales = cashSales + cardSales + accountSales;
 
   const cashIn = useMemo(() => {
-    return cashMoves
+    return cashMovesInSession
       .filter((m) => m.type === "in")
       .reduce((sum, m) => sum + m.amount, 0);
-  }, [cashMoves]);
+  }, [cashMovesInSession]);
 
   const cashOut = useMemo(() => {
-    return cashMoves
+    return cashMovesInSession
       .filter((m) => m.type === "out")
       .reduce((sum, m) => sum + m.amount, 0);
-  }, [cashMoves]);
+  }, [cashMovesInSession]);
 
   // Exact expected cash in drawer
   const expectedCash = openingCash + cashSales + cashIn - cashOut;
@@ -133,6 +155,8 @@ function CloseRegisterPage() {
     }
 
     const summaryData = {
+      id: activeSessionId || `ses-${Date.now().toString(36)}`,
+      date: new Date().toISOString().slice(0, 10),
       counted: countedNum,
       note: note.trim(),
       openingCash,
@@ -147,11 +171,33 @@ function CloseRegisterPage() {
       ordersCount: completedOrders.length,
       itemsCount: totalItemsSold,
       cashier: currentUser?.name ?? store.cashier,
+      openedAt: sessionOpenedAt ? new Date(sessionOpenedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "09:00",
       closedAt: new Date().toISOString(),
     };
 
     closeRegister(countedNum, note);
     try {
+      const existingHistory = JSON.parse(localStorage.getItem("velora_session_history") || "[]");
+      existingHistory.push({
+        id: summaryData.id,
+        date: summaryData.date,
+        cashier: summaryData.cashier,
+        openedAt: summaryData.openedAt,
+        closedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        openingFloat: openingCash,
+        totalSales: totalGrossSales,
+        cashSales,
+        cardSales,
+        accountSales,
+        variance: difference,
+        orderCount: completedOrders.length,
+        cashIn,
+        cashOut,
+        expectedCash,
+        actualCounted: countedNum,
+        note: note.trim(),
+      });
+      localStorage.setItem("velora_session_history", JSON.stringify(existingHistory));
       localStorage.setItem("velora_last_z_report", JSON.stringify(summaryData));
     } catch {}
 

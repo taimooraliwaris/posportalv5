@@ -58,7 +58,7 @@ function ReportsPage() {
   const { productList, categoryList } = usePos();
   const [activeTab, setActiveTab] = useState("pl");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [selectedSessionIdId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<SessionRecord | null>(null);
   const [rangeFrom, setRangeFrom] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);

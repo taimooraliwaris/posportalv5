@@ -41,52 +41,44 @@ function ZReportPage() {
   }, [closedSummary]);
 
   const paidOrders = useMemo(() => {
+    if (snapshot?.id) {
+      const match = orders.filter((o) => o.sessionId === snapshot.id && (o.status === "paid" || o.status === "exchanged"));
+      if (match.length > 0) return match;
+    }
     return orders.filter((o) => o.status === "paid" || o.status === "exchanged");
-  }, [orders]);
+  }, [orders, snapshot?.id]);
 
-  const totalSales = useMemo(() => {
-    return paidOrders.reduce(
-      (sum, o) => sum + o.lines.reduce((l, li) => l + li.qty * li.unitPrice, 0),
-      0,
-    );
-  }, [paidOrders]);
+  const totalSales = snapshot?.totalSales ?? paidOrders.reduce(
+    (sum, o) => sum + o.lines.reduce((l, li) => l + li.qty * li.unitPrice, 0),
+    0,
+  );
 
-  const cashPayments = useMemo(() => {
-    return paidOrders
-      .flatMap((o) => o.payments || [])
-      .filter((p) => p.method === "Cash")
-      .reduce((s, p) => s + p.amount, 0);
-  }, [paidOrders]);
+  const cashPayments = snapshot?.cashSales ?? paidOrders
+    .flatMap((o) => o.payments || [])
+    .filter((p) => p.method === "Cash")
+    .reduce((s, p) => s + p.amount, 0);
 
-  const cardPayments = useMemo(() => {
-    return paidOrders
-      .flatMap((o) => o.payments || [])
-      .filter((p) => p.method === "Card")
-      .reduce((s, p) => s + p.amount, 0);
-  }, [paidOrders]);
+  const cardPayments = snapshot?.cardSales ?? paidOrders
+    .flatMap((o) => o.payments || [])
+    .filter((p) => p.method === "Card")
+    .reduce((s, p) => s + p.amount, 0);
 
-  const accountPayments = useMemo(() => {
-    return paidOrders
-      .flatMap((o) => o.payments || [])
-      .filter((p) => p.method === "Customer Account")
-      .reduce((s, p) => s + p.amount, 0);
-  }, [paidOrders]);
+  const accountPayments = snapshot?.accountSales ?? paidOrders
+    .flatMap((o) => o.payments || [])
+    .filter((p) => p.method === "Customer Account")
+    .reduce((s, p) => s + p.amount, 0);
 
-  const cashIn = useMemo(() => {
-    return cashMoves.filter((m) => m.type === "in").reduce((s, m) => s + m.amount, 0);
-  }, [cashMoves]);
+  const cashIn = snapshot?.cashIn ?? cashMoves.filter((m) => m.type === "in").reduce((s, m) => s + m.amount, 0);
+  const cashOut = snapshot?.cashOut ?? cashMoves.filter((m) => m.type === "out").reduce((s, m) => s + m.amount, 0);
+  const openingFloatVal = snapshot?.openingCash ?? openingCash;
 
-  const cashOut = useMemo(() => {
-    return cashMoves.filter((m) => m.type === "out").reduce((s, m) => s + m.amount, 0);
-  }, [cashMoves]);
-
-  const expectedCash = openingCash + cashPayments + cashIn - cashOut;
+  const expectedCash = snapshot?.expectedCash ?? (openingFloatVal + cashPayments + cashIn - cashOut);
   const counted = snapshot?.counted ?? expectedCash;
-  const difference = counted - expectedCash;
+  const difference = snapshot?.difference ?? (counted - expectedCash);
 
   const handlePrintZReport = () => {
     printZReportDocument({
-      openingCash,
+      openingCash: openingFloatVal,
       cashSales: cashPayments,
       cardSales: cardPayments,
       accountSales: accountPayments,
@@ -96,8 +88,8 @@ function ZReportPage() {
       expectedCash,
       counted,
       difference,
-      ordersCount: paidOrders.length,
-      cashier: currentUser?.name ?? store.cashier,
+      ordersCount: snapshot?.ordersCount ?? paidOrders.length,
+      cashier: snapshot?.cashier ?? (currentUser?.name ?? store.cashier),
       note: snapshot?.note,
     });
   };
