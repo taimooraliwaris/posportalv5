@@ -49,7 +49,7 @@ function SalesPage() {
   const rows = sales
     .filter((s) => (!from || s.date >= from) && (!to || s.date <= to))
     .sort((a, b) =>
-      a.date === b.date ? b.time.localeCompare(a.time) : b.date.localeCompare(a.date),
+      a.date === b.date ? String(b.time || "").localeCompare(String(a.time || "")) : String(b.date || "").localeCompare(String(a.date || "")),
     )
     .slice(0, 120);
 

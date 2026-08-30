@@ -94,8 +94,15 @@ export function useScanTarget(mode: ScanMode, handler: ScanHandler, active = tru
 
   useEffect(() => {
     if (!active) return;
+    const prevMode = scannerRouter.getMode();
     setMode(mode);
-    return scannerRouter.register(mode, (event) => ref.current(event));
+    const unregister = scannerRouter.register(mode, (event) => ref.current(event));
+    return () => {
+      unregister();
+      if (prevMode && prevMode !== mode) {
+        setMode(prevMode);
+      }
+    };
   }, [mode, active, setMode]);
 
   return { setPaused };

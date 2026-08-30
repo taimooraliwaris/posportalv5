@@ -65,10 +65,10 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
   });
 
   // Custom manual overrides for auto-parsing
-  const [manualBrand, setManualBrand] = useState("");
-  const [manualSize, setManualSize] = useState("");
-  const [manualModel, setManualModel] = useState("");
-  const [manualPly, setManualPly] = useState("");
+  const [manualBrand, setManualBrand] = useState<string | undefined>(undefined);
+  const [manualSize, setManualSize] = useState<string | undefined>(undefined);
+  const [manualModel, setManualModel] = useState<string | undefined>(undefined);
+  const [manualPly, setManualPly] = useState<string | undefined>(undefined);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -127,12 +127,12 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
 
   // Resolved values (manual overrides auto-parsed)
   const resolvedBrand =
-    manualBrand || (isTyre ? tyreBrandMatch?.[1] : isTube ? tubeBrandMatch?.[1] : undefined);
+    manualBrand !== undefined ? manualBrand : (isTyre ? tyreBrandMatch?.[1] : isTube ? tubeBrandMatch?.[1] : undefined);
   const resolvedSize =
-    manualSize || (isTyre ? tyreSizeMatch?.[1] : isTube ? tyreSizeMatch?.[1] : undefined);
-  const resolvedPly = manualPly || (isTyre ? tyrePlyMatch?.[1] : undefined);
+    manualSize !== undefined ? manualSize : (isTyre ? tyreSizeMatch?.[1] : isTube ? tyreSizeMatch?.[1] : undefined);
+  const resolvedPly = manualPly !== undefined ? manualPly : (isTyre ? tyrePlyMatch?.[1] : undefined);
   // We use the full model code in the DB. The prefix `18` maps to `CD70-CDI` in backend logic, but here we just pass the prefix for now, or the manual selection.
-  const resolvedModel = manualModel || modelMatch?.[1];
+  const resolvedModel = manualModel !== undefined ? manualModel : modelMatch?.[1];
 
   const handleSave = () => {
     if (!nameEn) {

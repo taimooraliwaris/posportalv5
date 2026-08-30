@@ -137,9 +137,9 @@ export function POBuilder({ onBack }: { onBack: () => void }) {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Left pane: Available Products */}
-        <div className="w-1/2 flex flex-col border-r border-border bg-card">
+        <div className="w-full md:w-1/2 h-1/2 md:h-full flex flex-col border-b md:border-b-0 md:border-r border-border bg-card">
           <div className="p-3 border-b border-border">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -163,7 +163,7 @@ export function POBuilder({ onBack }: { onBack: () => void }) {
                 <p className="mt-1 text-xs">Assign a supplier to products in the Product form.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {availableProducts.map(p => (
                   <button
                     key={p.id}
@@ -184,7 +184,7 @@ export function POBuilder({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* Right pane: PO Lines */}
-        <div className="w-1/2 flex flex-col bg-muted/20">
+        <div className="w-full md:w-1/2 h-1/2 md:h-full flex flex-col bg-muted/20">
           <div className="p-3 border-b border-border flex justify-between items-center bg-card">
             <h3 className="font-semibold text-sm">Order Lines</h3>
             <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-full">

@@ -118,18 +118,21 @@ export function BackendLayout({
                   >
                     <Link
                       to="/backend/products/spare-parts"
+                      onClick={() => setOpen(false)}
                       className="px-2 py-1.5 text-[13px] rounded hover:bg-muted text-muted-foreground flex items-center [&.active]:bg-muted [&.active]:text-foreground [&.active]:font-medium"
                     >
                       Spare Parts
                     </Link>
                     <Link
                       to="/backend/products/tyres"
+                      onClick={() => setOpen(false)}
                       className="px-2 py-1.5 text-[13px] rounded hover:bg-muted text-muted-foreground flex items-center [&.active]:bg-muted [&.active]:text-foreground [&.active]:font-medium"
                     >
                       Tyres
                     </Link>
                     <Link
                       to="/backend/products/tubes"
+                      onClick={() => setOpen(false)}
                       className="px-2 py-1.5 text-[13px] rounded hover:bg-muted text-muted-foreground flex items-center [&.active]:bg-muted [&.active]:text-foreground [&.active]:font-medium"
                     >
                       Tubes

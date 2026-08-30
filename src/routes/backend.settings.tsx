@@ -263,7 +263,7 @@ function PrinterSettingsCard() {
       {/* Profile Picker */}
       <div className="space-y-2">
         <Label className="text-xs font-semibold">Default Printer Hardware Profile</Label>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             {
               id: "thermal-80",

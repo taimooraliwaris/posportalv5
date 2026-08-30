@@ -108,18 +108,22 @@ function ReturnExchangePage() {
     });
   }, [paidOrders, searchQuery]);
 
-  // Return lines calculated from drafts
+  // Return lines calculated from drafts with effective discounted unit price
   const returnLines: ReturnLine[] = useMemo(() => {
     if (!selectedOrder) return [];
     return selectedOrder.lines
       .filter((l) => (drafts[l.id]?.qty ?? 0) > 0)
-      .map((l) => ({
-        productId: l.productId,
-        name: l.name,
-        qty: drafts[l.id]!.qty,
-        unitPrice: l.unitPrice,
-        reason: drafts[l.id]?.reason || returnReasons[0],
-      }));
+      .map((l) => {
+        const lineDiscountRate = l.discount ? l.discount / 100 : 0;
+        const effectivePrice = Math.round(l.unitPrice * (1 - lineDiscountRate) * 100) / 100;
+        return {
+          productId: l.productId,
+          name: l.name,
+          qty: drafts[l.id]!.qty,
+          unitPrice: effectivePrice,
+          reason: drafts[l.id]?.reason || returnReasons[0],
+        };
+      });
   }, [selectedOrder, drafts]);
 
   // Return refund credit total
