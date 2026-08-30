@@ -221,13 +221,14 @@ export function printOrderReceipt(
     cashier?: string;
     profile?: PrinterProfile;
     simplified?: boolean;
+    discountRate?: number;
   },
 ) {
   if (!order) return;
   const settings = getPrinterSettings();
   const profile = options?.profile || settings.defaultProfile;
   const cashier = options?.cashier || order.cashier || "Cashier";
-  const { total, subtotal, gross, discountAmount } = orderTotals(order, 0);
+  const { total, subtotal, gross, discountAmount } = orderTotals(order, options?.discountRate ?? 0);
 
   const linesHtml = (order.lines || [])
     .map((l) => {
@@ -411,7 +412,7 @@ export function printReturnReceipt(
 
     <div class="row">
       <span>Returned Credit Value:</span>
-      <span class="bold">-${formatRs(retCredit)}</span>
+      <span class="bold">-${formatRs(Math.abs(retCredit))}</span>
     </div>
 
     ${

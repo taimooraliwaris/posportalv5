@@ -643,18 +643,23 @@ export function PosProvider({ children }: { children: ReactNode }) {
         supabase.from("orders").upsert(fromOrder(settled, currentUser?.name ?? "")),
       );
 
-      // Deduct stock for each item sold
+      // Aggregate quantities per product to correctly deduct multi-line sales
+      const qtyByProduct = new Map<string, number>();
       for (const line of settled.lines) {
-        const prod = productList.find((p) => p.id === line.productId);
+        qtyByProduct.set(line.productId, (qtyByProduct.get(line.productId) || 0) + line.qty);
+      }
+
+      for (const [productId, soldQty] of qtyByProduct.entries()) {
+        const prod = productList.find((p) => p.id === productId);
         if (prod) {
-          const nextStock = Math.max(0, prod.stock_qty - line.qty);
+          const nextStock = Math.max(0, prod.stock_qty - soldQty);
           queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
             (prev ?? productList).map((p) =>
-              p.id === line.productId ? { ...p, stock_qty: nextStock } : p,
+              p.id === productId ? { ...p, stock_qty: nextStock } : p,
             ),
           );
           write.mutate(() =>
-            supabase.from("products").update({ stock_qty: nextStock }).eq("id", line.productId),
+            supabase.from("products").update({ stock_qty: nextStock }).eq("id", productId),
           );
         }
       }
@@ -963,9 +968,10 @@ export function PosProvider({ children }: { children: ReactNode }) {
 function extractDigitsNumber(val: any): number {
   if (!val) return 0;
   const str = String(val);
-  const digits = str.replace(/[^\d]/g, "");
+  const segment = str.split(/[-/]/).pop() || str;
+  const digits = segment.replace(/[^\d]/g, "");
   const num = parseInt(digits, 10);
-  return Number.isFinite(num) ? num : 0;
+  return Number.isFinite(num) && num < 10000000 ? num : 0;
 }
 
 function nextOrderNumber(orders: Order[] = [], extra: { number?: string }[] = []) {

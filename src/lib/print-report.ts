@@ -72,7 +72,10 @@ export function escapeHtml(value: string) {
 
 /** DD/MM/YYYY, the Pakistan standard used across the app. */
 export function formatDmy(input: string | Date) {
-  const date = typeof input === "string" ? new Date(`${input}T00:00:00`) : input;
+  const date =
+    typeof input === "string"
+      ? (input.includes("T") ? new Date(input) : new Date(`${input}T00:00:00`))
+      : input;
   if (Number.isNaN(date.getTime())) return String(input);
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");

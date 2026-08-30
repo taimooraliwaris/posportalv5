@@ -89,6 +89,8 @@ export function ScannerOverlay({
     [close, findByBarcode, mode, succeed],
   );
 
+  const mountedRef = useRef(true);
+
   const startCamera = useCallback(async () => {
     setCameraError(null);
     setCameraState("starting");
@@ -99,12 +101,17 @@ export function ScannerOverlay({
         undefined,
         videoRef.current ?? undefined,
         (result) => {
-          if (result) handleCode(result.getText());
+          if (result && mountedRef.current) handleCode(result.getText());
         },
       );
+      if (!mountedRef.current) {
+        controls.stop();
+        return;
+      }
       controlsRef.current = controls;
       setCameraState("live");
     } catch (error) {
+      if (!mountedRef.current) return;
       setCameraState("error");
       setCameraError(
         error instanceof Error && error.name === "NotAllowedError"
@@ -115,13 +122,14 @@ export function ScannerOverlay({
   }, [handleCode]);
 
   useEffect(() => {
+    mountedRef.current = true;
     void startCamera();
     return () => {
+      mountedRef.current = false;
       controlsRef.current?.stop();
       controlsRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [startCamera]);
 
   const simulate = () => {
     if (Math.random() < 0.22) {

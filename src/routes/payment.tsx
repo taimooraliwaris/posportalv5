@@ -310,7 +310,9 @@ function SuccessScreen({
   onSend: () => void;
   onContinue: () => void;
 }) {
-  const { total } = orderTotals(order ?? undefined, 0);
+  const total = order?.payments && order.payments.length > 0
+    ? order.payments.reduce((s, p) => s + p.amount, 0)
+    : orderTotals(order ?? undefined).total;
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6">
       <div className="mx-auto grid h-24 w-24 animate-pop-in place-items-center rounded-full bg-success text-success-foreground">
@@ -324,7 +326,7 @@ function SuccessScreen({
           <p className="mt-1 text-4xl font-bold tabular-nums text-success">{formatRs(change)}</p>
         </div>
       )}
-      <div className="flex w-full max-w-md gap-2">
+      <div className="flex w-full max-w-md flex-col sm:flex-row gap-2">
         <Button variant="secondary" className="h-12 flex-1" onClick={onPrint}>
           Print
         </Button>

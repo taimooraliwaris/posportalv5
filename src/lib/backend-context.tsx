@@ -291,24 +291,40 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     stockFor: (productId) => stock.find((s) => s.productId === productId),
     adjustStock: (productId, to, reason) => {
       const current = stock.find((s) => s.productId === productId);
-      if (!current) return;
-      const next: StockItem = { ...current, onHand: to, history: [...current.history.slice(1), to] };
+      const fromQty = current ? current.onHand : 0;
+      const next: StockItem = current
+        ? { ...current, onHand: to, history: [...current.history.slice(1), to] }
+        : {
+            productId,
+            onHand: to,
+            reserved: 0,
+            reorderPoint: 5,
+            cost: 0,
+            supplierId: "",
+            description: "",
+            active: true,
+            history: [to],
+          };
       patchCache<StockItem>(cloudKeys.stock, stock, (list) =>
-        list.map((s) => (s.productId === productId ? next : s)),
+        list.some((s) => s.productId === productId)
+          ? list.map((s) => (s.productId === productId ? next : s))
+          : [next, ...list],
       );
       patchCache<StockAdjustment>(cloudKeys.adjustments, adjustments, (list) => [
         {
           id: randomId("adj"),
           productId,
-          from: current.onHand,
+          from: fromQty,
           to,
           reason,
           date: new Date().toISOString().slice(0, 10),
         },
         ...list,
       ]);
-      // stock items replaced by products
-
+      write.mutate(() =>
+        supabase.from("products").update({ stock_qty: to }).eq("id", productId),
+      );
+      void queryClient.invalidateQueries({ queryKey: cloudKeys.products });
     },
     setProductMeta: (productId, patch) => {
       const current = stock.find((s) => s.productId === productId);
@@ -410,13 +426,11 @@ export function BackendProvider({ children }: { children: ReactNode }) {
           ? prev.map((u) => (u.id === user.id ? user : u))
           : [...prev, user],
       );
-      write.mutate(() => supabase.from("profiles").update({ name: user.name }).eq("id", user.id));
-      write.mutate(() =>
-        supabase.from("user_roles").upsert(
-          { user_id: user.id, role: user.role },
-          { onConflict: "user_id,role" },
-        ),
-      );
+      write.mutate(async () => {
+        await supabase.from("profiles").update({ name: user.name }).eq("id", user.id);
+        await supabase.from("user_roles").delete().eq("user_id", user.id);
+        return supabase.from("user_roles").insert({ user_id: user.id, role: user.role });
+      });
     },
     removeStaff: (id) => {
       patchCache<StaffUser>(cloudKeys.staff, staff, (prev) => prev.filter((u) => u.id !== id));

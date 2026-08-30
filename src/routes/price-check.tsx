@@ -39,11 +39,11 @@ function PriceCheckPage() {
 
   // Focus-free scanner listener: instantly pops up the price modal on scan
   useScanTarget("price-check", ({ code }) => {
-    const trimmed = code.trim().toLowerCase();
+    const trimmed = String(code || "").trim().toLowerCase();
     const match = productList.find(
       (p) =>
-        (p.barcode && p.barcode.toLowerCase() === trimmed) ||
-        (p.item_code && p.item_code.toLowerCase() === trimmed) ||
+        (p.barcode && String(p.barcode).toLowerCase() === trimmed) ||
+        (p.item_code && String(p.item_code).toLowerCase() === trimmed) ||
         p.id === code,
     );
 
@@ -69,8 +69,8 @@ function PriceCheckPage() {
     // If exact barcode or item code is typed/scanned into input, open modal immediately
     const exact = productList.find(
       (p) =>
-        (p.barcode && p.barcode.toLowerCase() === trimmed) ||
-        (p.item_code && p.item_code.toLowerCase() === trimmed),
+        (p.barcode && String(p.barcode).toLowerCase() === trimmed) ||
+        (p.item_code && String(p.item_code).toLowerCase() === trimmed),
     );
     if (exact) {
       setSelected(exact);
@@ -188,27 +188,33 @@ function PriceCheckPage() {
 
       {/* AUTOMATIC POPUP MODAL ON EXACT BARCODE SCAN / SELECTION */}
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-md p-6 text-center border-2 border-primary/30 shadow-2xl rounded-2xl">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md p-5 sm:p-6 text-center border-2 border-primary/30 shadow-2xl rounded-2xl overflow-hidden">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Price Verification</DialogTitle>
+          </DialogHeader>
+
           <div className="space-y-4">
             <div className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
               Amount to Collect
             </div>
 
             {/* Massive Bold Price */}
-            <div className="py-2 text-5xl font-black tracking-tight text-primary sm:text-6xl">
+            <div className="py-2 text-4xl font-black tracking-tight text-primary sm:text-5xl md:text-6xl break-words">
               {selected ? formatRs(selected.price) : "Rs. 0.00"}
             </div>
 
             {/* Product Details */}
             {selected && (
-              <div className="space-y-1 rounded-xl border border-border bg-muted/40 p-4">
-                <h3 className="text-base font-bold text-foreground">{selected.name}</h3>
+              <div className="space-y-1.5 rounded-xl border border-border bg-muted/40 p-3.5 sm:p-4 text-left sm:text-center">
+                <h3 className="text-sm sm:text-base font-bold text-foreground leading-snug break-words">
+                  {selected.name}
+                </h3>
                 {selected.name_ur && (
                   <p className="text-xs font-urdu text-muted-foreground" dir="rtl">
                     {selected.name_ur}
                   </p>
                 )}
-                <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-mono text-muted-foreground">
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-xs font-mono text-muted-foreground">
                   <span className="rounded bg-background px-2 py-0.5 font-semibold border border-border">
                     {selected.item_code || selected.barcode || "No Barcode"}
                   </span>
@@ -218,17 +224,17 @@ function PriceCheckPage() {
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-center">
+            {/* Responsive Actions: Full-width stacked buttons prevent horizontal blowout */}
+            <div className="flex flex-col gap-2.5 pt-2 w-full">
               <Button
-                className="h-11 flex-1 gap-2 font-bold shadow-md"
+                className="w-full h-11 text-sm font-bold gap-2 shadow-md whitespace-normal py-2 leading-tight"
                 onClick={() => selected && handleAddToCart(selected)}
               >
-                <PlusCircle className="h-4 w-4" /> Add to Sale &amp; Return to Register
+                <PlusCircle className="h-4 w-4 shrink-0" /> Add to Sale &amp; Return to Register
               </Button>
               <Button
                 variant="outline"
-                className="h-11 px-5"
+                className="w-full h-10 text-sm font-medium"
                 onClick={() => setSelected(null)}
               >
                 Done / Next Scan

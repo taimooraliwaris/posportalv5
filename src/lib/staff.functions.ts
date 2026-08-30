@@ -34,11 +34,12 @@ export const inviteStaffMember = createServerFn({ method: "POST" })
     const userId = created.data.user?.id;
     if (!userId) throw new Error("Could not create the staff account.");
 
-    // handle_new_user() seeds a Cashier row; upgrade it when a higher role was chosen.
+    // handle_new_user() seeds a Cashier row; upgrade it cleanly when a higher role was chosen.
     if (data.role !== "Cashier") {
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
       const { error } = await supabaseAdmin
         .from("user_roles")
-        .upsert({ user_id: userId, role: data.role }, { onConflict: "user_id,role" });
+        .insert({ user_id: userId, role: data.role });
       if (error) throw new Error(error.message);
     }
     await supabaseAdmin.from("profiles").update({ name: data.name }).eq("id", userId);

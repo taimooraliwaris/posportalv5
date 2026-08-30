@@ -81,10 +81,7 @@ function ReportsPage() {
   const defaultTaxRate = 0;
   const defaultTaxName = "";
 
-  const revenue = sales.reduce((sum, s) => {
-    const lineNet = s.lines.reduce((ls, l) => ls + l.qty * l.unitPrice, 0);
-    return sum + (lineNet > 0 ? lineNet : s.total / (1 + defaultTaxRate));
-  }, 0);
+  const revenue = sales.reduce((sum, s) => sum + s.total, 0);
   const cogs = sales.reduce(
     (sum, s) => sum + s.lines.reduce((ls, l) => ls + l.qty * costFor(l.productId), 0),
     0,
@@ -421,7 +418,7 @@ function ReportsPage() {
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => setSelectedSession(s)}
+                  onClick={() => setSelectedSessionId(s)}
                   className="grid w-full grid-cols-1 items-center gap-3 border-b border-border px-4 py-3 text-left last:border-0 hover:bg-muted md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]"
                 >
                   <span className="font-medium">{s.id}</span>
