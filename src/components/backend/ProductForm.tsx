@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, Barcode, Circle, Droplet, Wrench } from "lucide-react";
 
 export function ProductForm({ onSaved }: { onSaved?: () => void }) {
-  const { addProductToCatalog, productList, categoryList } = usePos();
+  const { addProductToCatalog, updateProductInCatalog, productList, categoryList } = usePos();
   const { suppliers, updateSupplier } = useBackend();
   const { openCamera } = useScanMode();
 
@@ -28,6 +28,42 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
   const [stockQty, setStockQty] = useState("");
   const [ctnQty, setCtnQty] = useState("");
 
+  const [loadedProductId, setLoadedProductId] = useState<string | null>(null);
+
+  // Auto-fill effect for pasted/typed itemCode
+  useEffect(() => {
+    if (step !== 2 || !itemCode) return;
+    const trimmed = itemCode.trim();
+    if (trimmed.length < 3) return; // avoid rapid fires on 1-2 chars
+
+    const existing = productList.find(
+      (p) =>
+        (p.barcode && p.barcode.toLowerCase() === trimmed.toLowerCase()) ||
+        (p.item_code && p.item_code.toLowerCase() === trimmed.toLowerCase()),
+    );
+
+    if (existing && existing.id !== loadedProductId) {
+      const cat = categoryList.find(
+        (c) => c.id === existing.category || c.slug === existing.category,
+      );
+      if (cat && cat.slug !== selectedCategorySlug) {
+        toast.error(
+          `Error: Code '${trimmed}' is already used in category '${cat.name}'. Cannot assign to ${selectedCategorySlug.replace("_", " ")}.`
+        );
+        setItemCode("");
+      } else {
+        setLoadedProductId(existing.id);
+        setNameEn(existing.name || "");
+        setNameUr(existing.name_ur || "");
+        setCostPrice(existing.cost_price ? String(existing.cost_price) : "");
+        setSalePrice(existing.price ? String(existing.price) : "");
+        setStockQty(existing.stock_qty !== undefined ? String(existing.stock_qty) : "");
+        setManualBrand(existing.brand || "");
+        toast.success(`Loaded existing product: ${existing.name}`);
+      }
+    }
+  }, [itemCode, step, productList, categoryList, selectedCategorySlug, loadedProductId]);
+
   // Barcode scan listener in ProductForm to autofill or load existing product
   useScanTarget("product-dialog", ({ code }) => {
     const trimmed = code.trim();
@@ -40,18 +76,25 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
     );
 
     if (existing) {
+      const cat = categoryList.find(
+        (c) => c.id === existing.category || c.slug === existing.category,
+      );
+      if (step === 2 && cat && cat.slug !== selectedCategorySlug) {
+        toast.error(
+          `Error: Scanned code belongs to category '${cat.name}'. Cannot assign to ${selectedCategorySlug.replace("_", " ")}.`
+        );
+        return "ignored";
+      }
+
+      setLoadedProductId(existing.id);
       setItemCode(existing.item_code || existing.barcode || trimmed);
       setNameEn(existing.name || "");
       setNameUr(existing.name_ur || "");
       setCostPrice(existing.cost_price ? String(existing.cost_price) : "");
       setSalePrice(existing.price ? String(existing.price) : "");
       setStockQty(existing.stock_qty !== undefined ? String(existing.stock_qty) : "");
-      if (existing.category) {
-        const cat = categoryList.find(
-          (c) => c.id === existing.category || c.slug === existing.category,
-        );
-        if (cat?.slug) setSelectedCategorySlug(cat.slug as any);
-      }
+      
+      if (cat?.slug) setSelectedCategorySlug(cat.slug as any);
       setManualBrand(existing.brand || "");
       setStep(2);
       toast.success(`Loaded existing product: ${existing.name}`);
@@ -59,8 +102,7 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
     }
 
     setItemCode(trimmed);
-    setStep(2);
-    toast.success(`Barcode scanned: ${trimmed}`);
+    setLoadedProductId(null);
     return "added";
   });
 
@@ -85,7 +127,6 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
   const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      // Move focus to next input if possible
       const form = e.currentTarget.form;
       if (form) {
         const index = Array.prototype.indexOf.call(form, e.currentTarget);
@@ -129,9 +170,8 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
   const resolvedBrand =
     manualBrand !== undefined ? manualBrand : (isTyre ? tyreBrandMatch?.[1] : isTube ? tubeBrandMatch?.[1] : undefined);
   const resolvedSize =
-    manualSize !== undefined ? manualSize : (isTyre ? tyreSizeMatch?.[1] : isTube ? tyreSizeMatch?.[1] : undefined);
+    manualSize !== undefined ? manualSize : (isTyre ? tyreSizeMatch?.[1] : isTube ? tubeSizeMatch?.[1] : undefined);
   const resolvedPly = manualPly !== undefined ? manualPly : (isTyre ? tyrePlyMatch?.[1] : undefined);
-  // We use the full model code in the DB. The prefix `18` maps to `CD70-CDI` in backend logic, but here we just pass the prefix for now, or the manual selection.
   const resolvedModel = manualModel !== undefined ? manualModel : modelMatch?.[1];
 
   const handleSave = () => {
@@ -140,15 +180,13 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
       return;
     }
 
-    // Resolve category ID securely
     const cat = categoryList.find((c) => c.slug === selectedCategorySlug);
     if (!cat) {
       toast.error("Invalid category");
       return;
     }
 
-    // Save product
-    const created = addProductToCatalog({
+    const payload = {
       item_code: itemCode || null,
       name: nameEn,
       name_ur: nameUr || null,
@@ -173,17 +211,40 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
       category_id: cat.id,
       vehicle_model_id: null,
       is_active: true,
-      barcode: itemCode || null, // ensure barcode maps too
-    } as any);
+      barcode: itemCode || null,
+    };
 
-    if (selectedSupplierId) {
+    let savedProductId = loadedProductId;
+
+    if (loadedProductId) {
+      updateProductInCatalog(loadedProductId, payload as any);
+      toast.success("Product updated successfully");
+    } else {
+      const duplicate = productList.find(
+        (p) =>
+          itemCode && (
+            (p.barcode && p.barcode.toLowerCase() === itemCode.toLowerCase()) ||
+            (p.item_code && p.item_code.toLowerCase() === itemCode.toLowerCase())
+          )
+      );
+      if (duplicate) {
+        toast.error(`Code '${itemCode}' already exists as ${duplicate.name}`);
+        return;
+      }
+
+      const created = addProductToCatalog(payload as any);
+      savedProductId = created.id;
+      toast.success("Product added successfully");
+    }
+
+    if (selectedSupplierId && savedProductId) {
       const supp = suppliers.find((s) => s.id === selectedSupplierId);
-      if (supp) {
-        updateSupplier(supp.id, { productIds: [...supp.productIds, created.id] });
+      if (supp && !supp.productIds.includes(savedProductId)) {
+        updateSupplier(supp.id, { productIds: [...supp.productIds, savedProductId] });
       }
     }
 
-    toast.success("Product saved successfully");
+    onClose();
     if (onSaved) onSaved();
   };
 

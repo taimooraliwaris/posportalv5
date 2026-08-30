@@ -42,7 +42,7 @@ export function ScanLayer() {
           onClick={() => openCamera(pathname === "/till" ? "batch" : "single")}
           aria-label="Scan with camera"
           className={cn(
-            "fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full",
+            "fixed bottom-5 right-5 z-[100] grid h-14 w-14 place-items-center rounded-full",
             "bg-primary text-primary-foreground shadow-soft transition-transform",
             "hover:brightness-110 active:scale-95 md:h-12 md:w-12",
           )}

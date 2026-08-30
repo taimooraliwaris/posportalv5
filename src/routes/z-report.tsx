@@ -42,12 +42,11 @@ function ZReportPage() {
 
   const paidOrders = useMemo(() => {
     if (snapshot?.id) {
-      const match = orders.filter((o) => o.sessionId === snapshot.id && (o.status === "paid" || o.status === "exchanged"));
+      const match = orders.filter((o) => o.sessionId === snapshot.id && o.status === "paid");
       if (match.length > 0) return match;
     }
     return orders.filter((o) => {
-      const isPaid = o.status === "paid" || o.status === "exchanged";
-      if (!isPaid) return false;
+      if (o.status !== "paid") return false;
       if (activeSessionId && o.sessionId) return o.sessionId === activeSessionId;
       if (sessionOpenedAt && o.createdAt) return new Date(o.createdAt).getTime() >= new Date(sessionOpenedAt).getTime();
       return true;

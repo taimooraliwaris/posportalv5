@@ -407,10 +407,11 @@ export function PosProvider({ children }: { children: ReactNode }) {
           const order = next.find((o) => o.id === id);
           if (order) persist(order);
         });
+        queryClient.setQueryData(cloudKeys.orders, next);
         return next;
       });
     },
-    [activeOrderId, ordersQuery.data, persist],
+    [activeOrderId, ordersQuery.data, persist, queryClient],
   );
 
   const updateOrder = useCallback(
@@ -805,37 +806,34 @@ export function PosProvider({ children }: { children: ReactNode }) {
       ]);
       write.mutate(() => supabase.from("return_records").insert(fromReturnRecord(record)));
 
-      // 1. Add back stock for returned products
+      // 1 & 2. Compute net stock changes (Returns add stock, Replacements deduct stock)
+      const stockChanges = new Map<string, number>();
+      
       for (const line of input.lines) {
-        const prod = productList.find((p) => p.id === line.productId);
-        if (prod) {
-          const nextStock = prod.stock_qty + line.qty;
-          queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
-            (prev ?? productList).map((p) =>
-              p.id === line.productId ? { ...p, stock_qty: nextStock } : p,
-            ),
-          );
-          write.mutate(() =>
-            supabase.from("products").update({ stock_qty: nextStock }).eq("id", line.productId),
-          );
+        stockChanges.set(line.productId, (stockChanges.get(line.productId) || 0) + line.qty);
+      }
+      
+      if (input.kind === "exchange" && input.replacements) {
+        for (const line of input.replacements) {
+          stockChanges.set(line.productId, (stockChanges.get(line.productId) || 0) - line.qty);
         }
       }
 
-      // 2. Deduct stock for replacement items if exchanged
-      if (input.kind === "exchange" && input.replacements && input.replacements.length > 0) {
-        for (const line of input.replacements) {
-          const prod = productList.find((p) => p.id === line.productId);
-          if (prod) {
-            const nextStock = Math.max(0, prod.stock_qty - line.qty);
-            queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
-              (prev ?? productList).map((p) =>
-                p.id === line.productId ? { ...p, stock_qty: nextStock } : p,
-              ),
-            );
-            write.mutate(() =>
-              supabase.from("products").update({ stock_qty: nextStock }).eq("id", line.productId),
-            );
-          }
+      // Apply net changes
+      for (const [productId, netChange] of stockChanges.entries()) {
+        if (netChange === 0) continue; // No net change
+        
+        const prod = productList.find((p) => p.id === productId);
+        if (prod) {
+          const nextStock = Math.max(0, prod.stock_qty + netChange);
+          queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
+            (prev ?? productList).map((p) =>
+              p.id === productId ? { ...p, stock_qty: nextStock } : p,
+            ),
+          );
+          write.mutate(() =>
+            supabase.from("products").update({ stock_qty: nextStock }).eq("id", productId),
+          );
         }
       }
 
