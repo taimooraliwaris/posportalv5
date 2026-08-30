@@ -40,6 +40,7 @@ import {
   type Supplier,
   type TaxRate,
 } from "./backend-data";
+import type { Product } from "./pos-data";
 
 export type StockAdjustment = {
   id: string;
@@ -379,19 +380,31 @@ export function BackendProvider({ children }: { children: ReactNode }) {
       );
       write.mutate(() => supabase.from("purchase_orders").upsert(fromPurchaseOrder(next)));
 
-      // Receiving a PO rolls its quantities into on-hand stock.
+      // Receiving a PO rolls its quantities into on-hand stock in products catalog
       if (status === "received" && po.status !== "received") {
-        const received = stock.map((item) => {
-          const line = po.lines.find((l) => l.productId === item.productId);
-          return line ? { ...item, onHand: item.onHand + line.qty } : item;
-        });
-        patchCache<StockItem>(cloudKeys.stock, stock, () => received);
-        const touched = received.filter((item) =>
-          po.lines.some((l) => l.productId === item.productId),
-        );
-        if (touched.length) {
-          // stock items replaced by products
+        for (const line of po.lines) {
+          write.mutate(async () => {
+            const { data } = await supabase
+              .from("products")
+              .select("stock_qty")
+              .eq("id", line.productId)
+              .maybeSingle();
+            const currentQty = Number(data?.stock_qty ?? 0);
+            const newQty = currentQty + line.qty;
+            return supabase.from("products").update({ stock_qty: newQty }).eq("id", line.productId);
+          });
         }
+        queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) => {
+          if (!prev) return prev;
+          return prev.map((p) => {
+            const matchLine = po.lines.find((l) => l.productId === p.id);
+            if (matchLine) {
+              return { ...p, stock_qty: (p.stock_qty || 0) + matchLine.qty };
+            }
+            return p;
+          });
+        });
+        void queryClient.invalidateQueries({ queryKey: cloudKeys.products });
       }
     },
 

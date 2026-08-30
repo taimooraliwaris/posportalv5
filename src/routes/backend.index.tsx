@@ -30,24 +30,48 @@ export const Route = createFileRoute("/backend/")({
 function Dashboard() {
   const { productList } = usePos();
   const hydrated = useHydrated();
-  const { sessions, sales, stock } = useBackend();
+  const { sessions, sales } = useBackend();
 
   if (!hydrated) return <BackendLayout title="Dashboard">{null}</BackendLayout>;
 
-  const days = [...new Set(sessions.map((s) => s.date))].sort().slice(-7);
-  const chartData = days.map((day) => ({
-    day: formatDate(day).slice(0, 5),
-    sales: Math.round(
-      sessions.filter((s) => s.date === day).reduce((sum, s) => sum + s.totalSales, 0),
-    ),
-  }));
-  const today = chartData.at(-1)?.sales ?? 0;
-  const yesterday = chartData.at(-2)?.sales ?? 0;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const days = [...new Set([...sessions.map((s) => s.date), todayKey])].sort().slice(-7);
+  
+  const chartData = days.map((day) => {
+    const daySessions = sessions.filter((s) => s.date === day);
+    const daySales = sales.filter((s) => s.date === day);
+    const sessionTotal = daySessions.reduce((sum, s) => sum + s.totalSales, 0);
+    const salesTotal = daySales.reduce((sum, s) => sum + s.total, 0);
+    const total = daySessions.length > 0 ? sessionTotal : salesTotal;
+    return {
+      day: formatDate(day).slice(0, 5),
+      sales: Math.round(total * 100) / 100,
+    };
+  });
+
+  const todaySalesRecords = sales.filter((s) => s.date === todayKey);
+  const todaySessions = sessions.filter((s) => s.date === todayKey);
+
+  // Net sales for today: if active sessions exist use session total, otherwise sum sales records
+  const today = todaySessions.length > 0
+    ? todaySessions.reduce((sum, s) => sum + s.totalSales, 0)
+    : todaySalesRecords.reduce((sum, s) => sum + s.total, 0);
+
+  const yesterdayKey = days.length > 1 ? days.at(-2) : undefined;
+  const yesterdaySessions = yesterdayKey ? sessions.filter((s) => s.date === yesterdayKey) : [];
+  const yesterday = yesterdaySessions.reduce((sum, s) => sum + s.totalSales, 0);
   const trend = yesterday ? ((today - yesterday) / yesterday) * 100 : 0;
-  const lastDay = days.at(-1);
-  const todaysSales = sales.filter((s) => s.date === lastDay);
-  const avgBasket = todaysSales.length ? today / todaysSales.length : 0;
-  const lowStock = stock.filter((s) => stockStatus(s) !== "healthy").length;
+
+  // Positive sales orders count
+  const salesOrdersToday = todaySalesRecords.filter((s) => s.total > 0);
+  const ordersTodayCount = todaySessions.length > 0
+    ? todaySessions.reduce((sum, s) => sum + (s.orderCount || 0), 0)
+    : salesOrdersToday.length;
+
+  const avgBasket = ordersTodayCount > 0 ? Math.max(0, today / ordersTodayCount) : 0;
+
+  // Real product catalog low/out-of-stock count
+  const lowStock = productList.filter((p) => Number(p.stock_qty ?? 0) <= 5).length;
 
   const unitsByProduct = new Map<string, { units: number; revenue: number }>();
   sales.forEach((sale) =>
@@ -67,7 +91,7 @@ function Dashboard() {
     <BackendLayout title="Dashboard">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Today's sales" value={formatRs(today)} trend={trend} />
-        <StatCard label="Orders today" value={String(todaysSales.length)} trend={trend / 2} />
+        <StatCard label="Orders today" value={String(ordersTodayCount)} trend={trend / 2} />
         <StatCard label="Average basket" value={formatRs(avgBasket)} trend={-1.4} />
         <StatCard label="Items low on stock" value={String(lowStock)} hint="Below reorder point" />
       </div>
@@ -121,8 +145,7 @@ function Dashboard() {
         </DataCard>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Latest trading day shown:{" "}
-        {lastDay ? formatDate(lastDay) : formatDate(toDateKey(new Date()))}
+        Latest trading day shown: {formatDate(todayKey)}
       </p>
     </BackendLayout>
   );

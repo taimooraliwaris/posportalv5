@@ -523,6 +523,17 @@ export function PosProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("velora_register_date", today);
         localStorage.setItem("velora_opening_cash", String(amount));
       } catch {}
+
+      // If an ongoing empty order already exists, associate it with this session
+      const existingEmpty = orders.find(
+        (o) => (o.status === "ongoing" || o.status === "payment") && (!o.lines || o.lines.length === 0),
+      );
+      if (existingEmpty) {
+        setActiveOrderId(existingEmpty.id);
+        mutateOrders((prev) =>
+          prev.map((o) => (o.id === existingEmpty.id ? { ...o, sessionId: newSessionId, cashier: currentUser?.name ?? o.cashier } : o)),
+        );
+      }
     },
     closeRegister: (counted, note) => {
       setRegisterOpen(false);
@@ -552,6 +563,14 @@ export function PosProvider({ children }: { children: ReactNode }) {
     activeOrder,
     setActiveOrderId,
     newOrder: () => {
+      // If there is already an ongoing order with 0 lines, simply select it instead of creating duplicate blank orders
+      const emptyOngoing = orders.find(
+        (o) => (o.status === "ongoing" || o.status === "payment") && (!o.lines || o.lines.length === 0),
+      );
+      if (emptyOngoing) {
+        setActiveOrderId(emptyOngoing.id);
+        return;
+      }
       const order = makeOrder(nextOrderNumber(orders, returns), currentUser?.name ?? "", activeSessionId ?? undefined);
       mutateOrders((prev) => [order, ...prev], [order.id]);
       setActiveOrderId(order.id);

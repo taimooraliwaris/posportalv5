@@ -1,7 +1,6 @@
-// @ts-nocheck
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Check, Plus, X } from "lucide-react";
+import { ArrowLeft, Check, Plus, X, Printer, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Keypad } from "@/components/pos/Keypad";
 import { PrintModal, SendReceiptModal } from "@/components/pos/ReceiptModals";
@@ -9,6 +8,8 @@ import { usePos, orderTotals, type PaymentLine } from "@/lib/pos-context";
 import { formatRs, pricelists } from "@/lib/pos-data";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { useNumericEntry } from "@/lib/use-numeric-entry";
+import { printOrderReceipt } from "@/lib/print-service";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -113,8 +114,6 @@ function Payment() {
         change={change}
         productList={productList}
         categoryList={categoryList}
-        onPrint={() => setPrintOpen(true)}
-        onSend={() => setSendOpen(true)}
         onContinue={() => {
           setShowSuccess(false);
           navigate({ to: "/till" });
@@ -298,21 +297,26 @@ function SuccessScreen({
   change,
   productList,
   categoryList,
-  onPrint,
-  onSend,
   onContinue,
 }: {
   order: ReturnType<typeof usePos>["lastPaidOrder"];
   change: number;
   productList?: ReturnType<typeof usePos>["productList"];
   categoryList?: ReturnType<typeof usePos>["categoryList"];
-  onPrint: () => void;
-  onSend: () => void;
   onContinue: () => void;
 }) {
+  const { currentUser } = useAuth();
+  const [sendOpen, setSendOpen] = useState(false);
   const total = order?.payments && order.payments.length > 0
     ? order.payments.reduce((s, p) => s + p.amount, 0)
     : orderTotals(order ?? undefined).total;
+
+  const handlePrint = () => {
+    if (!order) return;
+    printOrderReceipt(order, { change, cashier: currentUser?.name ?? "Cashier" });
+    toast.success("Sending receipt to printer...");
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6">
       <div className="mx-auto grid h-24 w-24 animate-pop-in place-items-center rounded-full bg-success text-success-foreground">
@@ -327,16 +331,21 @@ function SuccessScreen({
         </div>
       )}
       <div className="flex w-full max-w-md flex-col sm:flex-row gap-2">
-        <Button variant="secondary" className="h-12 flex-1" onClick={onPrint}>
-          Print
+        <Button variant="secondary" className="h-12 flex-1 gap-2 font-medium" onClick={handlePrint}>
+          <Printer className="h-4 w-4" /> Print
         </Button>
-        <Button variant="secondary" className="h-12 flex-1" onClick={onSend}>
-          Send Receipt
+        <Button variant="secondary" className="h-12 flex-1 gap-2 font-medium" onClick={() => setSendOpen(true)}>
+          <Send className="h-4 w-4" /> Send Receipt
         </Button>
-        <Button className="h-12 flex-1" onClick={onContinue}>
+        <Button className="h-12 flex-1 font-semibold" onClick={onContinue}>
           Continue
         </Button>
       </div>
+
+      <SendReceiptModal
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+      />
     </div>
   );
 }
