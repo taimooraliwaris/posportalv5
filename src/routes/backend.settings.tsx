@@ -87,6 +87,24 @@ function SettingsPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="store-phone">Phone</Label>
+              <Input
+                id="store-phone"
+                value={storeSettings.phone}
+                onChange={(e) => updateStoreSettings({ phone: e.target.value })}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="store-tagline">Tagline</Label>
+              <Input
+                id="store-tagline"
+                value={storeSettings.tagline}
+                onChange={(e) => updateStoreSettings({ tagline: e.target.value })}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="store-currency">Currency</Label>
               <Input
                 id="store-currency"
@@ -218,6 +236,7 @@ const sessionColumns: Column<SessionRecord>[] = [
 ];
 
 function PrinterSettingsCard() {
+  const { storeSettings } = useBackend();
   const [settings, setSettings] = useState<PrinterSettings>(() => getPrinterSettings());
 
   const handleUpdate = (patch: Partial<PrinterSettings>) => {
@@ -244,7 +263,7 @@ function PrinterSettingsCard() {
         noteTags: [],
         pricelistId: "pl1",
       },
-      { change: 50, cashier: "Test Cashier", profile: settings.defaultProfile },
+      { change: 50, cashier: "Test Cashier", profile: settings.defaultProfile, store: storeSettings },
     );
     toast.success("Test receipt sent to printer");
   };
@@ -326,52 +345,6 @@ function PrinterSettingsCard() {
         />
       </div>
 
-      {/* Store Header Details for Receipts */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="pr-store-name" className="text-xs font-semibold">Store / Business Name</Label>
-          <Input
-            id="pr-store-name"
-            value={settings.storeName}
-            onChange={(e) => setSettings({ ...settings, storeName: e.target.value })}
-            onBlur={() => handleUpdate({ storeName: settings.storeName })}
-            className="h-10 text-sm"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="pr-phone" className="text-xs font-semibold">Store Contact / Phone</Label>
-          <Input
-            id="pr-phone"
-            value={settings.storePhone}
-            onChange={(e) => setSettings({ ...settings, storePhone: e.target.value })}
-            onBlur={() => handleUpdate({ storePhone: settings.storePhone })}
-            className="h-10 text-sm"
-          />
-        </div>
-
-        <div className="space-y-1.5 col-span-2">
-          <Label htmlFor="pr-tagline" className="text-xs font-semibold">Receipt Subtitle / Tagline</Label>
-          <Input
-            id="pr-tagline"
-            value={settings.storeTagline}
-            onChange={(e) => setSettings({ ...settings, storeTagline: e.target.value })}
-            onBlur={() => handleUpdate({ storeTagline: settings.storeTagline })}
-            className="h-10 text-sm"
-          />
-        </div>
-
-        <div className="space-y-1.5 col-span-2">
-          <Label htmlFor="pr-footer" className="text-xs font-semibold">Receipt Footer Message</Label>
-          <Input
-            id="pr-footer"
-            value={settings.receiptFooter}
-            onChange={(e) => setSettings({ ...settings, receiptFooter: e.target.value })}
-            onBlur={() => handleUpdate({ receiptFooter: settings.receiptFooter })}
-            className="h-10 text-sm"
-          />
-        </div>
-      </div>
 
       {/* Test Print Action */}
       <div className="flex items-center gap-3 pt-2 border-t border-border">

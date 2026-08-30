@@ -308,6 +308,15 @@ export type CloudAdjustment = {
 export const fetchStockAdjustments = async (): Promise<CloudAdjustment[]> => [];
 
 
+export const fetchPasscode = async (): Promise<string> => {
+  const { data } = await supabase.from("app_security").select("passcode").eq("id", "default").maybeSingle();
+  return data?.passcode || "1234";
+};
+
+export const updatePasscode = async (passcode: string): Promise<void> => {
+  await supabase.from("app_security").upsert({ id: "default", passcode });
+};
+
 export const fetchStaff = async (): Promise<StaffUser[]> => {
   const profiles = await rows(supabase.from("profiles").select("*").order("name"));
   const roles = await rows(supabase.from("user_roles").select("user_id, role"));

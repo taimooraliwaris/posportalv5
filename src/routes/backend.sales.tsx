@@ -12,11 +12,9 @@ import { usePos, type ReturnRecord } from "@/lib/pos-context";
 import { formatRs } from "@/lib/pos-data";
 import { useHydrated } from "@/lib/use-hydrated";
 import { printOrderReceipt } from "@/lib/print-service";
-import { Printer } from "lucide-react";
+import { Printer, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-
 import { useScanTarget } from "@/lib/scan-mode-context";
-import { Search } from "lucide-react";
 
 export const Route = createFileRoute("/backend/sales")({
   head: () => ({
@@ -41,7 +39,7 @@ export const Route = createFileRoute("/backend/sales")({
 function SalesPage() {
   const hydrated = useHydrated();
   const { sales } = useBackend();
-  const { returns } = usePos();
+  const { returns, deleteOrder } = usePos();
   const store = useStore();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -140,7 +138,7 @@ function SalesPage() {
         </TabsList>
         <TabsContent value="orders">
           <DataTable
-            columns={saleColumns}
+            columns={getSaleColumns(deleteOrder)}
             rows={rows}
             getKey={(sale) => sale.id}
             onRowClick={setSelected}
@@ -204,7 +202,7 @@ function SalesPage() {
                     noteTags: [],
                     status: "paid",
                     pricelistId: "pl1",
-                  });
+                  }, { store });
                   toast.success(`Receipt ${selected.receipt} sent to printer`);
                 }}
               >
@@ -218,7 +216,7 @@ function SalesPage() {
   );
 }
 
-const saleColumns: Column<HistoricalSale>[] = [
+const getSaleColumns = (onDelete: (id: string) => void): Column<HistoricalSale>[] => [
   { header: "Date", cell: (sale) => formatDate(sale.date) },
   {
     header: "Receipt",
@@ -236,6 +234,25 @@ const saleColumns: Column<HistoricalSale>[] = [
     align: "right",
     cell: (sale) => <span className="font-medium">{formatRs(sale.total)}</span>,
   },
+  {
+    header: "Actions",
+    align: "right",
+    cell: (sale) => (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-destructive"
+        onClick={(e) => {
+          e.stopPropagation(); // prevent opening drawer
+          if(confirm("Are you sure you want to delete this sale? Note: This will not revert stock counts.")) {
+            onDelete(sale.id);
+          }
+        }}
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+    )
+  }
 ];
 
 const returnColumns: Column<ReturnRecord>[] = [

@@ -14,7 +14,7 @@ import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
 import { POBuilder } from "@/components/backend/POBuilder";
 
-import { Search } from "lucide-react";
+import { Search, Edit, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/backend/purchases")({
@@ -38,9 +38,11 @@ export const Route = createFileRoute("/backend/purchases")({
 });
 
 function PurchasesPage() {
-  const { suppliers, purchaseOrders, setPurchaseOrderStatus } = useBackend();
+  const { suppliers, purchaseOrders, setPurchaseOrderStatus, deleteSupplier, deletePurchaseOrder } = useBackend();
   const [supplierOpen, setSupplierOpen] = useState(false);
+  const [editSupplier, setEditSupplier] = useState<Supplier | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [editPo, setEditPo] = useState<PurchaseOrder | null>(null);
   const [query, setQuery] = useState("");
 
   // Barcode / PO scan listener on Purchases page
@@ -87,7 +89,7 @@ function PurchasesPage() {
   if (builderOpen) {
     return (
       <BackendLayout title="Purchases">
-        <POBuilder onBack={() => setBuilderOpen(false)} />
+        <POBuilder onBack={() => { setBuilderOpen(false); setEditPo(null); }} editPo={editPo} />
       </BackendLayout>
     );
   }
@@ -121,7 +123,7 @@ function PurchasesPage() {
           </div>
 
           <DataTable
-            columns={orderColumns(suppliers, setPurchaseOrderStatus)}
+            columns={orderColumns(suppliers, setPurchaseOrderStatus, (po) => { setEditPo(po); setBuilderOpen(true); }, deletePurchaseOrder)}
             rows={filteredPOs}
             getKey={(po) => po.id}
             empty="No purchase orders yet."
@@ -135,7 +137,7 @@ function PurchasesPage() {
             </Button>
           </div>
           <DataTable
-            columns={supplierColumns}
+            columns={getSupplierColumns((s) => { setEditSupplier(s); setSupplierOpen(true); }, deleteSupplier)}
             rows={suppliers}
             getKey={(s) => s.id}
             empty="No suppliers yet."
@@ -143,12 +145,22 @@ function PurchasesPage() {
         </TabsContent>
       </Tabs>
 
-      <AddSupplierModal open={supplierOpen} onOpenChange={setSupplierOpen} />
+      <AddSupplierModal 
+        open={supplierOpen} 
+        onOpenChange={(open) => {
+          setSupplierOpen(open);
+          if (!open) setEditSupplier(null);
+        }} 
+        editSupplier={editSupplier || undefined}
+      />
     </BackendLayout>
   );
 }
 
-const supplierColumns: Column<Supplier>[] = [
+const getSupplierColumns = (
+  onEdit: (s: Supplier) => void,
+  onDelete: (id: string) => void
+): Column<Supplier>[] => [
   {
     header: "Supplier",
     width: "1.5fr",
@@ -158,11 +170,27 @@ const supplierColumns: Column<Supplier>[] = [
   { header: "Phone", cell: (s) => <span className="text-sm text-muted-foreground">{s.phone}</span> },
   { header: "Products", align: "right", cell: (s) => s.productIds.length },
   { header: "Open balance", align: "right", cell: (s) => formatRs(s.openBalance) },
+  {
+    header: "Actions",
+    align: "right",
+    cell: (s) => (
+      <div className="flex justify-end gap-1">
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => onEdit(s)}>
+          <Edit className="w-4 h-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if(confirm("Are you sure you want to delete this supplier?")) onDelete(s.id); }}>
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    ),
+  },
 ];
 
 function orderColumns(
   suppliers: Supplier[],
   setStatus: (id: string, status: PurchaseOrder["status"]) => void,
+  onEdit: (po: PurchaseOrder) => void,
+  onDelete: (id: string) => void
 ): Column<PurchaseOrder>[] {
   const total = (lines: { qty: number; cost: number }[]) =>
     lines.reduce((sum, l) => sum + l.qty * l.cost, 0);
@@ -183,15 +211,25 @@ function orderColumns(
       header: "Action",
       width: "1.6fr",
       cell: (po) => (
-        <span className="flex justify-end gap-2">
+        <span className="flex justify-end gap-2 items-center">
           {po.status === "draft" && (
-            <Button
-              variant="secondary"
-              className="h-9"
-              onClick={() => setStatus(po.id, "ordered")}
-            >
-              Mark ordered
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                onClick={() => onEdit(po)}
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="secondary"
+                className="h-9"
+                onClick={() => setStatus(po.id, "ordered")}
+              >
+                Mark ordered
+              </Button>
+            </>
           )}
           {po.status === "ordered" && (
             <Button
@@ -217,6 +255,9 @@ function orderColumns(
               onConfirm={() => setStatus(po.id, "cancelled")}
             />
           )}
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive ml-2" onClick={() => { if(confirm("Are you sure you want to delete this PO?")) onDelete(po.id); }}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </span>
       ),
     },

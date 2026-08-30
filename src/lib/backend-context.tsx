@@ -62,9 +62,12 @@ type BackendState = {
   suppliers: Supplier[];
   addSupplier: (s: Omit<Supplier, "id">) => void;
   updateSupplier: (id: string, patch: Partial<Supplier>) => void;
+  deleteSupplier: (id: string) => void;
 
   purchaseOrders: PurchaseOrder[];
   addPurchaseOrder: (po: Omit<PurchaseOrder, "id" | "number">) => void;
+  updatePurchaseOrder: (id: string, patch: Partial<Omit<PurchaseOrder, "id" | "number">>) => void;
+  deletePurchaseOrder: (id: string) => void;
   setPurchaseOrderStatus: (id: string, status: PurchaseOrder["status"]) => void;
 
   pricelists: PricelistDetail[];
@@ -355,7 +358,13 @@ export function BackendProvider({ children }: { children: ReactNode }) {
       patchCache<Supplier>(cloudKeys.suppliers, suppliers, (list) =>
         list.map((s) => (s.id === id ? next : s)),
       );
-      write.mutate(() => supabase.from("suppliers").upsert(fromSupplier(next)));
+      write.mutate(() => supabase.from("suppliers").update(fromSupplier(next)).eq("id", id));
+    },
+    deleteSupplier: (id) => {
+      patchCache<Supplier>(cloudKeys.suppliers, suppliers, (list) =>
+        list.filter((s) => s.id !== id),
+      );
+      write.mutate(() => supabase.from("suppliers").delete().eq("id", id));
     },
 
     purchaseOrders,
@@ -370,6 +379,21 @@ export function BackendProvider({ children }: { children: ReactNode }) {
         ...list,
       ]);
       write.mutate(() => supabase.from("purchase_orders").insert(fromPurchaseOrder(order)));
+    },
+    updatePurchaseOrder: (id, patch) => {
+      const current = purchaseOrders.find((p) => p.id === id);
+      if (!current) return;
+      const next = { ...current, ...patch };
+      patchCache<PurchaseOrder>(cloudKeys.purchaseOrders, purchaseOrders, (list) =>
+        list.map((p) => (p.id === id ? next : p)),
+      );
+      write.mutate(() => supabase.from("purchase_orders").update(fromPurchaseOrder(next)).eq("id", id));
+    },
+    deletePurchaseOrder: (id) => {
+      patchCache<PurchaseOrder>(cloudKeys.purchaseOrders, purchaseOrders, (list) =>
+        list.filter((p) => p.id !== id),
+      );
+      write.mutate(() => supabase.from("purchase_orders").delete().eq("id", id));
     },
     setPurchaseOrderStatus: (id, status) => {
       const po = purchaseOrders.find((p) => p.id === id);

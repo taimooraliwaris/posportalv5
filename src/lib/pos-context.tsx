@@ -180,6 +180,8 @@ type PosState = {
   validateOrder: () => void;
   customers: Customer[];
   addCustomer: (c: Omit<Customer, "id">) => Customer;
+  updateCustomer: (id: string, patch: Partial<Customer>) => void;
+  deleteCustomer: (id: string) => void;
   productList: Product[];
   addProductToCatalog: (p: Omit<Product, "id">) => Product;
   categoryList: Category[];
@@ -192,6 +194,7 @@ type PosState = {
     input: Omit<ReturnRecord, "id" | "number" | "date" | "time">,
   ) => ReturnRecord;
   updateProductInCatalog: (id: string, patch: Partial<Product>) => void;
+  deleteProductFromCatalog: (id: string) => void;
   
   /** True until the first cloud read for catalog data settles. */
   loading: boolean;
@@ -720,6 +723,24 @@ export function PosProvider({ children }: { children: ReactNode }) {
       );
       return created;
     },
+    updateCustomer: (id, patch) => {
+      queryClient.setQueryData<Customer[]>(cloudKeys.customers, (prev) =>
+        (prev ?? customers).map((c) => (c.id === id ? { ...c, ...patch } : c)),
+      );
+      const row: any = {};
+      if (patch.name !== undefined) row.name = patch.name;
+      if (patch.email !== undefined) row.email = patch.email;
+      if (patch.phone !== undefined) row.phone = patch.phone;
+      if (patch.location !== undefined) row.location = patch.location;
+      if (patch.company !== undefined) row.company = patch.company;
+      write.mutate(() => supabase.from("customers").update(row).eq("id", id));
+    },
+    deleteCustomer: (id) => {
+      queryClient.setQueryData<Customer[]>(cloudKeys.customers, (prev) =>
+        (prev ?? customers).filter((c) => c.id !== id),
+      );
+      write.mutate(() => supabase.from("customers").delete().eq("id", id));
+    },
     productList,
     addProductToCatalog: (p) => {
       const created: Product = { ...p, id: crypto.randomUUID() } as any;
@@ -991,6 +1012,12 @@ export function PosProvider({ children }: { children: ReactNode }) {
       if (patch.barcode !== undefined) row.item_code = patch.barcode;
       if (patch.stock_qty !== undefined) row.stock_qty = patch.stock_qty;
       write.mutate(() => supabase.from("products").update(row).eq("id", id));
+    },
+    deleteProductFromCatalog: (id) => {
+      queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
+        (prev ?? productList).filter((p) => p.id !== id),
+      );
+      write.mutate(() => supabase.from("products").delete().eq("id", id));
     },
     
     loading: productsQuery.isLoading || categoriesQuery.isLoading,

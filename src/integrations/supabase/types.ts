@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+        app_security: {
+          Row: {
+            id: string
+            passcode: string
+            created_at: string
+            updated_at: string
+          }
+          Insert: {
+            id?: string
+            passcode?: string
+            created_at?: string
+            updated_at?: string
+          }
+          Update: {
+            id?: string
+            passcode?: string
+            created_at?: string
+            updated_at?: string
+          }
+          Relationships: []
+        },
       product_categories: {
         Row: {
           id: string

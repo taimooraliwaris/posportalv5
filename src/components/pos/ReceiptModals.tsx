@@ -32,6 +32,7 @@ export function PrintModal({
     }
 
     printOrderReceipt(order, {
+      store,
       simplified,
       cashier: currentUser?.name ?? store.cashier,
       profile,

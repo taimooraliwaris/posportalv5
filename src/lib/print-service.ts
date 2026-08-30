@@ -7,12 +7,6 @@ export type PrinterProfile = "thermal-80" | "thermal-58" | "standard-a4";
 export interface PrinterSettings {
   defaultProfile: PrinterProfile;
   autoPrintOnCheckout: boolean;
-  storeName: string;
-  storeAddress: string;
-  storePhone: string;
-  storeTagline: string;
-  receiptFooter: string;
-  showLogo: boolean;
 }
 
 const STORAGE_KEY = "velora_printer_settings";
@@ -20,12 +14,6 @@ const STORAGE_KEY = "velora_printer_settings";
 export const defaultPrinterSettings: PrinterSettings = {
   defaultProfile: "thermal-80",
   autoPrintOnCheckout: false,
-  storeName: "Velora POS",
-  storeAddress: "Shop #12, Commercial Plaza, Main Market",
-  storePhone: "+92 300 1234567",
-  storeTagline: "Quality Auto Parts & Accessories",
-  receiptFooter: "Thank you for your business! Please visit again.",
-  showLogo: true,
 };
 
 export function getPrinterSettings(): PrinterSettings {
@@ -217,6 +205,7 @@ export function printDocument(title: string, htmlContent: string, profileOverrid
 export function printOrderReceipt(
   order: Order | null,
   options?: {
+    store?: import("./backend-data").StoreSettings;
     change?: number;
     cashier?: string;
     profile?: PrinterProfile;
@@ -229,6 +218,12 @@ export function printOrderReceipt(
   const profile = options?.profile || settings.defaultProfile;
   const cashier = options?.cashier || order.cashier || "Cashier";
   const { total, subtotal, gross, discountAmount } = orderTotals(order, options?.discountRate ?? 0);
+  const store = options?.store;
+  const storeName = store?.name || "Velora POS";
+  const storeTagline = store?.tagline || "";
+  const storeAddress = store?.address || "";
+  const storePhone = store?.phone || "";
+  const storeFooter = store?.receiptFooter || "Thank you for your business! Please visit again.";
 
   const linesHtml = (order.lines || [])
     .map((l) => {
@@ -259,9 +254,9 @@ export function printOrderReceipt(
 
   const bodyHtml = `
     <div class="center">
-      <div class="title">${escapeHtml(settings.storeName)}</div>
-      <div class="subtitle">${escapeHtml(settings.storeTagline)}</div>
-      <div class="subtitle">${escapeHtml(settings.storeAddress)} · Tel: ${escapeHtml(settings.storePhone)}</div>
+      <div class="title">${escapeHtml(storeName)}</div>
+      <div class="subtitle">${escapeHtml(storeTagline)}</div>
+      <div class="subtitle">${escapeHtml(storeAddress)} ${storePhone ? `· Tel: ${escapeHtml(storePhone)}` : ''}</div>
       <div class="divider"></div>
       <div class="bold" style="font-size: 12px;">SALES RECEIPT</div>
       <div class="subtitle">Receipt #${escapeHtml(order.receipt || `RCP/${order.number}`)} · Order #${escapeHtml(order.number)}</div>
@@ -327,7 +322,7 @@ export function printOrderReceipt(
     <div class="double-divider"></div>
 
     <div class="footer">
-      <p class="bold">${escapeHtml(settings.receiptFooter)}</p>
+      <p class="bold">${escapeHtml(storeFooter)}</p>
       <div class="barcode-box">
         *${escapeHtml(order.number)}-VLR*
       </div>
@@ -344,6 +339,7 @@ export function printOrderReceipt(
 export function printReturnReceipt(
   record: ReturnRecord,
   options?: {
+    store?: import("./backend-data").StoreSettings;
     cashier?: string;
     profile?: PrinterProfile;
   },
@@ -351,6 +347,10 @@ export function printReturnReceipt(
   const settings = getPrinterSettings();
   const profile = options?.profile || settings.defaultProfile;
   const cashier = options?.cashier || record.processedBy || "Cashier";
+  const store = options?.store;
+  const storeName = store?.name || "Velora POS";
+  const storeAddress = store?.address || "";
+  const storeFooter = store?.receiptFooter || "Thank you for your business! Please visit again.";
 
   const retLinesHtml = record.lines
     .map(
@@ -385,8 +385,8 @@ export function printReturnReceipt(
 
   const bodyHtml = `
     <div class="center">
-      <div class="title">${escapeHtml(settings.storeName)}</div>
-      <div class="subtitle">${escapeHtml(settings.storeAddress)}</div>
+      <div class="title">${escapeHtml(storeName)}</div>
+      <div class="subtitle">${escapeHtml(storeAddress)}</div>
       <div class="divider"></div>
       <div class="bold" style="font-size: 13px;">${record.kind === "return" ? "RETURN / REFUND VOUCHER" : "EXCHANGE VOUCHER"}</div>
       <div class="subtitle">Voucher #${escapeHtml(record.number)} · Orig Order #${escapeHtml(record.originalNumber)}</div>
@@ -444,7 +444,7 @@ export function printReturnReceipt(
 
     <div class="footer">
       <p class="bold">Goods returned in acceptable condition.</p>
-      <p>${escapeHtml(settings.receiptFooter)}</p>
+      <p>${escapeHtml(storeFooter)}</p>
     </div>
   `;
 
@@ -470,15 +470,18 @@ export function printZReportDocument(
     cashier?: string;
     note?: string;
   },
+  store?: import("./backend-data").StoreSettings,
   profileOverride?: PrinterProfile,
 ) {
   const settings = getPrinterSettings();
   const profile = profileOverride || settings.defaultProfile;
+  const storeName = store?.name || "Velora POS";
+  const storeAddress = store?.address || "";
 
   const bodyHtml = `
     <div class="center">
-      <div class="title">${escapeHtml(settings.storeName)}</div>
-      <div class="subtitle">${escapeHtml(settings.storeAddress)}</div>
+      <div class="title">${escapeHtml(storeName)}</div>
+      <div class="subtitle">${escapeHtml(storeAddress)}</div>
       <div class="divider"></div>
       <div class="bold" style="font-size: 13px;">OFFICIAL Z-REPORT</div>
       <div class="subtitle">End of Shift Reconciliation</div>
