@@ -163,8 +163,8 @@ function CloseRegisterPage() {
   const difference = countedNum - expectedCash;
 
   const handleClose = () => {
-    if (countedNum < 0) {
-      toast.error("Please enter a valid cash count");
+    if (counted === "" || isNaN(Number(counted))) {
+      toast.error("Please enter the physical cash counted in drawer");
       return;
     }
 
@@ -433,7 +433,7 @@ function CloseRegisterPage() {
             <div className="space-y-2 pt-2">
               <Button
                 className="h-12 w-full text-base font-bold shadow-md gap-2"
-                disabled={counted === "" || Number(counted) < 0}
+                disabled={counted === "" || isNaN(Number(counted))}
                 onClick={handleClose}
               >
                 <CheckCircle2 className="h-5 w-5" /> Confirm &amp; Close Register

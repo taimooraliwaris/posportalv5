@@ -15,6 +15,9 @@ import { printOrderReceipt } from "@/lib/print-service";
 import { Printer } from "lucide-react";
 import { toast } from "sonner";
 
+import { useScanTarget } from "@/lib/scan-mode-context";
+import { Search } from "lucide-react";
+
 export const Route = createFileRoute("/backend/sales")({
   head: () => ({
     meta: [
@@ -42,12 +45,60 @@ function SalesPage() {
   const store = useStore();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<HistoricalSale | null>(null);
+
+  // Barcode / Invoice scan listener on Sales page
+  useScanTarget("sales", ({ code }) => {
+    const trimmed = code.trim().toLowerCase();
+    const cleanNum = trimmed.replace(/^(rcp\/|ret-)/i, "");
+
+    const match = sales.find((s) => {
+      const rec = s.receipt?.toLowerCase() || "";
+      const num = s.number?.toLowerCase() || "";
+      const id = s.id?.toLowerCase() || "";
+      return (
+        rec === trimmed ||
+        rec.includes(cleanNum) ||
+        num === trimmed ||
+        num.includes(cleanNum) ||
+        id === trimmed
+      );
+    });
+
+    if (match) {
+      setSelected(match);
+      setQuery(match.receipt || match.number);
+      toast.success(`Invoice found: ${match.receipt || match.number}`);
+      return "added";
+    }
+
+    toast.error(`No sales invoice found for ${code}`);
+    return "unknown";
+  });
 
   if (!hydrated) return <BackendLayout title="Sales">{null}</BackendLayout>;
 
   const rows = sales
-    .filter((s) => (!from || s.date >= from) && (!to || s.date <= to))
+    .filter((s) => {
+      if (from && s.date < from) return false;
+      if (to && s.date > to) return false;
+      if (query) {
+        const q = query.toLowerCase().trim();
+        const cleanQ = q.replace(/^(rcp\/|ret-)/i, "");
+        const rec = s.receipt?.toLowerCase() || "";
+        const num = s.number?.toLowerCase() || "";
+        const cashier = s.cashier?.toLowerCase() || "";
+        return (
+          rec.includes(q) ||
+          rec.includes(cleanQ) ||
+          num.includes(q) ||
+          num.includes(cleanQ) ||
+          cashier.includes(q)
+        );
+      }
+      return true;
+    })
     .sort((a, b) =>
       a.date === b.date ? String(b.time || "").localeCompare(String(a.time || "")) : String(b.date || "").localeCompare(String(a.date || "")),
     )
@@ -55,20 +106,30 @@ function SalesPage() {
 
   return (
     <BackendLayout title="Sales">
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search / Scan Invoice (e.g. RCP/1016, 1016)..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="h-11 pl-9 pr-3 text-xs"
+          />
+        </div>
         <Input
           type="date"
           value={from}
           onChange={(e) => setFrom(e.target.value)}
           aria-label="From date"
-          className="h-11 w-44"
+          className="h-11 w-40"
         />
         <Input
           type="date"
           value={to}
           onChange={(e) => setTo(e.target.value)}
           aria-label="To date"
-          className="h-11 w-44"
+          className="h-11 w-40"
         />
       </div>
 

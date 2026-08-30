@@ -10,6 +10,10 @@ import { formatRs, type Customer } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 import { Plus, User, Phone, Mail, MapPin, Building, Briefcase, CreditCard, History, Calculator } from "lucide-react";
 
+import { useScanTarget } from "@/lib/scan-mode-context";
+import { toast } from "sonner";
+import { Search } from "lucide-react";
+
 export const Route = createFileRoute("/backend/customers")({
   component: CustomersPage,
 });
@@ -18,6 +22,38 @@ function CustomersPage() {
   const { customers, orders } = usePos();
   const [selected, setSelected] = useState<Customer | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  // Barcode / Loyalty card / Phone scanner support on Customers Page
+  useScanTarget("customers", ({ code }) => {
+    const trimmed = code.trim().toLowerCase();
+    const match = customers.find(
+      (c) =>
+        c.id.toLowerCase() === trimmed ||
+        c.phone?.toLowerCase() === trimmed ||
+        c.name.toLowerCase().includes(trimmed) ||
+        c.email?.toLowerCase() === trimmed,
+    );
+    if (match) {
+      setSelected(match);
+      setQuery(match.name);
+      toast.success(`Customer found: ${match.name}`);
+      return "added";
+    }
+    toast.error(`No customer found with member ID / phone ${code}`);
+    return "unknown";
+  });
+
+  const filteredCustomers = customers.filter((c) => {
+    if (!query) return true;
+    const lower = query.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(lower) ||
+      c.phone?.toLowerCase().includes(lower) ||
+      c.email?.toLowerCase().includes(lower) ||
+      c.id.toLowerCase().includes(lower)
+    );
+  });
 
   // Mock ledger balance based on string length to remain deterministic
   const balanceFor = (name: string) => [0, -4200, 1500, -18750][name.length % 4] ?? 0;
@@ -29,10 +65,22 @@ function CustomersPage() {
           <h2 className="text-[15px] font-medium text-foreground">Customer Directory</h2>
           <p className="text-[11px] text-muted-foreground">Manage client relationships, ledgers, and order histories</p>
         </div>
-        <Button className="h-9 px-4 text-xs gap-2 rounded-full shadow-sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="w-3.5 h-3.5" />
-          Add Customer
-        </Button>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search or scan card/phone..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full h-9 pl-9 pr-3 rounded-full border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
+            />
+          </div>
+          <Button className="h-9 px-4 text-xs gap-2 rounded-full shadow-sm shrink-0" onClick={() => setCreateOpen(true)}>
+            <Plus className="w-3.5 h-3.5" />
+            Add Customer
+          </Button>
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
@@ -41,7 +89,7 @@ function CustomersPage() {
             (id) => orders.filter((o) => o.customerId === id),
             balanceFor,
           )}
-          rows={customers}
+          rows={filteredCustomers}
           getKey={(c) => c.id}
           onRowClick={setSelected}
           empty="No customers found."

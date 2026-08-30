@@ -22,8 +22,8 @@ export type BarcodeScannerOptions = {
 };
 
 const defaults = {
-  maxKeyInterval: 30,
-  minLength: 4,
+  maxKeyInterval: 50,
+  minLength: 3,
   dedupeWindow: 700,
 };
 
