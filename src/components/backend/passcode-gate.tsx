@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { useNumericKeyboard } from "@/lib/use-numeric-entry";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
 
 export function PasscodeGate({ children }: { children: ReactNode }) {
-  const { backendUnlocked, unlockBackend, currentUser, lockedUntil } = useAuth();
+  const { backendUnlocked, unlockBackend, currentUser, lockedUntil, changePasscode } = useAuth();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const locked = Boolean(lockedUntil && Date.now() < lockedUntil);
@@ -110,9 +111,30 @@ export function PasscodeGate({ children }: { children: ReactNode }) {
         )}
       </div>
 
-      <Button variant="ghost" className="h-11" asChild>
-        <Link to="/">Back to register</Link>
-      </Button>
+      <div className="flex flex-col gap-2 w-full max-w-xs mt-2">
+        <Button
+          variant="outline"
+          className="h-11"
+          onClick={() => {
+            if (currentUser?.role === "Manager" || currentUser?.role === "Admin") {
+              const newCode = prompt("You are an authorized manager. Enter a new 6-digit passcode to reset:");
+              if (newCode && /^[0-9]{6}$/.test(newCode)) {
+                changePasscode(newCode);
+                toast.success("Passcode reset successfully.");
+              } else if (newCode) {
+                toast.error("Passcode must be exactly 6 digits.");
+              }
+            } else {
+              toast.error("Only a Manager or Admin can reset the backend passcode.");
+            }
+          }}
+        >
+          Forgot passcode?
+        </Button>
+        <Button variant="ghost" className="h-11" asChild>
+          <Link to="/">Back to register</Link>
+        </Button>
+      </div>
     </div>
   );
 }

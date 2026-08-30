@@ -12,6 +12,7 @@ import { Search, Plus, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProductForm } from "@/components/backend/ProductForm";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { useScanTarget } from "@/lib/scan-mode-context";
 
@@ -36,8 +37,12 @@ function InventoryPage() {
   const [adjustValue, setAdjustValue] = useState("");
   const [adjustReason, setAdjustReason] = useState("count");
 
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [initialScannedCode, setInitialScannedCode] = useState<string>("");
+
   // Barcode scanner support for instant stock lookup & adjustment
   useScanTarget("inventory", ({ code }) => {
+    if (isAddOpen) return "ignored";
     const trimmed = code.trim().toLowerCase();
     const product = productList.find(
       (p) =>
@@ -53,9 +58,11 @@ function InventoryPage() {
       return "added";
     }
 
-    toast.error(`No product matches barcode ${code}`);
-    return "unknown";
-  });
+    toast.info(`New barcode scanned. Opening Add Product form.`);
+    setInitialScannedCode(trimmed);
+    setIsAddOpen(true);
+    return "added";
+  }, !isAddOpen);
 
   // Keep track of adjustments in local storage since the DB table is missing
   const [adjustmentLog, setAdjustmentLog] = usePersistentState<LocalAdjustment[]>("velora.adjustments", []);
@@ -357,6 +364,24 @@ function InventoryPage() {
               Cancel
             </Button>
             <Button onClick={saveAdjustment}>Save Adjustment</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddOpen} onOpenChange={(open) => {
+        setIsAddOpen(open);
+        if (!open) setInitialScannedCode("");
+      }}>
+        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden bg-background border-border">
+          <DialogHeader className="px-6 py-4 border-b border-border bg-card">
+            <DialogTitle className="text-lg">Add New Product</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <ProductForm 
+              onSaved={() => setIsAddOpen(false)} 
+              onClose={() => setIsAddOpen(false)}
+              initialBarcode={initialScannedCode} 
+            />
           </div>
         </DialogContent>
       </Dialog>

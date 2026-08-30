@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -11,17 +11,28 @@ import { toast } from "sonner";
 export function AddSupplierModal({
   open,
   onOpenChange,
+  editSupplier,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editSupplier?: import("@/lib/backend-data").Supplier | null;
 }) {
-  const { addSupplier } = useBackend();
+  const { addSupplier, updateSupplier } = useBackend();
   const { productList } = usePos();
-  const [name, setName] = useState("");
-  const [contact, setContact] = useState("");
-  const [phone, setPhone] = useState("");
-  const [balance, setBalance] = useState("");
-  const [productIds, setProductIds] = useState<string[]>([]);
+  const [name, setName] = useState(editSupplier?.name || "");
+  const [contact, setContact] = useState(editSupplier?.contact || "");
+  const [phone, setPhone] = useState(editSupplier?.phone || "");
+  const [balance, setBalance] = useState(editSupplier?.openBalance ? String(editSupplier.openBalance) : "");
+  const [productIds, setProductIds] = useState<string[]>(editSupplier?.productIds || []);
+  useEffect(() => {
+    if (open) {
+      setName(editSupplier?.name || "");
+      setContact(editSupplier?.contact || "");
+      setPhone(editSupplier?.phone || "");
+      setBalance(editSupplier?.openBalance ? String(editSupplier.openBalance) : "");
+      setProductIds(editSupplier?.productIds || []);
+    }
+  }, [editSupplier, open]);
 
   const reset = () => {
     setName("");
@@ -39,14 +50,25 @@ export function AddSupplierModal({
       toast("Enter a supplier name");
       return;
     }
-    addSupplier({
-      name: name.trim(),
-      contact: contact.trim() || "—",
-      phone: phone.trim() || "—",
-      productIds,
-      openBalance: Number(balance) || 0,
-    });
-    toast.success(`${name.trim()} added`);
+    if (editSupplier) {
+      updateSupplier(editSupplier.id, {
+        name: name.trim(),
+        contact: contact.trim() || "—",
+        phone: phone.trim() || "—",
+        productIds,
+        openBalance: Number(balance) || 0,
+      });
+      toast.success(`${name.trim()} updated`);
+    } else {
+      addSupplier({
+        name: name.trim(),
+        contact: contact.trim() || "—",
+        phone: phone.trim() || "—",
+        productIds,
+        openBalance: Number(balance) || 0,
+      });
+      toast.success(`${name.trim()} added`);
+    }
     reset();
     onOpenChange(false);
   };
@@ -55,7 +77,7 @@ export function AddSupplierModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add supplier</DialogTitle>
+          <DialogTitle>{editSupplier ? "Edit Supplier" : "Add supplier"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">

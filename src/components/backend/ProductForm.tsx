@@ -8,7 +8,7 @@ import { useScanTarget, useScanMode } from "@/lib/scan-mode-context";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Barcode, Circle, Droplet, Wrench } from "lucide-react";
 
-export function ProductForm({ onSaved }: { onSaved?: () => void }) {
+export function ProductForm({ onSaved, onClose, initialBarcode, editProductId }: { onSaved?: () => void, onClose?: () => void, initialBarcode?: string, editProductId?: string }) {
   const { addProductToCatalog, updateProductInCatalog, productList, categoryList } = usePos();
   const { suppliers, updateSupplier } = useBackend();
   const { openCamera } = useScanMode();
@@ -20,7 +20,7 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
     "spare_parts" | "tyres" | "tubes" | "misc"
   >("spare_parts");
 
-  const [itemCode, setItemCode] = useState("");
+  const [itemCode, setItemCode] = useState(initialBarcode || "");
   const [nameEn, setNameEn] = useState("");
   const [nameUr, setNameUr] = useState("");
   const [costPrice, setCostPrice] = useState("");
@@ -30,9 +30,32 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
 
   const [loadedProductId, setLoadedProductId] = useState<string | null>(null);
 
+  // Load product if editProductId is provided
+  useEffect(() => {
+    if (editProductId) {
+      const p = productList.find(p => p.id === editProductId);
+      if (p) {
+        setLoadedProductId(p.id);
+        setItemCode(p.item_code || p.barcode || "");
+        setNameEn(p.name);
+        setNameUr(p.name_ur || "");
+        setCostPrice(p.price ? String(p.price * 0.8) : ""); // Rough estimate if cost is missing
+        setSalePrice(String(p.price));
+        setStockQty(String(p.stock_qty));
+        setCtnQty(String(p.qrc_runs || ""));
+        
+        const catObj = categoryList.find(c => c.id === p.category_id || c.slug === p.category);
+        if (catObj) {
+          setSelectedCategorySlug(catObj.slug as any);
+        }
+        setStep(2);
+      }
+    }
+  }, [editProductId, productList, categoryList]);
+
   // Auto-fill effect for pasted/typed itemCode
   useEffect(() => {
-    if (step !== 2 || !itemCode) return;
+    if (step !== 2 || !itemCode || editProductId) return;
     const trimmed = itemCode.trim();
     if (trimmed.length < 3) return; // avoid rapid fires on 1-2 chars
 
@@ -103,6 +126,11 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
 
     setItemCode(trimmed);
     setLoadedProductId(null);
+    if (step === 1) {
+      toast.info(`Captured new barcode: ${trimmed}. Please select a category.`);
+    } else {
+      toast.info(`Captured new barcode: ${trimmed}`);
+    }
     return "added";
   });
 
@@ -244,7 +272,6 @@ export function ProductForm({ onSaved }: { onSaved?: () => void }) {
       }
     }
 
-    onClose();
     if (onSaved) onSaved();
   };
 

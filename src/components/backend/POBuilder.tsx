@@ -9,17 +9,17 @@ import { formatRs } from "@/lib/pos-data";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export function POBuilder({ onBack }: { onBack: () => void }) {
-  const { suppliers, addPurchaseOrder } = useBackend();
+export function POBuilder({ onBack, editPo }: { onBack: () => void, editPo?: import("@/lib/backend-data").PurchaseOrder | null }) {
+  const { suppliers, addPurchaseOrder, updatePurchaseOrder } = useBackend();
   const { productList } = usePos();
   
-  const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? "");
+  const [supplierId, setSupplierId] = useState(editPo?.supplierId ?? (suppliers[0]?.id ?? ""));
   const [query, setQuery] = useState("");
   
   // Array of { product, qty, cost }
   const [lines, setLines] = useState<
     { productId: string; name: string; qty: number; cost: number; price: number }[]
-  >([]);
+  >(editPo?.lines || []);
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
 
@@ -87,14 +87,22 @@ export function POBuilder({ onBack }: { onBack: () => void }) {
       return;
     }
 
-    addPurchaseOrder({
-      supplierId,
-      date: new Date().toISOString().slice(0, 10),
-      status,
-      lines: lines.map(l => ({ productId: l.productId, qty: l.qty, cost: l.cost }))
-    });
-
-    toast.success(`Purchase order ${status === 'draft' ? 'saved as draft' : 'marked as ordered'}`);
+    if (editPo) {
+      updatePurchaseOrder(editPo.id, {
+        supplierId,
+        status,
+        lines: lines.map(l => ({ productId: l.productId, name: l.name, qty: l.qty, cost: l.cost, price: l.price }))
+      });
+      toast.success(`Purchase order updated`);
+    } else {
+      addPurchaseOrder({
+        supplierId,
+        date: new Date().toISOString().slice(0, 10),
+        status,
+        lines: lines.map(l => ({ productId: l.productId, name: l.name, qty: l.qty, cost: l.cost, price: l.price }))
+      });
+      toast.success(`Purchase order ${status === 'draft' ? 'saved as draft' : 'marked as ordered'}`);
+    }
     onBack();
   };
 

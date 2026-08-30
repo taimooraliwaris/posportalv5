@@ -108,7 +108,7 @@ function ZReportPage() {
       ordersCount: snapshot?.ordersCount ?? paidOrders.length,
       cashier: snapshot?.cashier ?? (currentUser?.name ?? store.cashier),
       note: snapshot?.note,
-    });
+    }, store);
   };
 
   return (

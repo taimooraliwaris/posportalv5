@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 import { usePersistentState } from "./use-persistent-state";
-import { cloudKeys, fetchStaff } from "./cloud-data";
+import { cloudKeys, fetchStaff, fetchPasscode, updatePasscode } from "./cloud-data";
 import type { StaffRole, StaffUser } from "./backend-data";
 import { inviteStaffMember } from "./staff.functions";
 
@@ -70,10 +70,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  const [backendPasscode, setBackendPasscode] = usePersistentState<string>(
-    "velora.passcode",
-    "246810",
-  );
+  const { data: remotePasscode } = useQuery({
+    queryKey: ["cloud", "passcode"],
+    queryFn: fetchPasscode,
+  });
+  
+  const backendPasscode = remotePasscode || "1234";
+
   const [backendUnlocked, setBackendUnlocked] = useState(false);
   const [failures, setFailures] = useState(0);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
@@ -141,12 +144,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const log = useCallback(
     (event: Omit<SecurityEvent, "id" | "timestamp" | "location">) => {
+      const deviceInfo = typeof window !== "undefined" ? window.navigator.userAgent : "Unknown Device";
+      const extendedDetail = event.detail ? `${event.detail} (Device: ${deviceInfo})` : `Device: ${deviceInfo}`;
+      
       void supabase.from("security_events").insert({
         kind: event.kind,
         actor: event.user,
-        detail: event.detail ?? "",
+        detail: extendedDetail,
         location: typeof window === "undefined" ? "" : window.location.host,
         attempt: event.attempt,
+      }).then(({ error }) => {
+        if (error) console.error("Failed to log security event:", error);
       });
       void queryClient.invalidateQueries({ queryKey: cloudKeys.securityEvents });
     },
@@ -310,12 +318,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     changePasscode: (next) => {
-      setBackendPasscode(next);
+      void updatePasscode(next).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["cloud", "passcode"] });
+      });
       log({
         kind: "credential-change",
         user: currentUser?.name ?? "Unknown",
         attempt: 0,
-        detail: "Backend passcode changed",
+        detail: "Changed backend passcode",
       });
     },
   };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, Mail, Search, Send, UserPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -133,24 +133,43 @@ export function CreatePartnerModal({
   open,
   onOpenChange,
   onCreated,
+  editCustomer,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onCreated: (c: Customer) => void;
+  editCustomer?: Customer;
 }) {
-  const { addCustomer } = usePos();
-  const [name, setName] = useState("");
-  const [company, setCompany] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const { addCustomer, updateCustomer } = usePos();
+  const [name, setName] = useState(editCustomer?.name || "");
+  const [company, setCompany] = useState(editCustomer?.company || "");
+  const [email, setEmail] = useState(editCustomer?.email || "");
+  const [phone, setPhone] = useState(editCustomer?.phone || "");
+  const [location, setLocation] = useState(editCustomer?.location || "");
   const [more, setMore] = useState(false);
 
-  const reset = () => {
-    setName("");
-    setCompany("");
-    setEmail("");
-    setPhone("");
-    setMore(false);
+  useEffect(() => {
+    if (open) {
+      setName(editCustomer?.name || "");
+      setCompany(editCustomer?.company || "");
+      setEmail(editCustomer?.email || "");
+      setPhone(editCustomer?.phone || "");
+      setLocation(editCustomer?.location || "");
+    }
+  }, [editCustomer, open]);
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    if (editCustomer) {
+      updateCustomer(editCustomer.id, { name, company, email, phone, location });
+      onCreated({ ...editCustomer, name, company, email, phone, location });
+      toast.success("Customer updated");
+    } else {
+      const c = addCustomer({ name, company, email, phone, location });
+      onCreated(c);
+      toast.success("Customer created");
+    }
+    onOpenChange(false);
   };
 
   return (
@@ -224,13 +243,9 @@ export function CreatePartnerModal({
             <Button
               className="h-11 px-6"
               disabled={!name.trim()}
-              onClick={() => {
-                onCreated(addCustomer({ name, company, email, phone, location: "" }));
-                reset();
-                onOpenChange(false);
-              }}
+              onClick={handleSave}
             >
-              Save
+              {editCustomer ? "Save Changes" : "Save"}
             </Button>
             <Button
               variant="secondary"

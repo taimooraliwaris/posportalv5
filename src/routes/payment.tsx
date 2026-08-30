@@ -8,7 +8,8 @@ import { usePos, orderTotals, type PaymentLine } from "@/lib/pos-context";
 import { formatRs, pricelists } from "@/lib/pos-data";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { useNumericEntry } from "@/lib/use-numeric-entry";
-import { printOrderReceipt } from "@/lib/print-service";
+import { printOrderReceipt, getPrinterSettings } from "@/lib/print-service";
+import { useStore } from "@/lib/backend-context";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -92,9 +93,18 @@ function Payment() {
     entry.setValue("");
   };
 
+  const store = useStore();
+  const { currentUser } = useAuth();
+  
   const handleValidate = () => {
     validateOrder();
     setShowSuccess(true);
+    
+    // Auto-print support
+    const settings = getPrinterSettings();
+    if (settings.autoPrintOnCheckout && activeOrder) {
+      printOrderReceipt(activeOrder, { store, change, cashier: currentUser?.name ?? "Cashier" });
+    }
   };
 
   /** Enter adds the typed tender, or completes the sale when nothing is typed. */
@@ -306,6 +316,7 @@ function SuccessScreen({
   onContinue: () => void;
 }) {
   const { currentUser } = useAuth();
+  const store = useStore();
   const [sendOpen, setSendOpen] = useState(false);
   const total = order?.payments && order.payments.length > 0
     ? order.payments.reduce((s, p) => s + p.amount, 0)
@@ -313,7 +324,7 @@ function SuccessScreen({
 
   const handlePrint = () => {
     if (!order) return;
-    printOrderReceipt(order, { change, cashier: currentUser?.name ?? "Cashier" });
+    printOrderReceipt(order, { store, change, cashier: currentUser?.name ?? "Cashier" });
     toast.success("Sending receipt to printer...");
   };
 

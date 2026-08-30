@@ -8,16 +8,18 @@ import { ProductForm } from "@/components/backend/ProductForm";
 import { formatRs, type Product } from "@/lib/pos-data";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { cn } from "@/lib/utils";
-import { Search, Plus, LayoutGrid, List, Barcode } from "lucide-react";
+import { Search, Plus, LayoutGrid, List, Barcode, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
-  const { productList, categoryList, updateProductInCatalog } = usePos();
+  const { productList, categoryList, updateProductInCatalog, deleteProductFromCatalog } = usePos();
   const [query, setQuery] = useState("");
   const selectedCategory = categorySlug;
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editProductId, setEditProductId] = useState<string | null>(null);
+  const [initialScannedCode, setInitialScannedCode] = useState<string>("");
 
   // Barcode scanner support on Products Catalog
   useScanTarget(
@@ -37,8 +39,10 @@ export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
         toast.success(`Scanned: ${match.name} (Stock: ${match.stock_qty ?? 0})`);
         return "added";
       }
-      toast.error(`No product found with barcode ${code}`);
-      return "unknown";
+      toast.info(`New barcode scanned. Opening Add Product form.`);
+      setInitialScannedCode(trimmed);
+      setIsAddOpen(true);
+      return "added";
     },
     !isAddOpen,
   );
@@ -136,6 +140,7 @@ export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
                           <th className="px-4 py-3 font-semibold">Specs</th>
                           <th className="px-4 py-3 font-semibold text-right">Sale Price</th>
                           <th className="px-4 py-3 font-semibold text-right w-[100px]">Stock</th>
+                          <th className="px-4 py-3 font-semibold text-right w-[100px]">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -181,6 +186,16 @@ export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
                                 onChange={(e) => updateProductInCatalog(p.id, { stock_qty: Number(e.target.value) || 0 })}
                               />
                             </td>
+                            <td className="px-4 py-3 align-top text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => { setEditProductId(p.id); setIsAddOpen(true); }}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { if(confirm("Are you sure you want to delete this product?")) deleteProductFromCatalog(p.id); }}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -191,9 +206,19 @@ export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
                     {items.map((p) => (
                       <div key={p.id} className="flex flex-col bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow transition-shadow">
                         <div className="flex justify-between items-start mb-3">
-                          <span className="font-mono text-xs text-muted-foreground bg-secondary/40 px-2 py-1 rounded">
-                            {p.item_code || "N/A"}
-                          </span>
+                          <div className="flex gap-2 items-center">
+                            <span className="font-mono text-xs text-muted-foreground bg-secondary/40 px-2 py-1 rounded">
+                              {p.item_code || "N/A"}
+                            </span>
+                            <div className="flex gap-1">
+                              <button onClick={() => { setEditProductId(p.id); setIsAddOpen(true); }} className="text-muted-foreground hover:text-foreground">
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => { if(confirm("Are you sure you want to delete this product?")) deleteProductFromCatalog(p.id); }} className="text-destructive hover:text-destructive/80">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
                           <span className={cn("text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-full", p.stock_qty <= 0 ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success")}>
                             {p.stock_qty > 0 ? "In Stock" : "Out"}
                           </span>
@@ -246,13 +271,21 @@ export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
         </div>
       </div>
 
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+      <Dialog open={isAddOpen} onOpenChange={(open) => {
+        setIsAddOpen(open);
+        if (!open) { setInitialScannedCode(""); setEditProductId(null); }
+      }}>
         <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden bg-background border-border">
           <DialogHeader className="px-6 py-4 border-b border-border bg-card">
             <DialogTitle className="text-lg">Add New Product</DialogTitle>
           </DialogHeader>
           <div className="max-h-[80vh] overflow-y-auto custom-scrollbar">
-            <ProductForm onSaved={() => setIsAddOpen(false)} />
+            <ProductForm 
+              onSaved={() => { setIsAddOpen(false); setEditProductId(null); }} 
+              onClose={() => { setIsAddOpen(false); setEditProductId(null); }}
+              initialBarcode={initialScannedCode} 
+              editProductId={editProductId || undefined}
+            />
           </div>
         </DialogContent>
       </Dialog>

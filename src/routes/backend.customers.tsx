@@ -8,7 +8,7 @@ import { CreatePartnerModal } from "@/components/pos/CustomerModals";
 import { usePos } from "@/lib/pos-context";
 import { formatRs, type Customer } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
-import { Plus, User, Phone, Mail, MapPin, Building, Briefcase, CreditCard, History, Calculator } from "lucide-react";
+import { Plus, User, Phone, Mail, MapPin, Building, Briefcase, CreditCard, History, Calculator, Edit, Trash2 } from "lucide-react";
 
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { toast } from "sonner";
@@ -19,9 +19,10 @@ export const Route = createFileRoute("/backend/customers")({
 });
 
 function CustomersPage() {
-  const { customers, orders } = usePos();
+  const { customers, orders, deleteCustomer } = usePos();
   const [selected, setSelected] = useState<Customer | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [query, setQuery] = useState("");
 
   // Barcode / Loyalty card / Phone scanner support on Customers Page
@@ -103,6 +104,21 @@ function CustomersPage() {
       >
         {selected && (
           <div className="space-y-6 mt-4 pb-12">
+            <div className="flex gap-2 mb-2">
+              <Button variant="outline" size="sm" onClick={() => { setEditCustomer(selected); setCreateOpen(true); }}>
+                <Edit className="w-3.5 h-3.5 mr-2" />
+                Edit Profile
+              </Button>
+              <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 border-destructive/20" onClick={() => {
+                if (confirm("Are you sure you want to delete this customer?")) {
+                  deleteCustomer(selected.id);
+                  setSelected(null);
+                }
+              }}>
+                <Trash2 className="w-3.5 h-3.5 mr-2" />
+                Delete
+              </Button>
+            </div>
             {/* Quick Metrics */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-muted/40 p-4 rounded-xl border border-border">
@@ -211,8 +227,15 @@ function CustomersPage() {
 
       <CreatePartnerModal
         open={createOpen}
-        onOpenChange={setCreateOpen}
-        onCreated={() => setCreateOpen(false)}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) setEditCustomer(null);
+        }}
+        onCreated={() => {
+          setCreateOpen(false);
+          setEditCustomer(null);
+        }}
+        editCustomer={editCustomer || undefined}
       />
     </BackendLayout>
   );
