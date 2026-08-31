@@ -78,8 +78,6 @@ function ReportsPage() {
 
   const costFor = (productId: string) => stock.find((s) => s.productId === productId)?.cost ?? 0;
 
-  const defaultTaxRate = 0;
-  const defaultTaxName = "";
 
   const revenue = sales.reduce((sum, s) => sum + s.total, 0);
   const cogs = sales.reduce(
@@ -150,7 +148,7 @@ function ReportsPage() {
     }),
     { orders: 0, cash: 0, card: 0, total: 0, variance: 0 },
   );
-  const rangeTax = rangeTotals.total - rangeTotals.total / (1 + defaultTaxRate);
+
 
   const printXReport = () => {
     if (rangeSessions.length === 0) {
@@ -177,11 +175,9 @@ function ReportsPage() {
       <h2>Sessions</h2>
       <table><thead><tr><th>Date</th><th>Session</th><th>Cashier</th><th class="num">Orders</th><th class="num">Cash</th><th class="num">Card</th><th class="num">Total</th></tr></thead>
       <tbody>${rows}<tr class="total"><td colspan="3">Total</td><td class="num">${rangeTotals.orders}</td><td class="num">${escapeHtml(formatRs(rangeTotals.cash))}</td><td class="num">${escapeHtml(formatRs(rangeTotals.card))}</td><td class="num">${escapeHtml(formatRs(rangeTotals.total))}</td></tr></tbody></table>
-      <h2>Summary</h2>
-      ${summaryRow("Net sales", formatRs(rangeTotals.total / (1 + defaultTaxRate)))}
-      ${summaryRow(defaultTaxName, formatRs(rangeTax))}
+      ${summaryRow("Total sales", formatRs(rangeTotals.total))}
       ${summaryRow("Cash variance", formatRs(rangeTotals.variance))}
-      ${summaryRow("Total sales", formatRs(rangeTotals.total), true)}
+
       <p class="foot">X report does not close the till session.</p>`,
     );
   };
@@ -194,12 +190,10 @@ function ReportsPage() {
         <p class="meta">Session ${escapeHtml(session.id)} · ${escapeHtml(session.cashier)} · ${escapeHtml(session.openedAt)} to ${escapeHtml(session.closedAt)}</p></div>
       <h2>Sold</h2>
       ${summaryRow("Orders", String(session.orderCount))}
-      ${summaryRow("Net sales", formatRs(session.totalSales / (1 + defaultTaxRate)))}
       <h2>Payments</h2>
       ${summaryRow("Cash", formatRs(session.cashSales))}
       ${summaryRow("Card", formatRs(session.cardSales))}
-      <h2>Taxes</h2>
-      ${summaryRow(defaultTaxName, formatRs(session.totalSales - session.totalSales / (1 + defaultTaxRate)))}
+
       <h2>Cash control</h2>
       ${summaryRow("Opening float", formatRs(session.openingFloat))}
       ${summaryRow("Cash variance", formatRs(session.variance))}
@@ -449,26 +443,14 @@ function ReportsPage() {
               <div className="border-t border-dashed border-border pt-2">
                 <p className="font-medium">SOLD</p>
                 <Field label="Orders" value={selectedSessionId.orderCount} />
-                <Field
-                  label="Net sales"
-                  value={formatRs(selectedSessionId.totalSales / (1 + defaultTaxRate))}
-                />
+
               </div>
               <div className="border-t border-dashed border-border pt-2">
                 <p className="font-medium">PAYMENTS</p>
                 <Field label="Cash" value={formatRs(selectedSessionId.cashSales)} />
                 <Field label="Card" value={formatRs(selectedSessionId.cardSales)} />
               </div>
-              <div className="border-t border-dashed border-border pt-2">
-                <p className="font-medium">TAXES</p>
-                <Field
-                  label={defaultTaxName}
-                  value={formatRs(
-                    selectedSessionId.totalSales -
-                      selectedSessionId.totalSales / (1 + defaultTaxRate),
-                  )}
-                />
-              </div>
+
               <div className="border-t border-dashed border-border pt-2">
                 <Field label="TOTAL" value={formatRs(selectedSessionId.totalSales)} />
                 <Field label="Cash variance" value={formatRs(selectedSessionId.variance)} />
