@@ -13,7 +13,7 @@ import type {
   StaffUser,
   StoreSettings,
   Supplier,
-  TaxRate,
+
 } from "./backend-data";
 import { seedStoreSettings } from "./backend-data";
 import type { CartLine, CashMove, Order, OrderStatus, PaymentLine, ReturnLine, ReturnRecord } from "./pos-context";
@@ -120,13 +120,6 @@ export const toPricelist = (row: Row<"pricelists">): PricelistDetail => ({
   productCount: row.product_count,
   customerCount: row.customer_count,
   rules: (Array.isArray(row.rules) ? row.rules : []) as unknown as PricelistRule[],
-});
-
-export const toTaxRate = (row: Row<"tax_rates">): TaxRate => ({
-  id: row.id,
-  name: row.name,
-  percentage: Number(row.percentage),
-  appliesTo: row.applies_to,
 });
 
 export const toStoreSettings = (row: Row<"store_settings">): StoreSettings => ({
@@ -237,7 +230,7 @@ export const cloudKeys = {
   adjustments: ["cloud", "adjustments"] as const,
   purchaseOrders: ["cloud", "purchase-orders"] as const,
   pricelists: ["cloud", "pricelists"] as const,
-  taxes: ["cloud", "taxes"] as const,
+
   storeSettings: ["cloud", "store-settings"] as const,
   orders: ["cloud", "orders"] as const,
   returns: ["cloud", "returns"] as const,
@@ -268,8 +261,6 @@ export const fetchPurchaseOrders = async () =>
 export const fetchPricelists = async () =>
   (await rows(supabase.from("pricelists").select("*").order("name"))).map(toPricelist);
 
-export const fetchTaxes = async () =>
-  (await rows(supabase.from("tax_rates").select("*").order("name"))).map(toTaxRate);
 
 export const fetchStoreSettings = async (): Promise<StoreSettings> => {
   const { data, error } = await supabase.from("store_settings").select("*").eq("id", "default").maybeSingle();
@@ -374,12 +365,7 @@ export const fromPricelist = (p: PricelistDetail): Tables["pricelists"]["Insert"
   rules: p.rules as unknown as Json,
 });
 
-export const fromTaxRate = (t: TaxRate): Tables["tax_rates"]["Insert"] => ({
-  id: t.id,
-  name: t.name,
-  percentage: t.percentage,
-  applies_to: t.appliesTo,
-});
+
 
 export const fromStoreSettings = (s: StoreSettings): Tables["store_settings"]["Insert"] => ({
   id: "default",

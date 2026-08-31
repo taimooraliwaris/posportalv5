@@ -3,7 +3,6 @@ import type { CartLine } from "./pos-context";
 export type CalculatedOrderTotals = {
   gross: number;
   discountAmount: number;
-  subtotal: number;
   total: number;
 };
 
@@ -18,12 +17,11 @@ export function calculateOrderTotals(
   }
   
   const discountAmount = gross * orderDiscountRate;
-  const subtotal = gross - discountAmount;
+  const total = gross - discountAmount;
 
   return {
     gross,
     discountAmount,
-    subtotal,
-    total: subtotal,
+    total,
   };
 }

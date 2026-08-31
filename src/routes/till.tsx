@@ -156,7 +156,7 @@ function Till() {
   });
 
   const pricelist = pricelists.find((p) => p.id === activeOrder?.pricelistId) ?? pricelists[0]!;
-  const { subtotal, total } = orderTotals(activeOrder, pricelist.discount);
+  const { total } = orderTotals(activeOrder, pricelist.discount);
 
   const filteredProducts = useMemo(() => {
     let list = productList;
@@ -267,10 +267,7 @@ function Till() {
                 editing ? "p-2" : "p-3",
               )}
             >
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">{formatRs(subtotal)}</span>
-              </div>
+
               <div className="flex justify-between text-base font-semibold">
                 <span>Total</span>
                 <span>{formatRs(total)}</span>

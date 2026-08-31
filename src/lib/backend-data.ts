@@ -64,7 +64,7 @@ export type PricelistDetail = {
   rules: PricelistRule[];
 };
 
-export type TaxRate = { id: string; name: string; percentage: number; appliesTo: string };
+
 
 export type StaffRole = "Cashier" | "Manager" | "Admin";
 
@@ -313,11 +313,7 @@ export const seedPricelists: PricelistDetail[] = [
   },
 ];
 
-export const seedTaxes: TaxRate[] = [
-  { id: "t1", name: "GST 18%", percentage: 18, appliesTo: "All products" },
-  { id: "t2", name: "Reduced 5%", percentage: 5, appliesTo: "Essential goods" },
-  { id: "t3", name: "Exempt", percentage: 0, appliesTo: "Exported goods" },
-];
+
 
 export const seedStaff: StaffUser[] = [
   { id: "u1", name: "Rida A.", email: "rida@veloramart.com", role: "Cashier" },

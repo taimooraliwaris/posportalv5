@@ -13,13 +13,13 @@ import {
   fetchStockAdjustments,
   fetchStoreSettings,
   fetchSuppliers,
-  fetchTaxes,
+
   fromPricelist,
   fromPurchaseOrder,
   fromStockItem,
   fromStoreSettings,
   fromSupplier,
-  fromTaxRate,
+
   randomId,
 } from "./cloud-data";
 import {
@@ -27,7 +27,7 @@ import {
   seedStaff,
   seedStock,
   seedStoreSettings,
-  seedTaxes,
+
   suppliers as seedSuppliers,
   type HistoricalSale,
   type HistoricalSaleLine,
@@ -38,7 +38,7 @@ import {
   type StockItem,
   type StoreSettings,
   type Supplier,
-  type TaxRate,
+
 } from "./backend-data";
 import type { Product } from "./pos-data";
 

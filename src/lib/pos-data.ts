@@ -63,7 +63,6 @@ export const STORE = {
   network: "VeloraNet",
 };
 
-export const TAX_RATE = 0;
 
 export const categories: Category[] = [];
 
