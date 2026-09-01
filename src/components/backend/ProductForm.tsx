@@ -8,7 +8,7 @@ import { useScanTarget, useScanMode } from "@/lib/scan-mode-context";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Barcode, Circle, Droplet, Wrench } from "lucide-react";
 
-export function ProductForm({ onSaved, onClose, initialBarcode, editProductId }: { onSaved?: () => void, onClose?: () => void, initialBarcode?: string, editProductId?: string }) {
+export function ProductForm({ onSaved, onClose, initialBarcode, editProductId }: { onSaved?: (() => void) | undefined, onClose?: (() => void) | undefined, initialBarcode?: string | undefined, editProductId?: string | undefined }) {
   const { addProductToCatalog, updateProductInCatalog, productList, categoryList } = usePos();
   const { suppliers, updateSupplier } = useBackend();
   const { openCamera } = useScanMode();
@@ -187,6 +187,7 @@ export function ProductForm({ onSaved, onClose, initialBarcode, editProductId }:
   const tyreTreadMatch = nameEn.match(/\(\s*([^)]+)\s*\)/);
 
   // Tube rules
+  const tubeSizeMatch = nameEn.match(/(\d+\.\d+[-/]\d+)/);
   const tubeValveMatch = nameEn.match(/(TR-\d+)/);
   const tubeBrandMatch = nameEn.match(/([A-Z][A-Z]+)$/);
 
