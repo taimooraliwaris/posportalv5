@@ -10,129 +10,48 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
-        app_security: {
-          Row: {
-            id: string
-            passcode: string
-            created_at: string
-            updated_at: string
-          }
-          Insert: {
-            id?: string
-            passcode?: string
-            created_at?: string
-            updated_at?: string
-          }
-          Update: {
-            id?: string
-            passcode?: string
-            created_at?: string
-            updated_at?: string
-          }
-          Relationships: []
-        },
-      product_categories: {
+      app_security: {
         Row: {
-          id: string
-          slug: string
-          name_en: string
-          name_ur: string | null
-          icon: string | null
-          color: string | null
-          spec_schema: Json
-          parser_rules: Json
           created_at: string
+          id: string
+          passcode: string
           updated_at: string
         }
         Insert: {
-          id?: string
-          slug: string
-          name_en: string
-          name_ur?: string | null
-          icon?: string | null
-          color?: string | null
-          spec_schema?: Json
-          parser_rules?: Json
           created_at?: string
+          id?: string
+          passcode?: string
           updated_at?: string
         }
         Update: {
-          id?: string
-          slug?: string
-          name_en?: string
-          name_ur?: string | null
-          icon?: string | null
-          color?: string | null
-          spec_schema?: Json
-          parser_rules?: Json
           created_at?: string
+          id?: string
+          passcode?: string
           updated_at?: string
         }
         Relationships: []
       }
-      vehicle_models: {
+      backend_passcode: {
         Row: {
+          code: string
           id: string
-          code: string
-          item_code_prefix: string | null
-          brand: string | null
-          engine_cc: number | null
-          created_at: string
+          updated_at: string
         }
         Insert: {
-          id?: string
           code: string
-          item_code_prefix?: string | null
-          brand?: string | null
-          engine_cc?: number | null
-          created_at?: string
+          id?: string
+          updated_at?: string
         }
         Update: {
-          id?: string
           code?: string
-          item_code_prefix?: string | null
-          brand?: string | null
-          engine_cc?: number | null
-          created_at?: string
+          id?: string
+          updated_at?: string
         }
         Relationships: []
-      }
-      product_vehicle_models: {
-        Row: {
-          product_id: string
-          model_id: string
-          is_primary: boolean
-        }
-        Insert: {
-          product_id: string
-          model_id: string
-          is_primary?: boolean
-        }
-        Update: {
-          product_id?: string
-          model_id?: string
-          is_primary?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_vehicle_models_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_vehicle_models_model_id_fkey"
-            columns: ["model_id"]
-            isOneToOne: false
-            referencedRelation: "vehicle_models"
-            referencedColumns: ["id"]
-          }
-        ]
       }
       cash_moves: {
         Row: {
@@ -158,30 +77,6 @@ export type Database = {
           id?: string
           move_type?: string
           reason?: string
-        }
-        Relationships: []
-      }
-      categories: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          tone: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id: string
-          name: string
-          tone?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          tone?: string
-          updated_at?: string
         }
         Relationships: []
       }
@@ -317,73 +212,159 @@ export type Database = {
         }
         Relationships: []
       }
+      product_categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          name_en: string
+          name_ur: string | null
+          parser_rules: Json | null
+          slug: string
+          spec_schema: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name_en: string
+          name_ur?: string | null
+          parser_rules?: Json | null
+          slug: string
+          spec_schema?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name_en?: string
+          name_ur?: string | null
+          parser_rules?: Json | null
+          slug?: string
+          spec_schema?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      product_vehicle_models: {
+        Row: {
+          is_primary: boolean | null
+          model_id: string
+          product_id: string
+        }
+        Insert: {
+          is_primary?: boolean | null
+          model_id: string
+          product_id: string
+        }
+        Update: {
+          is_primary?: boolean | null
+          model_id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_vehicle_models_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_vehicle_models_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_vehicle_models_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
+          brand: string | null
+          category_id: string | null
+          cost_price: number
+          created_at: string | null
+          ctn_qty: number | null
+          foc_qty: number | null
+          foc_threshold: number | null
           id: string
-          category_id: string
+          is_active: boolean | null
           item_code: string | null
           name_en: string
           name_ur: string | null
-          brand: string | null
-          cost_price: number
-          sale_price: number
-          stock_qty: number
-          ctn_qty: number | null
-          foc_threshold: number | null
-          foc_qty: number | null
           qrc_runs: number | null
-          specs: Json
+          sale_price: number
+          specs: Json | null
+          stock_qty: number
+          updated_at: string | null
           vehicle_model_id: string | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
         }
         Insert: {
+          brand?: string | null
+          category_id?: string | null
+          cost_price?: number
+          created_at?: string | null
+          ctn_qty?: number | null
+          foc_qty?: number | null
+          foc_threshold?: number | null
           id?: string
-          category_id: string
+          is_active?: boolean | null
           item_code?: string | null
           name_en: string
           name_ur?: string | null
-          brand?: string | null
-          cost_price?: number
-          sale_price?: number
-          stock_qty?: number
-          ctn_qty?: number | null
-          foc_threshold?: number | null
-          foc_qty?: number | null
           qrc_runs?: number | null
-          specs?: Json
+          sale_price?: number
+          specs?: Json | null
+          stock_qty?: number
+          updated_at?: string | null
           vehicle_model_id?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
         }
         Update: {
+          brand?: string | null
+          category_id?: string | null
+          cost_price?: number
+          created_at?: string | null
+          ctn_qty?: number | null
+          foc_qty?: number | null
+          foc_threshold?: number | null
           id?: string
-          category_id?: string
+          is_active?: boolean | null
           item_code?: string | null
           name_en?: string
           name_ur?: string | null
-          brand?: string | null
-          cost_price?: number
-          sale_price?: number
-          stock_qty?: number
-          ctn_qty?: number | null
-          foc_threshold?: number | null
-          foc_qty?: number | null
           qrc_runs?: number | null
-          specs?: Json
+          sale_price?: number
+          specs?: Json | null
+          stock_qty?: number
+          updated_at?: string | null
           vehicle_model_id?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "products_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
-            referencedRelation: "categories"
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_vehicle_model_id_fkey"
+            columns: ["vehicle_model_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_models"
             referencedColumns: ["id"]
           },
         ]
@@ -537,107 +518,6 @@ export type Database = {
         }
         Relationships: []
       }
-      stock_adjustments: {
-        Row: {
-          actor: string | null
-          created_at: string
-          from_qty: number
-          id: string
-          product_id: string
-          reason: string
-          to_qty: number
-          updated_at: string
-        }
-        Insert: {
-          actor?: string | null
-          created_at?: string
-          from_qty: number
-          id?: string
-          product_id: string
-          reason?: string
-          to_qty: number
-          updated_at?: string
-        }
-        Update: {
-          actor?: string | null
-          created_at?: string
-          from_qty?: number
-          id?: string
-          product_id?: string
-          reason?: string
-          to_qty?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stock_adjustments_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      stock_items: {
-        Row: {
-          active: boolean
-          cost: number
-          created_at: string
-          description: string
-          history: Json
-          on_hand: number
-          product_id: string
-          reorder_point: number
-          reserved: number
-          sku: string | null
-          supplier_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          cost?: number
-          created_at?: string
-          description?: string
-          history?: Json
-          on_hand?: number
-          product_id: string
-          reorder_point?: number
-          reserved?: number
-          sku?: string | null
-          supplier_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          cost?: number
-          created_at?: string
-          description?: string
-          history?: Json
-          on_hand?: number
-          product_id?: string
-          reorder_point?: number
-          reserved?: number
-          sku?: string | null
-          supplier_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stock_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: true
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_items_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       store_settings: {
         Row: {
           address: string
@@ -770,33 +650,75 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_models: {
+        Row: {
+          brand: string | null
+          code: string
+          created_at: string | null
+          engine_cc: number | null
+          id: string
+          item_code_prefix: string | null
+        }
+        Insert: {
+          brand?: string | null
+          code: string
+          created_at?: string | null
+          engine_cc?: number | null
+          id?: string
+          item_code_prefix?: string | null
+        }
+        Update: {
+          brand?: string | null
+          code?: string
+          created_at?: string | null
+          engine_cc?: number | null
+          id?: string
+          item_code_prefix?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_products: {
         Row: {
-          id: string
-          category_id: string
-          category_slug: string
-          category_name: string
-          item_code: string | null
-          name_en: string
-          name_ur: string | null
           brand: string | null
-          cost_price: number
-          sale_price: number
-          stock_qty: number
+          category_id: string | null
+          category_name: string | null
+          category_slug: string | null
+          cost_price: number | null
+          created_at: string | null
           ctn_qty: number | null
-          foc_threshold: number | null
           foc_qty: number | null
-          qrc_runs: number | null
-          specs: Json
-          vehicle_model_id: string | null
+          foc_threshold: number | null
+          id: string | null
+          is_active: boolean | null
+          item_code: string | null
+          name_en: string | null
+          name_ur: string | null
           primary_model_code: string | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
+          qrc_runs: number | null
+          sale_price: number | null
+          specs: Json | null
+          stock_qty: number | null
+          updated_at: string | null
+          vehicle_model_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_vehicle_model_id_fkey"
+            columns: ["vehicle_model_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_models"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
