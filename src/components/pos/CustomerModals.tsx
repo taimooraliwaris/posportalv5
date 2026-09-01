@@ -138,7 +138,7 @@ export function CreatePartnerModal({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onCreated: (c: Customer) => void;
-  editCustomer?: Customer;
+  editCustomer?: Customer | undefined;
 }) {
   const { addCustomer, updateCustomer } = usePos();
   const [name, setName] = useState(editCustomer?.name || "");
@@ -251,7 +251,6 @@ export function CreatePartnerModal({
               variant="secondary"
               className="h-11 px-6"
               onClick={() => {
-                reset();
                 onOpenChange(false);
               }}
             >
