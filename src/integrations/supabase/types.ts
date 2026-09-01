@@ -61,6 +61,7 @@ export type Database = {
           id: string
           move_type: string
           reason: string
+          session_id: string | null
         }
         Insert: {
           amount?: number
@@ -69,6 +70,7 @@ export type Database = {
           id: string
           move_type?: string
           reason?: string
+          session_id?: string | null
         }
         Update: {
           amount?: number
@@ -77,6 +79,7 @@ export type Database = {
           id?: string
           move_type?: string
           reason?: string
+          session_id?: string | null
         }
         Relationships: []
       }
@@ -119,6 +122,7 @@ export type Database = {
           created_at: string
           customer_id: string | null
           id: string
+          kind: string
           lines: Json
           note: string
           note_tags: string[]
@@ -128,6 +132,7 @@ export type Database = {
           payments: Json
           pricelist_id: string
           receipt: string
+          session_id: string | null
           status: string
           updated_at: string
         }
@@ -136,6 +141,7 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           id: string
+          kind?: string
           lines?: Json
           note?: string
           note_tags?: string[]
@@ -145,6 +151,7 @@ export type Database = {
           payments?: Json
           pricelist_id?: string
           receipt: string
+          session_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -153,6 +160,7 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           id?: string
+          kind?: string
           lines?: Json
           note?: string
           note_tags?: string[]
@@ -162,6 +170,7 @@ export type Database = {
           payments?: Json
           pricelist_id?: string
           receipt?: string
+          session_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -434,6 +443,75 @@ export type Database = {
           },
         ]
       }
+      register_sessions: {
+        Row: {
+          account_sales: number
+          card_sales: number
+          cash_in: number
+          cash_out: number
+          cash_sales: number
+          cashier: string
+          closed_at: string | null
+          counted_cash: number | null
+          created_at: string
+          expected_cash: number | null
+          id: string
+          note: string
+          opened_at: string
+          opening_float: number
+          order_count: number
+          session_date: string
+          status: string
+          total_sales: number
+          updated_at: string
+          variance: number
+        }
+        Insert: {
+          account_sales?: number
+          card_sales?: number
+          cash_in?: number
+          cash_out?: number
+          cash_sales?: number
+          cashier?: string
+          closed_at?: string | null
+          counted_cash?: number | null
+          created_at?: string
+          expected_cash?: number | null
+          id: string
+          note?: string
+          opened_at?: string
+          opening_float?: number
+          order_count?: number
+          session_date?: string
+          status?: string
+          total_sales?: number
+          updated_at?: string
+          variance?: number
+        }
+        Update: {
+          account_sales?: number
+          card_sales?: number
+          cash_in?: number
+          cash_out?: number
+          cash_sales?: number
+          cashier?: string
+          closed_at?: string | null
+          counted_cash?: number | null
+          created_at?: string
+          expected_cash?: number | null
+          id?: string
+          note?: string
+          opened_at?: string
+          opening_float?: number
+          order_count?: number
+          session_date?: string
+          status?: string
+          total_sales?: number
+          updated_at?: string
+          variance?: number
+        }
+        Relationships: []
+      }
       return_records: {
         Row: {
           created_at: string
@@ -450,6 +528,7 @@ export type Database = {
           replacements: Json
           return_date: string
           return_time: string
+          session_id: string | null
           updated_at: string
         }
         Insert: {
@@ -467,6 +546,7 @@ export type Database = {
           replacements?: Json
           return_date?: string
           return_time?: string
+          session_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -484,6 +564,7 @@ export type Database = {
           replacements?: Json
           return_date?: string
           return_time?: string
+          session_id?: string | null
           updated_at?: string
         }
         Relationships: []
