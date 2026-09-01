@@ -30,12 +30,20 @@ import {
   fetchOrders,
   fetchProducts,
   fetchReturns,
+  fetchRegisterSessions,
   
   fromOrder,
   fromReturnRecord,
   randomId,
 } from "./cloud-data";
 
+import {
+  paymentsByMethod,
+  round2,
+  stockDelta,
+  sumLines,
+  type DocumentKind,
+} from "./money";
 import {
   calculateOrderTotals,
   type CalculatedOrderTotals,
@@ -80,6 +88,7 @@ export type ReturnRecord = {
   id: string;
   number: string;
   kind: "return" | "exchange";
+  sessionId?: string;
   date: string;
   time: string;
   originalOrderId: string;
@@ -100,6 +109,8 @@ export type Order = {
   date?: string;
   createdAt?: string;
   sessionId?: string;
+  /** Document type: a sale, a refund, or an exchange. Never inferred from the number. */
+  kind?: DocumentKind;
   cashier?: string;
   status: OrderStatus;
   lines: CartLine[];
@@ -133,6 +144,7 @@ function makeOrder(number: string, cashierName = "", sessionId?: string): Order 
     date: new Date().toISOString().slice(0, 10),
     createdAt: new Date().toISOString(),
     sessionId: sessionId || "",
+    kind: "sale",
     status: "ongoing",
     lines: [],
     payments: [],
@@ -147,13 +159,25 @@ export function orderTotals(order: Order | undefined, discountRate = 0) {
   return calculateOrderTotals(lines, discountRate);
 }
 
+export type SessionCloseSummary = {
+  cashSales: number;
+  cardSales: number;
+  accountSales: number;
+  totalSales: number;
+  cashIn: number;
+  cashOut: number;
+  expectedCash: number;
+  variance: number;
+  orderCount: number;
+};
+
 type PosState = {
   registerOpen: boolean;
   activeSessionId: string | null;
   sessionOpenedAt: string | null;
   openingCash: number;
   openRegister: (amount: number) => void;
-  closeRegister: (counted: number, note: string) => void;
+  closeRegister: (counted: number, note: string, summary?: SessionCloseSummary) => void;
   closedSummary: { counted: number; note: string } | null;
   pendingPreviousShiftClose: boolean;
   dismissPreviousShiftClose: () => void;
@@ -528,6 +552,19 @@ export function PosProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("velora_opening_cash", String(amount));
       } catch {}
 
+      // Persist the shift so every till and the back office see the same
+      // session, and so a reload does not lose which orders belong to it.
+      write.mutate(() =>
+        supabase.from("register_sessions").upsert({
+          id: newSessionId,
+          session_date: today,
+          cashier: currentUser?.name ?? "",
+          opened_at: openedAt,
+          opening_float: amount,
+          status: "open",
+        }),
+      );
+
       // If an ongoing empty order already exists, associate it with this session
       const existingEmpty = orders.find(
         (o) => (o.status === "ongoing" || o.status === "payment") && (!o.lines || o.lines.length === 0),
@@ -539,7 +576,31 @@ export function PosProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    closeRegister: (counted, note) => {
+    closeRegister: (counted, note, summary) => {
+      const closingId = activeSessionId;
+      if (closingId) {
+        write.mutate(() =>
+          supabase
+            .from("register_sessions")
+            .update({
+              closed_at: new Date().toISOString(),
+              counted_cash: counted,
+              note,
+              status: "closed",
+              cash_sales: summary?.cashSales ?? 0,
+              card_sales: summary?.cardSales ?? 0,
+              account_sales: summary?.accountSales ?? 0,
+              total_sales: summary?.totalSales ?? 0,
+              cash_in: summary?.cashIn ?? 0,
+              cash_out: summary?.cashOut ?? 0,
+              expected_cash: summary?.expectedCash ?? null,
+              variance: summary?.variance ?? 0,
+              order_count: summary?.orderCount ?? 0,
+            })
+            .eq("id", closingId),
+        );
+        void queryClient.invalidateQueries({ queryKey: cloudKeys.registerSessions });
+      }
       setRegisterOpen(false);
       setPendingPreviousShiftClose(false);
       setClosedSummary({ counted, note });
@@ -803,6 +864,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
           reason: created.reason,
           cashier: currentUser?.name ?? "Cashier",
           created_at: created.createdAt,
+          session_id: created.sessionId || null,
         }),
       );
     },
@@ -817,6 +879,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
         ...input,
         id: randomId(input.kind === "return" ? "ret" : "exc"),
         number: recordNumber,
+        sessionId: input.sessionId || activeSessionId || "",
         date: new Date().toISOString().slice(0, 10),
         time: now(),
       };
@@ -882,6 +945,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
               reason: cashMove.reason,
               cashier: currentUser?.name ?? "Cashier",
               created_at: cashMove.createdAt,
+              session_id: cashMove.sessionId || null,
             }),
           );
         } else if (input.kind === "exchange") {
