@@ -895,36 +895,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
       ]);
       write.mutate(() => supabase.from("return_records").insert(fromReturnRecord(record)));
 
-      // 1 & 2. Compute net stock changes (Returns add stock, Replacements deduct stock)
-      const stockChanges = new Map<string, number>();
-      
-      for (const line of input.lines) {
-        stockChanges.set(line.productId, (stockChanges.get(line.productId) || 0) + line.qty);
-      }
-      
-      if (input.kind === "exchange" && input.replacements) {
-        for (const line of input.replacements) {
-          stockChanges.set(line.productId, (stockChanges.get(line.productId) || 0) - line.qty);
-        }
-      }
-
-      // Apply net changes
-      for (const [productId, netChange] of stockChanges.entries()) {
-        if (netChange === 0) continue; // No net change
-        
-        const prod = productList.find((p) => p.id === productId);
-        if (prod) {
-          const nextStock = Math.max(0, prod.stock_qty + netChange);
-          queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
-            (prev ?? productList).map((p) =>
-              p.id === productId ? { ...p, stock_qty: nextStock } : p,
-            ),
-          );
-          write.mutate(() =>
-            supabase.from("products").update({ stock_qty: nextStock }).eq("id", productId),
-          );
-        }
-      }
+      // Returned goods go back on the shelf, replacements come off it — the
+      // shared ledger nets a one-for-one swap of the same product to zero.
+      applyStockDelta(stockDelta(input.kind, input.lines, input.replacements ?? []));
 
       // 3. Track cash drawer movements for cash returns / exchanges
       if (input.method === "Cash") {
