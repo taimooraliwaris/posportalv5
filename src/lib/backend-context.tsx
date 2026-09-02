@@ -8,6 +8,7 @@ import {
   fetchOrders,
   fetchPricelists,
   fetchPurchaseOrders,
+  fetchRegisterSessions,
   fetchStaff,
   fetchStock,
   fetchStockAdjustments,
@@ -16,12 +17,12 @@ import {
 
   fromPricelist,
   fromPurchaseOrder,
-  fromStockItem,
   fromStoreSettings,
   fromSupplier,
 
   randomId,
 } from "./cloud-data";
+import { isSaleDocument, paymentsTotal } from "./money";
 import {
   seedPricelists,
   seedStaff,
