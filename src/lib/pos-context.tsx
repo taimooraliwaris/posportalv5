@@ -880,6 +880,15 @@ export function PosProvider({ children }: { children: ReactNode }) {
       const cleanOriginalNum = String(input.originalNumber).replace(/^(ORD-|RCP-)/i, "");
       const recordNumber = `${prefix}-${cleanOriginalNum}`;
 
+      // Money is recomputed from the lines through the shared helpers so the
+      // voucher, the drawer and the reports can never disagree.
+      const refundAmount =
+        input.kind === "return" ? sumLines(input.lines) : round2(input.refundAmount);
+      const difference =
+        input.kind === "exchange"
+          ? exchangeDifference(input.lines, input.replacements ?? [])
+          : round2(input.difference);
+
       const record: ReturnRecord = {
         ...input,
         id: randomId(input.kind === "return" ? "ret" : "exc"),
@@ -887,6 +896,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
         sessionId: input.sessionId || activeSessionId || "",
         date: new Date().toISOString().slice(0, 10),
         time: now(),
+        refundAmount,
+        difference,
       };
 
       queryClient.setQueryData<ReturnRecord[]>(cloudKeys.returns, (prev) => [
