@@ -15,7 +15,7 @@ export function AddSupplierModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editSupplier?: import("@/lib/backend-data").Supplier | null | undefined;
+  editSupplier?: import("@/lib/backend-data").Supplier | null;
 }) {
   const { addSupplier, updateSupplier } = useBackend();
   const { productList } = usePos();

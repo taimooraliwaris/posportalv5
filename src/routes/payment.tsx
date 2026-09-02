@@ -49,7 +49,7 @@ function Payment() {
   const [method, setMethod] = useState<PaymentLine["method"]>("Cash");
 
   const pricelist = pricelists.find((p) => p.id === activeOrder?.pricelistId) ?? pricelists[0]!;
-  const { total } = orderTotals(activeOrder, pricelist.discount);
+  const { total, subtotal } = orderTotals(activeOrder, pricelist.discount);
 
   // Scan customer card or account barcode at payment
   useScanTarget(

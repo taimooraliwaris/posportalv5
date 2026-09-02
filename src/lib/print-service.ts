@@ -217,7 +217,7 @@ export function printOrderReceipt(
   const settings = getPrinterSettings();
   const profile = options?.profile || settings.defaultProfile;
   const cashier = options?.cashier || order.cashier || "Cashier";
-  const { total, gross, discountAmount } = orderTotals(order, options?.discountRate ?? 0);
+  const { total, subtotal, gross, discountAmount } = orderTotals(order, options?.discountRate ?? 0);
   const store = options?.store;
   const storeName = store?.name || "Velora POS";
   const storeTagline = store?.tagline || "";
@@ -294,6 +294,11 @@ export function printOrderReceipt(
     `
         : ""
     }
+
+    <div class="row">
+      <span>Subtotal:</span>
+      <span>${formatRs(subtotal)}</span>
+    </div>
 
     <div class="total-row row">
       <span>TOTAL PAYABLE:</span>

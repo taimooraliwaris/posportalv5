@@ -30,20 +30,12 @@ import {
   fetchOrders,
   fetchProducts,
   fetchReturns,
-  fetchRegisterSessions,
   
   fromOrder,
   fromReturnRecord,
   randomId,
 } from "./cloud-data";
 
-import {
-  exchangeDifference,
-  round2,
-  stockDelta,
-  sumLines,
-  type DocumentKind,
-} from "./money";
 import {
   calculateOrderTotals,
   type CalculatedOrderTotals,
@@ -88,7 +80,6 @@ export type ReturnRecord = {
   id: string;
   number: string;
   kind: "return" | "exchange";
-  sessionId?: string;
   date: string;
   time: string;
   originalOrderId: string;
@@ -109,8 +100,6 @@ export type Order = {
   date?: string;
   createdAt?: string;
   sessionId?: string;
-  /** Document type: a sale, a refund, or an exchange. Never inferred from the number. */
-  kind?: DocumentKind;
   cashier?: string;
   status: OrderStatus;
   lines: CartLine[];
@@ -144,7 +133,6 @@ function makeOrder(number: string, cashierName = "", sessionId?: string): Order 
     date: new Date().toISOString().slice(0, 10),
     createdAt: new Date().toISOString(),
     sessionId: sessionId || "",
-    kind: "sale",
     status: "ongoing",
     lines: [],
     payments: [],
@@ -159,25 +147,13 @@ export function orderTotals(order: Order | undefined, discountRate = 0) {
   return calculateOrderTotals(lines, discountRate);
 }
 
-export type SessionCloseSummary = {
-  cashSales: number;
-  cardSales: number;
-  accountSales: number;
-  totalSales: number;
-  cashIn: number;
-  cashOut: number;
-  expectedCash: number;
-  variance: number;
-  orderCount: number;
-};
-
 type PosState = {
   registerOpen: boolean;
   activeSessionId: string | null;
   sessionOpenedAt: string | null;
   openingCash: number;
   openRegister: (amount: number) => void;
-  closeRegister: (counted: number, note: string, summary?: SessionCloseSummary) => void;
+  closeRegister: (counted: number, note: string) => void;
   closedSummary: { counted: number; note: string } | null;
   pendingPreviousShiftClose: boolean;
   dismissPreviousShiftClose: () => void;
@@ -528,29 +504,6 @@ export function PosProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  /**
-   * Single write path for stock. Takes the map produced by `stockDelta` so a
-   * sale, a return and an exchange all move inventory the same way — an
-   * exchange of the same product for itself nets to zero instead of deducting
-   * twice.
-   */
-  const applyStockDelta = (delta: Map<string, number>) => {
-    for (const [productId, change] of delta.entries()) {
-      if (!change) continue;
-      const prod = productList.find((p) => p.id === productId);
-      if (!prod) continue;
-      const nextStock = Math.max(0, Number(prod.stock_qty ?? 0) + change);
-      queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
-        (prev ?? productList).map((p) => (p.id === productId ? { ...p, stock_qty: nextStock } : p)),
-      );
-      write.mutate(() =>
-        supabase.from("products").update({ stock_qty: nextStock }).eq("id", productId),
-      );
-    }
-  };
-
-
-
   const value: PosState = {
     registerOpen,
     activeSessionId,
@@ -575,19 +528,6 @@ export function PosProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("velora_opening_cash", String(amount));
       } catch {}
 
-      // Persist the shift so every till and the back office see the same
-      // session, and so a reload does not lose which orders belong to it.
-      write.mutate(() =>
-        supabase.from("register_sessions").upsert({
-          id: newSessionId,
-          session_date: today,
-          cashier: currentUser?.name ?? "",
-          opened_at: openedAt,
-          opening_float: amount,
-          status: "open",
-        }),
-      );
-
       // If an ongoing empty order already exists, associate it with this session
       const existingEmpty = orders.find(
         (o) => (o.status === "ongoing" || o.status === "payment") && (!o.lines || o.lines.length === 0),
@@ -599,31 +539,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    closeRegister: (counted, note, summary) => {
-      const closingId = activeSessionId;
-      if (closingId) {
-        write.mutate(() =>
-          supabase
-            .from("register_sessions")
-            .update({
-              closed_at: new Date().toISOString(),
-              counted_cash: counted,
-              note,
-              status: "closed",
-              cash_sales: summary?.cashSales ?? 0,
-              card_sales: summary?.cardSales ?? 0,
-              account_sales: summary?.accountSales ?? 0,
-              total_sales: summary?.totalSales ?? 0,
-              cash_in: summary?.cashIn ?? 0,
-              cash_out: summary?.cashOut ?? 0,
-              expected_cash: summary?.expectedCash ?? null,
-              variance: summary?.variance ?? 0,
-              order_count: summary?.orderCount ?? 0,
-            })
-            .eq("id", closingId),
-        );
-        void queryClient.invalidateQueries({ queryKey: cloudKeys.registerSessions });
-      }
+    closeRegister: (counted, note) => {
       setRegisterOpen(false);
       setPendingPreviousShiftClose(false);
       setClosedSummary({ counted, note });
@@ -750,8 +666,26 @@ export function PosProvider({ children }: { children: ReactNode }) {
         supabase.from("orders").upsert(fromOrder(settled, currentUser?.name ?? "")),
       );
 
-      // One ledger path for every stock movement: a sale only ever deducts.
-      applyStockDelta(stockDelta("sale", settled.lines));
+      // Aggregate quantities per product to correctly deduct multi-line sales
+      const qtyByProduct = new Map<string, number>();
+      for (const line of settled.lines) {
+        qtyByProduct.set(line.productId, (qtyByProduct.get(line.productId) || 0) + line.qty);
+      }
+
+      for (const [productId, soldQty] of qtyByProduct.entries()) {
+        const prod = productList.find((p) => p.id === productId);
+        if (prod) {
+          const nextStock = Math.max(0, prod.stock_qty - soldQty);
+          queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
+            (prev ?? productList).map((p) =>
+              p.id === productId ? { ...p, stock_qty: nextStock } : p,
+            ),
+          );
+          write.mutate(() =>
+            supabase.from("products").update({ stock_qty: nextStock }).eq("id", productId),
+          );
+        }
+      }
 
       mutateOrders((prev) => {
         const updated = prev.map((o) => (o.id === settled.id ? settled : o));
@@ -869,7 +803,6 @@ export function PosProvider({ children }: { children: ReactNode }) {
           reason: created.reason,
           cashier: currentUser?.name ?? "Cashier",
           created_at: created.createdAt,
-          session_id: created.sessionId || null,
         }),
       );
     },
@@ -880,24 +813,12 @@ export function PosProvider({ children }: { children: ReactNode }) {
       const cleanOriginalNum = String(input.originalNumber).replace(/^(ORD-|RCP-)/i, "");
       const recordNumber = `${prefix}-${cleanOriginalNum}`;
 
-      // Money is recomputed from the lines through the shared helpers so the
-      // voucher, the drawer and the reports can never disagree.
-      const refundAmount =
-        input.kind === "return" ? sumLines(input.lines) : round2(input.refundAmount);
-      const difference =
-        input.kind === "exchange"
-          ? exchangeDifference(input.lines, input.replacements ?? [])
-          : round2(input.difference);
-
       const record: ReturnRecord = {
         ...input,
         id: randomId(input.kind === "return" ? "ret" : "exc"),
         number: recordNumber,
-        sessionId: input.sessionId || activeSessionId || "",
         date: new Date().toISOString().slice(0, 10),
         time: now(),
-        refundAmount,
-        difference,
       };
 
       queryClient.setQueryData<ReturnRecord[]>(cloudKeys.returns, (prev) => [
@@ -906,26 +827,45 @@ export function PosProvider({ children }: { children: ReactNode }) {
       ]);
       write.mutate(() => supabase.from("return_records").insert(fromReturnRecord(record)));
 
-      // Returned goods go back on the shelf, replacements come off it — the
-      // shared ledger nets a one-for-one swap of the same product to zero.
-      applyStockDelta(stockDelta(input.kind, input.lines, input.replacements ?? []));
+      // 1 & 2. Compute net stock changes (Returns add stock, Replacements deduct stock)
+      const stockChanges = new Map<string, number>();
+      
+      for (const line of input.lines) {
+        stockChanges.set(line.productId, (stockChanges.get(line.productId) || 0) + line.qty);
+      }
+      
+      if (input.kind === "exchange" && input.replacements) {
+        for (const line of input.replacements) {
+          stockChanges.set(line.productId, (stockChanges.get(line.productId) || 0) - line.qty);
+        }
+      }
 
-      // 3. Track cash drawer movements for cash returns / exchanges. One path:
-      // the sign of the settlement decides the direction of the money.
+      // Apply net changes
+      for (const [productId, netChange] of stockChanges.entries()) {
+        if (netChange === 0) continue; // No net change
+        
+        const prod = productList.find((p) => p.id === productId);
+        if (prod) {
+          const nextStock = Math.max(0, prod.stock_qty + netChange);
+          queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
+            (prev ?? productList).map((p) =>
+              p.id === productId ? { ...p, stock_qty: nextStock } : p,
+            ),
+          );
+          write.mutate(() =>
+            supabase.from("products").update({ stock_qty: nextStock }).eq("id", productId),
+          );
+        }
+      }
+
+      // 3. Track cash drawer movements for cash returns / exchanges
       if (input.method === "Cash") {
-        const settlement = input.kind === "return" ? -refundAmount : difference;
-        if (settlement !== 0) {
-          const label =
-            input.kind === "return"
-              ? `Refund for Return ${record.number}`
-              : settlement < 0
-                ? `Exchange Refund ${record.number}`
-                : `Exchange Payment ${record.number}`;
+        if (input.kind === "return" && input.refundAmount > 0) {
           const cashMove: CashMove = {
             id: randomId("cm"),
-            type: settlement < 0 ? "out" : "in",
-            amount: round2(Math.abs(settlement)),
-            reason: `${label} (Order #${input.originalNumber})`,
+            type: "out",
+            amount: input.refundAmount,
+            reason: `Refund for Return ${record.number} (Order #${input.originalNumber})`,
             sessionId: activeSessionId || "",
             date: new Date().toISOString().slice(0, 10),
             createdAt: new Date().toISOString(),
@@ -942,15 +882,65 @@ export function PosProvider({ children }: { children: ReactNode }) {
               reason: cashMove.reason,
               cashier: currentUser?.name ?? "Cashier",
               created_at: cashMove.createdAt,
-              session_id: cashMove.sessionId || null,
             }),
           );
+        } else if (input.kind === "exchange") {
+          if (input.difference < 0) {
+            const cashMove: CashMove = {
+              id: randomId("cm"),
+              type: "out",
+              amount: Math.abs(input.difference),
+              reason: `Exchange Refund ${record.number} (Order #${input.originalNumber})`,
+              sessionId: activeSessionId || "",
+              date: new Date().toISOString().slice(0, 10),
+              createdAt: new Date().toISOString(),
+            };
+            queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
+              cashMove,
+              ...(prev ?? []),
+            ]);
+            write.mutate(() =>
+              supabase.from("cash_moves").insert({
+                id: cashMove.id,
+                move_type: cashMove.type,
+                amount: cashMove.amount,
+                reason: cashMove.reason,
+                cashier: currentUser?.name ?? "Cashier",
+                created_at: cashMove.createdAt,
+              }),
+            );
+          } else if (input.difference > 0) {
+            const cashMove: CashMove = {
+              id: randomId("cm"),
+              type: "in",
+              amount: input.difference,
+              reason: `Exchange Payment ${record.number} (Order #${input.originalNumber})`,
+              sessionId: activeSessionId || "",
+              date: new Date().toISOString().slice(0, 10),
+              createdAt: new Date().toISOString(),
+            };
+            queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
+              cashMove,
+              ...(prev ?? []),
+            ]);
+            write.mutate(() =>
+              supabase.from("cash_moves").insert({
+                id: cashMove.id,
+                move_type: cashMove.type,
+                amount: cashMove.amount,
+                reason: cashMove.reason,
+                cashier: currentUser?.name ?? "Cashier",
+                created_at: cashMove.createdAt,
+              }),
+            );
+          }
         }
       }
 
       // 4. Update the original order with detailed audit information
       const status: OrderStatus = input.kind === "return" ? "returned" : "exchanged";
-      const netPaymentAmount = input.kind === "return" ? round2(-refundAmount) : difference;
+      const netPaymentAmount =
+        input.kind === "return" ? -input.refundAmount : input.difference;
 
       const returnDetailsText = input.lines
         .map((l) => `${l.qty}x ${l.name} (Reason: ${l.reason})`)
@@ -968,23 +958,15 @@ export function PosProvider({ children }: { children: ReactNode }) {
         receipt: `RCP/${record.number}`,
         time: record.time,
         date: record.date,
-        createdAt: new Date().toISOString(),
-        // Explicit document kind, session and cashier: reports must never have
-        // to guess from the number prefix, and the shift must own the document.
-        kind: input.kind,
-        sessionId: record.sessionId || activeSessionId || "",
-        cashier: input.processedBy || currentUser?.name || "",
         status,
-        lines: (input.kind === "return" ? input.lines : (input.replacements ?? [])).map(
-          (l, index) => ({
-            id: `${record.id}-l${index}`,
-            productId: l.productId,
-            name: l.name,
-            qty: l.qty,
-            unitPrice: l.unitPrice,
-            discount: 0,
-          }),
-        ),
+        lines: (input.kind === "return" ? input.lines : input.replacements).map((l, index) => ({
+          id: `${record.id}-l${index}`,
+          productId: l.productId,
+          name: l.name,
+          qty: l.qty,
+          unitPrice: l.unitPrice,
+          discount: 0,
+        })),
         payments: [
           {
             id: `pay-${record.id}`,

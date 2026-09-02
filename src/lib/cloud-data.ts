@@ -13,7 +13,7 @@ import type {
   StaffUser,
   StoreSettings,
   Supplier,
-
+  TaxRate,
 } from "./backend-data";
 import { seedStoreSettings } from "./backend-data";
 import type { CartLine, CashMove, Order, OrderStatus, PaymentLine, ReturnLine, ReturnRecord } from "./pos-context";
@@ -122,6 +122,13 @@ export const toPricelist = (row: Row<"pricelists">): PricelistDetail => ({
   rules: (Array.isArray(row.rules) ? row.rules : []) as unknown as PricelistRule[],
 });
 
+export const toTaxRate = (row: Row<"tax_rates">): TaxRate => ({
+  id: row.id,
+  name: row.name,
+  percentage: Number(row.percentage),
+  appliesTo: row.applies_to,
+});
+
 export const toStoreSettings = (row: Row<"store_settings">): StoreSettings => ({
   name: row.name,
   brand: row.brand,
@@ -144,9 +151,6 @@ export const toOrder = (row: Row<"orders">): Order => ({
   receipt: row.receipt,
   time: row.order_time,
   date: row.order_date,
-  createdAt: row.created_at ?? undefined,
-  sessionId: row.session_id ?? "",
-  kind: (row.kind as Order["kind"]) ?? "sale",
   cashier: row.cashier || "",
   status: row.status as OrderStatus,
   lines: (Array.isArray(row.lines) ? row.lines : []) as unknown as CartLine[],
@@ -171,8 +175,6 @@ export const fromOrder = (order: Order, cashier = ""): Tables["orders"]["Insert"
   note_tags: order.noteTags,
   pricelist_id: order.pricelistId,
   cashier: order.cashier || cashier,
-  session_id: order.sessionId || null,
-  kind: order.kind ?? "sale",
 });
 
 export const toReturnRecord = (row: Row<"return_records">): ReturnRecord => ({
@@ -189,7 +191,6 @@ export const toReturnRecord = (row: Row<"return_records">): ReturnRecord => ({
   difference: Number(row.difference),
   method: row.method as ReturnRecord["method"],
   processedBy: row.processed_by,
-  sessionId: row.session_id ?? "",
 });
 
 export const fromReturnRecord = (
@@ -208,7 +209,6 @@ export const fromReturnRecord = (
   difference: record.difference,
   method: record.method,
   processed_by: record.processedBy,
-  session_id: record.sessionId || null,
 });
 
 export const toCashMove = (row: Row<"cash_moves">): CashMove => ({
@@ -218,7 +218,6 @@ export const toCashMove = (row: Row<"cash_moves">): CashMove => ({
   reason: row.reason,
   createdAt: row.created_at,
   date: row.created_at ? row.created_at.slice(0, 10) : "",
-  sessionId: row.session_id ?? "",
 });
 
 /* ------------------------------------------------------------------ fetchers */
@@ -238,14 +237,13 @@ export const cloudKeys = {
   adjustments: ["cloud", "adjustments"] as const,
   purchaseOrders: ["cloud", "purchase-orders"] as const,
   pricelists: ["cloud", "pricelists"] as const,
-
+  taxes: ["cloud", "taxes"] as const,
   storeSettings: ["cloud", "store-settings"] as const,
   orders: ["cloud", "orders"] as const,
   returns: ["cloud", "returns"] as const,
   cashMoves: ["cloud", "cash-moves"] as const,
   staff: ["cloud", "staff"] as const,
   securityEvents: ["cloud", "security-events"] as const,
-  registerSessions: ["cloud", "register-sessions"] as const,
 };
 
 export const fetchProducts = async () =>
@@ -270,6 +268,8 @@ export const fetchPurchaseOrders = async () =>
 export const fetchPricelists = async () =>
   (await rows(supabase.from("pricelists").select("*").order("name"))).map(toPricelist);
 
+export const fetchTaxes = async () =>
+  (await rows(supabase.from("tax_rates").select("*").order("name"))).map(toTaxRate);
 
 export const fetchStoreSettings = async (): Promise<StoreSettings> => {
   const { data, error } = await supabase.from("store_settings").select("*").eq("id", "default").maybeSingle();
@@ -374,7 +374,12 @@ export const fromPricelist = (p: PricelistDetail): Tables["pricelists"]["Insert"
   rules: p.rules as unknown as Json,
 });
 
-
+export const fromTaxRate = (t: TaxRate): Tables["tax_rates"]["Insert"] => ({
+  id: t.id,
+  name: t.name,
+  percentage: t.percentage,
+  applies_to: t.appliesTo,
+});
 
 export const fromStoreSettings = (s: StoreSettings): Tables["store_settings"]["Insert"] => ({
   id: "default",
@@ -390,58 +395,3 @@ export const fromStoreSettings = (s: StoreSettings): Tables["store_settings"]["I
   cashier: s.cashier,
   network: s.network,
 });
-
-
-/* -------------------------------------------------------- register sessions */
-
-export type RegisterSession = {
-  id: string;
-  date: string;
-  cashier: string;
-  openedAt: string;
-  closedAt: string | null;
-  openingFloat: number;
-  countedCash: number | null;
-  expectedCash: number | null;
-  cashSales: number;
-  cardSales: number;
-  accountSales: number;
-  totalSales: number;
-  cashIn: number;
-  cashOut: number;
-  variance: number;
-  orderCount: number;
-  note: string;
-  status: "open" | "closed";
-};
-
-export const toRegisterSession = (row: Row<"register_sessions">): RegisterSession => ({
-  id: row.id,
-  date: row.session_date,
-  cashier: row.cashier,
-  openedAt: row.opened_at,
-  closedAt: row.closed_at,
-  openingFloat: Number(row.opening_float),
-  countedCash: row.counted_cash === null ? null : Number(row.counted_cash),
-  expectedCash: row.expected_cash === null ? null : Number(row.expected_cash),
-  cashSales: Number(row.cash_sales),
-  cardSales: Number(row.card_sales),
-  accountSales: Number(row.account_sales),
-  totalSales: Number(row.total_sales),
-  cashIn: Number(row.cash_in),
-  cashOut: Number(row.cash_out),
-  variance: Number(row.variance),
-  orderCount: row.order_count,
-  note: row.note,
-  status: (row.status as RegisterSession["status"]) ?? "open",
-});
-
-export const fetchRegisterSessions = async () =>
-  (
-    await rows(
-      supabase
-        .from("register_sessions")
-        .select("*")
-        .order("opened_at", { ascending: false }),
-    )
-  ).map(toRegisterSession);

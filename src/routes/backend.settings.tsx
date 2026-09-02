@@ -9,7 +9,7 @@ import { DataCard, StatusPill } from "@/components/backend/backend-ui";
 import { DataTable, type Column } from "@/components/backend/data-table";
 import { SecurityTab } from "@/components/backend/SecurityTab";
 import { useBackend } from "@/lib/backend-context";
-import { formatDate, rolePermissions, type SessionRecord, type StaffUser } from "@/lib/backend-data";
+import { formatDate, rolePermissions, type SessionRecord, type StaffUser, type TaxRate } from "@/lib/backend-data";
 import { formatRs } from "@/lib/pos-data";
 import { useHydrated } from "@/lib/use-hydrated";
 import {
@@ -29,12 +29,12 @@ export const Route = createFileRoute("/backend/settings")({
       { title: "Settings — Velora back office" },
       {
         name: "description",
-        content: "Staff roles, store details and register session history.",
+        content: "Staff roles, tax rates, store details and register session history.",
       },
       { property: "og:title", content: "Settings — Velora back office" },
       {
         property: "og:description",
-        content: "Staff roles, store details and register session history.",
+        content: "Staff roles, tax rates, store details and register session history.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -47,7 +47,9 @@ function SettingsPage() {
   const hydrated = useHydrated();
   const { staff, storeSettings, updateStoreSettings, sessions } =
     useBackend();
-
+  const [taxName, setTaxName] = useState("");
+  const [taxPct, setTaxPct] = useState("");
+  const [taxApplies, setTaxApplies] = useState("");
 
   return (
     <BackendLayout title="Settings">
@@ -163,7 +165,49 @@ const staffColumns: Column<StaffUser>[] = [
   },
 ];
 
-
+function taxColumns(
+  saveTax: (tax: TaxRate) => void,
+  removeTax: (id: string) => void,
+): Column<TaxRate>[] {
+  return [
+    { header: "Tax", width: "1.5fr", cell: (t) => <span className="font-medium">{t.name}</span> },
+    {
+      header: "Percentage",
+      align: "right",
+      cell: (t) => (
+        <Input
+          type="number"
+          value={t.percentage}
+          aria-label={`${t.name} percentage`}
+          onChange={(e) => saveTax({ ...t, percentage: Number(e.target.value) || 0 })}
+          className="ml-auto h-9 w-24 text-right"
+        />
+      ),
+    },
+    {
+      header: "Applies to",
+      width: "2fr",
+      cell: (t) => <span className="text-sm text-muted-foreground">{t.appliesTo}</span>,
+    },
+    {
+      header: "Action",
+      cell: (t) => (
+        <span className="flex justify-end">
+          <Button
+            variant="ghost"
+            className="h-9 text-destructive"
+            onClick={() => {
+              removeTax(t.id);
+              toast.success(`${t.name} removed`);
+            }}
+          >
+            Delete
+          </Button>
+        </span>
+      ),
+    },
+  ];
+}
 
 const sessionColumns: Column<SessionRecord>[] = [
   { header: "Date", cell: (s) => formatDate(s.date) },
