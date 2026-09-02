@@ -910,14 +910,22 @@ export function PosProvider({ children }: { children: ReactNode }) {
       // shared ledger nets a one-for-one swap of the same product to zero.
       applyStockDelta(stockDelta(input.kind, input.lines, input.replacements ?? []));
 
-      // 3. Track cash drawer movements for cash returns / exchanges
+      // 3. Track cash drawer movements for cash returns / exchanges. One path:
+      // the sign of the settlement decides the direction of the money.
       if (input.method === "Cash") {
-        if (input.kind === "return" && input.refundAmount > 0) {
+        const settlement = input.kind === "return" ? -refundAmount : difference;
+        if (settlement !== 0) {
+          const label =
+            input.kind === "return"
+              ? `Refund for Return ${record.number}`
+              : settlement < 0
+                ? `Exchange Refund ${record.number}`
+                : `Exchange Payment ${record.number}`;
           const cashMove: CashMove = {
             id: randomId("cm"),
-            type: "out",
-            amount: input.refundAmount,
-            reason: `Refund for Return ${record.number} (Order #${input.originalNumber})`,
+            type: settlement < 0 ? "out" : "in",
+            amount: round2(Math.abs(settlement)),
+            reason: `${label} (Order #${input.originalNumber})`,
             sessionId: activeSessionId || "",
             date: new Date().toISOString().slice(0, 10),
             createdAt: new Date().toISOString(),
@@ -937,56 +945,6 @@ export function PosProvider({ children }: { children: ReactNode }) {
               session_id: cashMove.sessionId || null,
             }),
           );
-        } else if (input.kind === "exchange") {
-          if (input.difference < 0) {
-            const cashMove: CashMove = {
-              id: randomId("cm"),
-              type: "out",
-              amount: Math.abs(input.difference),
-              reason: `Exchange Refund ${record.number} (Order #${input.originalNumber})`,
-              sessionId: activeSessionId || "",
-              date: new Date().toISOString().slice(0, 10),
-              createdAt: new Date().toISOString(),
-            };
-            queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
-              cashMove,
-              ...(prev ?? []),
-            ]);
-            write.mutate(() =>
-              supabase.from("cash_moves").insert({
-                id: cashMove.id,
-                move_type: cashMove.type,
-                amount: cashMove.amount,
-                reason: cashMove.reason,
-                cashier: currentUser?.name ?? "Cashier",
-                created_at: cashMove.createdAt,
-              }),
-            );
-          } else if (input.difference > 0) {
-            const cashMove: CashMove = {
-              id: randomId("cm"),
-              type: "in",
-              amount: input.difference,
-              reason: `Exchange Payment ${record.number} (Order #${input.originalNumber})`,
-              sessionId: activeSessionId || "",
-              date: new Date().toISOString().slice(0, 10),
-              createdAt: new Date().toISOString(),
-            };
-            queryClient.setQueryData<CashMove[]>(cloudKeys.cashMoves, (prev) => [
-              cashMove,
-              ...(prev ?? []),
-            ]);
-            write.mutate(() =>
-              supabase.from("cash_moves").insert({
-                id: cashMove.id,
-                move_type: cashMove.type,
-                amount: cashMove.amount,
-                reason: cashMove.reason,
-                cashier: currentUser?.name ?? "Cashier",
-                created_at: cashMove.createdAt,
-              }),
-            );
-          }
         }
       }
 
