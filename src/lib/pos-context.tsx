@@ -528,6 +528,29 @@ export function PosProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  /**
+   * Single write path for stock. Takes the map produced by `stockDelta` so a
+   * sale, a return and an exchange all move inventory the same way — an
+   * exchange of the same product for itself nets to zero instead of deducting
+   * twice.
+   */
+  const applyStockDelta = (delta: Map<string, number>) => {
+    for (const [productId, change] of delta.entries()) {
+      if (!change) continue;
+      const prod = productList.find((p) => p.id === productId);
+      if (!prod) continue;
+      const nextStock = Math.max(0, Number(prod.stock_qty ?? 0) + change);
+      queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
+        (prev ?? productList).map((p) => (p.id === productId ? { ...p, stock_qty: nextStock } : p)),
+      );
+      write.mutate(() =>
+        supabase.from("products").update({ stock_qty: nextStock }).eq("id", productId),
+      );
+    }
+  };
+
+
+
   const value: PosState = {
     registerOpen,
     activeSessionId,
