@@ -38,7 +38,7 @@ import {
 } from "./cloud-data";
 
 import {
-  paymentsByMethod,
+  exchangeDifference,
   round2,
   stockDelta,
   sumLines,
