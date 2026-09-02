@@ -981,8 +981,9 @@ export function PosProvider({ children }: { children: ReactNode }) {
 
       // 4. Update the original order with detailed audit information
       const status: OrderStatus = input.kind === "return" ? "returned" : "exchanged";
-      const netPaymentAmount =
-        input.kind === "return" ? -input.refundAmount : input.difference;
+      const netPaymentAmount = round2(
+        input.kind === "return" ? -input.refundAmount : input.difference,
+      );
 
       const returnDetailsText = input.lines
         .map((l) => `${l.qty}x ${l.name} (Reason: ${l.reason})`)
@@ -1000,15 +1001,23 @@ export function PosProvider({ children }: { children: ReactNode }) {
         receipt: `RCP/${record.number}`,
         time: record.time,
         date: record.date,
+        createdAt: new Date().toISOString(),
+        // Explicit document kind, session and cashier: reports must never have
+        // to guess from the number prefix, and the shift must own the document.
+        kind: input.kind,
+        sessionId: record.sessionId || activeSessionId || "",
+        cashier: input.processedBy || currentUser?.name || "",
         status,
-        lines: (input.kind === "return" ? input.lines : input.replacements).map((l, index) => ({
-          id: `${record.id}-l${index}`,
-          productId: l.productId,
-          name: l.name,
-          qty: l.qty,
-          unitPrice: l.unitPrice,
-          discount: 0,
-        })),
+        lines: (input.kind === "return" ? input.lines : (input.replacements ?? [])).map(
+          (l, index) => ({
+            id: `${record.id}-l${index}`,
+            productId: l.productId,
+            name: l.name,
+            qty: l.qty,
+            unitPrice: l.unitPrice,
+            discount: 0,
+          }),
+        ),
         payments: [
           {
             id: `pay-${record.id}`,
