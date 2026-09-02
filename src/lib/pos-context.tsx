@@ -727,26 +727,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
         supabase.from("orders").upsert(fromOrder(settled, currentUser?.name ?? "")),
       );
 
-      // Aggregate quantities per product to correctly deduct multi-line sales
-      const qtyByProduct = new Map<string, number>();
-      for (const line of settled.lines) {
-        qtyByProduct.set(line.productId, (qtyByProduct.get(line.productId) || 0) + line.qty);
-      }
-
-      for (const [productId, soldQty] of qtyByProduct.entries()) {
-        const prod = productList.find((p) => p.id === productId);
-        if (prod) {
-          const nextStock = Math.max(0, prod.stock_qty - soldQty);
-          queryClient.setQueryData<Product[]>(cloudKeys.products, (prev) =>
-            (prev ?? productList).map((p) =>
-              p.id === productId ? { ...p, stock_qty: nextStock } : p,
-            ),
-          );
-          write.mutate(() =>
-            supabase.from("products").update({ stock_qty: nextStock }).eq("id", productId),
-          );
-        }
-      }
+      // One ledger path for every stock movement: a sale only ever deducts.
+      applyStockDelta(stockDelta("sale", settled.lines));
 
       mutateOrders((prev) => {
         const updated = prev.map((o) => (o.id === settled.id ? settled : o));
