@@ -950,9 +950,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
 
       // 4. Update the original order with detailed audit information
       const status: OrderStatus = input.kind === "return" ? "returned" : "exchanged";
-      const netPaymentAmount = round2(
-        input.kind === "return" ? -input.refundAmount : input.difference,
-      );
+      const netPaymentAmount = input.kind === "return" ? round2(-refundAmount) : difference;
 
       const returnDetailsText = input.lines
         .map((l) => `${l.qty}x ${l.name} (Reason: ${l.reason})`)
