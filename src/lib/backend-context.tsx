@@ -8,6 +8,7 @@ import {
   fetchOrders,
   fetchPricelists,
   fetchPurchaseOrders,
+  fetchRegisterSessions,
   fetchStaff,
   fetchStock,
   fetchStockAdjustments,
@@ -16,12 +17,12 @@ import {
 
   fromPricelist,
   fromPurchaseOrder,
-  fromStockItem,
   fromStoreSettings,
   fromSupplier,
 
   randomId,
 } from "./cloud-data";
+import { isSaleDocument, paymentsTotal } from "./money";
 import {
   seedPricelists,
   seedStaff,
@@ -153,25 +154,25 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     const storeSettings = { ...seedStoreSettings, ...(settingsQuery.data ?? {}) };
   const staff = staffQuery.data?.length ? staffQuery.data : seedStaff;
 
-  /** Derive sessions and sales from real persisted orders in the cloud. */
+  /**
+   * Sales come from persisted sale documents only, and shifts come from the
+   * stored register sessions — never synthesised per calendar day, so several
+   * shifts in one day reconcile independently.
+   */
   const { sessions, sales } = useMemo<{
     sessions: SessionRecord[];
     sales: HistoricalSale[];
   }>(() => {
     const allOrders = ordersQuery.data ?? [];
-    // Only settled orders feed reports; skip ongoing / payment-in-progress.
-    const completedOrders = allOrders.filter(
-      (o) => o.status === "paid" || o.status === "returned" || o.status === "exchanged",
-    );
+    const cashierFallback = settingsQuery.data?.cashier ?? seedStoreSettings.cashier;
 
-    const cashierFallback =
-      settingsQuery.data?.cashier ?? seedStoreSettings.cashier;
+    // Only settled *sales* feed the sales list. Returns and exchanges are
+    // separate documents and must never count as new orders.
+    const saleOrders = allOrders.filter((o) => o.status === "paid" && isSaleDocument(o.kind));
 
-    // ── Convert each completed order into a HistoricalSale ─────────────────
-    const sales: HistoricalSale[] = completedOrders.map((order) => {
-      // Determine dominant payment method by amount collected
+    const sales: HistoricalSale[] = saleOrders.map((order) => {
       const methodTotals: Record<string, number> = {};
-      for (const p of order.payments) {
+      for (const p of order.payments ?? []) {
         methodTotals[p.method] = (methodTotals[p.method] ?? 0) + p.amount;
       }
       const paymentMethods = ["Cash", "Card", "Customer Account"] as const;
@@ -180,21 +181,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
         "Cash" as HistoricalSale["method"],
       );
 
-      // Use actual payments sum; fall back to 0 for edge cases
-      const total =
-        Math.round(
-          order.payments.reduce((s, p) => s + p.amount, 0) * 100,
-        ) / 100;
-
       const date = order.date ?? new Date().toISOString().slice(0, 10);
-      const cashier = order.cashier || cashierFallback;
-
-      const lines: HistoricalSaleLine[] = order.lines.map((l) => ({
-        productId: l.productId,
-        name: l.name,
-        qty: l.qty,
-        unitPrice: l.unitPrice,
-      }));
 
       return {
         id: order.id,
@@ -202,77 +189,58 @@ export function BackendProvider({ children }: { children: ReactNode }) {
         receipt: order.receipt,
         date,
         time: order.time,
-        sessionId: `sess-${date}`,
-        cashier,
+        sessionId: order.sessionId ?? "",
+        cashier: order.cashier || cashierFallback,
         method,
-        lines,
-        total,
+        lines: order.lines.map((l) => ({
+          productId: l.productId,
+          name: l.name,
+          qty: l.qty,
+          unitPrice: l.unitPrice,
+        })),
+        total: paymentsTotal(order.payments ?? []),
       };
     });
 
-    // ── Group sales by date to synthesise SessionRecords ───────────────────
-    const byDate = new Map<string, HistoricalSale[]>();
-    for (const s of sales) {
-      const bucket = byDate.get(s.date) ?? [];
-      bucket.push(s);
-      byDate.set(s.date, bucket);
-    }
+    const timeOf = (iso: string | null) =>
+      iso
+        ? new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+        : "";
 
-    // ── Load explicitly saved shift sessions from persistent history ────────
-    let storedSessions: SessionRecord[] = [];
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("velora_session_history");
-        if (raw) storedSessions = JSON.parse(raw);
-      } catch {}
-    }
+    const sessions: SessionRecord[] = (sessionsQuery.data ?? []).map((s) => {
+      const ownSales = sales.filter((sale) => sale.sessionId === s.id);
+      const closed = s.status === "closed";
+      return {
+        id: s.id,
+        date: s.date,
+        cashier: s.cashier || cashierFallback,
+        openedAt: timeOf(s.openedAt),
+        closedAt: timeOf(s.closedAt),
+        openingFloat: s.openingFloat,
+        // A closed shift keeps the figures it was reconciled with; an open one
+        // is summed live from its own documents.
+        totalSales: closed ? s.totalSales : paymentsTotal(ownSales.map((x) => ({ method: x.method, amount: x.total }))),
+        cashSales: closed
+          ? s.cashSales
+          : paymentsTotal(
+              ownSales.filter((x) => x.method === "Cash").map((x) => ({ method: x.method, amount: x.total })),
+            ),
+        cardSales: closed
+          ? s.cardSales
+          : paymentsTotal(
+              ownSales.filter((x) => x.method === "Card").map((x) => ({ method: x.method, amount: x.total })),
+            ),
+        variance: closed ? s.variance : 0,
+        orderCount: closed ? s.orderCount : ownSales.length,
+      };
+    });
 
-    const sessionsMap = new Map<string, SessionRecord>();
-    for (const s of storedSessions) {
-      sessionsMap.set(s.id, s);
-    }
-
-    // Ensure dates with sales are represented if not explicitly in stored history
-    for (const [date, dateSales] of byDate.entries()) {
-      const existingForDate = storedSessions.filter((s) => s.date === date);
-      if (existingForDate.length === 0) {
-        const cashSales =
-          Math.round(
-            dateSales
-              .filter((s) => s.method === "Cash")
-              .reduce((sum, s) => sum + s.total, 0) * 100,
-          ) / 100;
-        const cardSales =
-          Math.round(
-            dateSales
-              .filter((s) => s.method === "Card")
-              .reduce((sum, s) => sum + s.total, 0) * 100,
-          ) / 100;
-        const totalSales =
-          Math.round(dateSales.reduce((sum, s) => sum + s.total, 0) * 100) / 100;
-
-        sessionsMap.set(`sess-${date}`, {
-          id: `sess-${date}`,
-          date,
-          cashier: dateSales[0]?.cashier ?? cashierFallback,
-          openedAt: "09:00",
-          closedAt: "21:00",
-          openingFloat: 500,
-          totalSales,
-          cashSales,
-          cardSales,
-          variance: 0,
-          orderCount: dateSales.length,
-        });
-      }
-    }
-
-    const sessions: SessionRecord[] = Array.from(sessionsMap.values()).sort((a, b) =>
+    sessions.sort((a, b) =>
       a.date === b.date ? a.openedAt.localeCompare(b.openedAt) : a.date.localeCompare(b.date),
     );
 
     return { sessions, sales };
-  }, [ordersQuery.data, settingsQuery.data]);
+  }, [ordersQuery.data, settingsQuery.data, sessionsQuery.data]);
 
   const write = useMutation({
     mutationFn: async (run: () => PromiseLike<{ error: { message: string } | null }>) => {
