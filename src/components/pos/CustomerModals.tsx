@@ -158,6 +158,15 @@ export function CreatePartnerModal({
     }
   }, [editCustomer, open]);
 
+  const resetForm = () => {
+    setName("");
+    setCompany("");
+    setEmail("");
+    setPhone("");
+    setLocation("");
+    setMore(false);
+  };
+
   const handleSave = () => {
     if (!name.trim()) return;
     if (editCustomer) {
