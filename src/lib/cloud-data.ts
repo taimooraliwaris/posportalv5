@@ -258,7 +258,20 @@ export const fetchCustomers = async () =>
 export const fetchSuppliers = async () =>
   (await rows(supabase.from("suppliers").select("*").order("name"))).map(toSupplier);
 
-export const fetchStock = async () => [];
+/** Real on-hand stock, derived from the product catalog view. */
+export const fetchStock = async (): Promise<StockItem[]> =>
+  (await rows(supabase.from("v_products").select("*").order("name_en"))).map((row: any) => ({
+    productId: String(row.id),
+    onHand: Number(row.stock_qty ?? 0),
+    reserved: 0,
+    reorderPoint: Number(row.foc_threshold ?? 0),
+    cost: Number(row.cost_price ?? 0),
+    supplierId: "",
+    description: String(row.name_en ?? ""),
+    active: row.is_active !== false,
+    ...(row.item_code ? { sku: String(row.item_code) } : {}),
+    history: [],
+  }));
 
 export const fetchPurchaseOrders = async () =>
   (await rows(supabase.from("purchase_orders").select("*").order("order_date", { ascending: false }))).map(
@@ -308,13 +321,19 @@ export type CloudAdjustment = {
 export const fetchStockAdjustments = async (): Promise<CloudAdjustment[]> => [];
 
 
-export const fetchPasscode = async (): Promise<string> => {
-  const { data } = await supabase.from("app_security").select("passcode").eq("id", "default").maybeSingle();
-  return data?.passcode || "1234";
+/**
+ * The passcode never leaves the database: the typed code is verified server-side
+ * against a bcrypt hash and only a boolean comes back.
+ */
+export const verifyPasscode = async (code: string): Promise<boolean> => {
+  const { data, error } = await supabase.rpc("verify_backend_passcode" as never, { _code: code } as never);
+  if (error) throw new Error(error.message);
+  return data === true;
 };
 
-export const updatePasscode = async (passcode: string): Promise<void> => {
-  await supabase.from("app_security").upsert({ id: "default", passcode });
+export const updatePasscode = async (code: string): Promise<void> => {
+  const { error } = await supabase.rpc("set_backend_passcode" as never, { _code: code } as never);
+  if (error) throw new Error(error.message);
 };
 
 export const fetchStaff = async (): Promise<StaffUser[]> => {
