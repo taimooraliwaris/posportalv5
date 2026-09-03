@@ -18,37 +18,22 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          passcode: string
+          passcode: string | null
+          passcode_hash: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
-          passcode?: string
+          passcode?: string | null
+          passcode_hash?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
-          passcode?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      backend_passcode: {
-        Row: {
-          code: string
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          code: string
-          id?: string
-          updated_at?: string
-        }
-        Update: {
-          code?: string
-          id?: string
+          passcode?: string | null
+          passcode_hash?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -812,6 +797,8 @@ export type Database = {
       }
       is_manager: { Args: { _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      set_backend_passcode: { Args: { _code: string }; Returns: undefined }
+      verify_backend_passcode: { Args: { _code: string }; Returns: boolean }
     }
     Enums: {
       app_role: "Cashier" | "Manager" | "Admin"
