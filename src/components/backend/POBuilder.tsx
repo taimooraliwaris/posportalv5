@@ -19,7 +19,18 @@ export function POBuilder({ onBack, editPo }: { onBack: () => void, editPo?: imp
   // Array of { product, qty, cost }
   const [lines, setLines] = useState<
     { productId: string; name: string; qty: number; cost: number; price: number }[]
-  >(editPo?.lines || []);
+  >(
+    (editPo?.lines || []).map((l) => {
+      const p = productList.find((pp) => pp.id === l.productId);
+      return {
+        productId: l.productId,
+        name: p?.name ?? "",
+        qty: l.qty,
+        cost: l.cost,
+        price: p?.price ?? 0,
+      };
+    }),
+  );
 
   const selectedSupplier = suppliers.find(s => s.id === supplierId);
 
