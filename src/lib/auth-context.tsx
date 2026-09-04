@@ -36,10 +36,10 @@ type AuthState = {
   signOut: () => Promise<void>;
 
   backendUnlocked: boolean;
-  backendPasscode: string;
-  unlockBackend: (code: string) => AuthResult;
+  unlockBackend: (code: string) => Promise<AuthResult>;
   lockBackend: () => void;
   lockedUntil: number | null;
+
 
   securityLog: SecurityEvent[];
   clearSecurityLog: () => void;
