@@ -66,9 +66,10 @@ function ZReportPage() {
   }, [cashMoves, snapshot?.id, activeSessionId, sessionOpenedAt]);
 
   const totalSales = snapshot?.totalSales ?? paidOrders.reduce(
-    (sum, o) => sum + o.lines.reduce((l, li) => l + li.qty * li.unitPrice, 0),
+    (sum, o) => sum + calculateOrderTotals(o.lines).total,
     0,
   );
+
 
   const cashPayments = snapshot?.cashSales ?? paidOrders
     .flatMap((o) => o.payments || [])

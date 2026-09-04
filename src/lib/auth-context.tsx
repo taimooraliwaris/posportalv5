@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 import { usePersistentState } from "./use-persistent-state";
-import { cloudKeys, fetchStaff, fetchPasscode, updatePasscode } from "./cloud-data";
+import { cloudKeys, fetchStaff, verifyPasscode, updatePasscode } from "./cloud-data";
 import type { StaffRole, StaffUser } from "./backend-data";
 import { inviteStaffMember } from "./staff.functions";
 
@@ -36,10 +36,10 @@ type AuthState = {
   signOut: () => Promise<void>;
 
   backendUnlocked: boolean;
-  backendPasscode: string;
-  unlockBackend: (code: string) => AuthResult;
+  unlockBackend: (code: string) => Promise<AuthResult>;
   lockBackend: () => void;
   lockedUntil: number | null;
+
 
   securityLog: SecurityEvent[];
   clearSecurityLog: () => void;
@@ -70,12 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  const { data: remotePasscode } = useQuery({
-    queryKey: ["cloud", "passcode"],
-    queryFn: fetchPasscode,
-  });
-  
-  const backendPasscode = remotePasscode || "1234";
+  // The passcode itself is never fetched to the client; it is verified server-side.
+
 
   const [backendUnlocked, setBackendUnlocked] = useState(false);
   const [failures, setFailures] = useState(0);
@@ -237,12 +233,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     backendUnlocked,
-    backendPasscode,
-    unlockBackend: (code) => {
+    unlockBackend: async (code) => {
       if (lockedUntil && Date.now() < lockedUntil) {
         return { ok: false, error: "Too many attempts. Try again shortly." };
       }
-      if (code !== backendPasscode) {
+      let valid = false;
+      try {
+        valid = await verifyPasscode(code);
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : "Could not verify passcode",
+        };
+      }
+      if (!valid) {
         const attempt = failures + 1;
         setFailures(attempt);
         log({
@@ -264,6 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       log({ kind: "unlocked", user: currentUser?.name ?? "Unknown", attempt: 0 });
       return { ok: true };
     },
+
     lockBackend: () => setBackendUnlocked(false),
     lockedUntil,
 
