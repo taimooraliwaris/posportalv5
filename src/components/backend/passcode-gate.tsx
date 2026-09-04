@@ -17,14 +17,16 @@ export function PasscodeGate({ children }: { children: ReactNode }) {
 
   const submit = useCallback(
     (value: string) => {
-      const result = unlockBackend(value);
-      if (!result.ok) {
-        setError(result.error ?? "Incorrect passcode");
-        setCode("");
-      }
+      void unlockBackend(value).then((result) => {
+        if (!result.ok) {
+          setError(result.error ?? "Incorrect passcode");
+          setCode("");
+        }
+      });
     },
     [unlockBackend],
   );
+
 
   const press = useCallback(
     (key: string) => {
