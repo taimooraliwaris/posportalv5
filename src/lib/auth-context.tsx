@@ -70,12 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  const { data: remotePasscode } = useQuery({
-    queryKey: ["cloud", "passcode"],
-    queryFn: fetchPasscode,
-  });
-  
-  const backendPasscode = remotePasscode || "1234";
+  // The passcode itself is never fetched to the client; it is verified server-side.
+
 
   const [backendUnlocked, setBackendUnlocked] = useState(false);
   const [failures, setFailures] = useState(0);
