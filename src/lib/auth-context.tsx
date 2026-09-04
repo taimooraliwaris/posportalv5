@@ -237,12 +237,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     backendUnlocked,
-    backendPasscode,
-    unlockBackend: (code) => {
+    unlockBackend: async (code) => {
       if (lockedUntil && Date.now() < lockedUntil) {
         return { ok: false, error: "Too many attempts. Try again shortly." };
       }
-      if (code !== backendPasscode) {
+      let valid = false;
+      try {
+        valid = await verifyPasscode(code);
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : "Could not verify passcode",
+        };
+      }
+      if (!valid) {
         const attempt = failures + 1;
         setFailures(attempt);
         log({
@@ -264,6 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       log({ kind: "unlocked", user: currentUser?.name ?? "Unknown", attempt: 0 });
       return { ok: true };
     },
+
     lockBackend: () => setBackendUnlocked(false),
     lockedUntil,
 
