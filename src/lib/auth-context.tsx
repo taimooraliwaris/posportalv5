@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 import { usePersistentState } from "./use-persistent-state";
-import { cloudKeys, fetchStaff, fetchPasscode, updatePasscode } from "./cloud-data";
+import { cloudKeys, fetchStaff, verifyPasscode, updatePasscode } from "./cloud-data";
 import type { StaffRole, StaffUser } from "./backend-data";
 import { inviteStaffMember } from "./staff.functions";
 
