@@ -92,11 +92,14 @@ function ReportsPage() {
     const catRevenue = sales.reduce(
       (sum, s) =>
         sum +
-        s.lines
-          .filter((l) => productList.find((p) => p.id === l.productId)?.category === c.id)
-          .reduce((ls, l) => ls + l.qty * l.unitPrice, 0),
+        calculateOrderTotals(
+          s.lines.filter(
+            (l) => productList.find((p) => p.id === l.productId)?.category === c.id,
+          ),
+        ).total,
       0,
     );
+
     const catCost = sales.reduce(
       (sum, s) =>
         sum +
