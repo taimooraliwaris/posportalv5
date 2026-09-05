@@ -70,6 +70,10 @@ type BackendState = {
   deletePurchaseOrder: (id: string) => void;
   setPurchaseOrderStatus: (id: string, status: PurchaseOrder["status"]) => void;
 
+  taxes: TaxRate[];
+  saveTax: (tax: TaxRate) => void;
+  removeTax: (id: string) => void;
+
   pricelists: PricelistDetail[];
   addPricelist: (p: Omit<PricelistDetail, "id">) => void;
   updatePricelist: (id: string, patch: Partial<PricelistDetail>) => void;
@@ -127,6 +131,11 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     enabled: signedIn,
   });
   
+  const taxesQuery = useQuery({
+    queryKey: cloudKeys.taxes,
+    queryFn: fetchTaxes,
+  });
+
   const settingsQuery = useQuery({
     queryKey: cloudKeys.storeSettings,
     queryFn: fetchStoreSettings,
@@ -150,6 +159,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
   const suppliers = suppliersQuery.data ?? seedSuppliers;
   const purchaseOrders = poQuery.data ?? [];
   const pricelists = pricelistsQuery.data ?? seedPricelists;
+  const taxes = taxesQuery.data?.length ? taxesQuery.data : seedTaxes;
     const storeSettings = { ...seedStoreSettings, ...(settingsQuery.data ?? {}) };
   const staff = staffQuery.data?.length ? staffQuery.data : seedStaff;
 
@@ -441,6 +451,20 @@ export function BackendProvider({ children }: { children: ReactNode }) {
         void queryClient.invalidateQueries({ queryKey: cloudKeys.products });
         void queryClient.invalidateQueries({ queryKey: cloudKeys.stock });
       }
+    },
+
+    taxes,
+    saveTax: (tax) => {
+      patchCache<TaxRate>(cloudKeys.taxes, taxes, (prev) =>
+        prev.some((t) => t.id === tax.id)
+          ? prev.map((t) => (t.id === tax.id ? tax : t))
+          : [...prev, tax],
+      );
+      write.mutate(() => supabase.from("tax_rates").upsert(fromTaxRate(tax)));
+    },
+    removeTax: (id) => {
+      patchCache<TaxRate>(cloudKeys.taxes, taxes, (prev) => prev.filter((t) => t.id !== id));
+      write.mutate(() => supabase.from("tax_rates").delete().eq("id", id));
     },
 
     pricelists,
