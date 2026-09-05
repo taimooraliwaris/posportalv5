@@ -45,7 +45,7 @@ export const Route = createFileRoute("/backend/settings")({
 
 function SettingsPage() {
   const hydrated = useHydrated();
-  const { staff, storeSettings, updateStoreSettings, sessions } =
+  const { staff, storeSettings, updateStoreSettings, sessions, taxes, saveTax, removeTax } =
     useBackend();
   const [taxName, setTaxName] = useState("");
   const [taxPct, setTaxPct] = useState("");
@@ -57,6 +57,7 @@ function SettingsPage() {
         <TabsList>
           <TabsTrigger value="users">Users &amp; roles</TabsTrigger>
           <TabsTrigger value="store">Store details</TabsTrigger>
+          <TabsTrigger value="taxes">Tax rates</TabsTrigger>
           <TabsTrigger value="printers">Printers &amp; Hardware</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="sessions">Session history</TabsTrigger>
@@ -126,6 +127,54 @@ function SettingsPage() {
               Save details
             </Button>
           </DataCard>
+        </TabsContent>
+
+        <TabsContent value="taxes">
+          <div className="space-y-4">
+            <DataTable columns={taxColumns(saveTax, removeTax)} rows={taxes} getKey={(t) => t.id} />
+            <DataCard className="max-w-xl space-y-3 p-4">
+              <p className="text-sm font-medium">Add a tax rate</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Input
+                  placeholder="Name"
+                  value={taxName}
+                  onChange={(e) => setTaxName(e.target.value)}
+                  className="h-11"
+                />
+                <Input
+                  placeholder="Percent"
+                  inputMode="decimal"
+                  value={taxPct}
+                  onChange={(e) => setTaxPct(e.target.value)}
+                  className="h-11"
+                />
+                <Input
+                  placeholder="Applies to"
+                  value={taxApplies}
+                  onChange={(e) => setTaxApplies(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <Button
+                className="h-11"
+                disabled={!taxName.trim()}
+                onClick={() => {
+                  saveTax({
+                    id: `t-${Math.random().toString(36).slice(2, 8)}`,
+                    name: taxName.trim(),
+                    percentage: Number(taxPct) || 0,
+                    appliesTo: taxApplies.trim() || "All products",
+                  });
+                  setTaxName("");
+                  setTaxPct("");
+                  setTaxApplies("");
+                  toast.success("Tax rate added");
+                }}
+              >
+                Add tax rate
+              </Button>
+            </DataCard>
+          </div>
         </TabsContent>
 
         <TabsContent value="printers">

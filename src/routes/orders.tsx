@@ -41,6 +41,7 @@ const statusFilters = [
 
 function Orders() {
   const { orders, deleteOrder, productList, categoryList } = usePos();
+  const { totalsFor } = usePricing();
   const { currentUser } = useAuth();
   const store = useStore();
   const currentCashier = currentUser?.name ?? store.cashier;

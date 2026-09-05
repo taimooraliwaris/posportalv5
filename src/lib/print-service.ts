@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { formatRs, type Product } from "./pos-data";
 import { type Order, type ReturnRecord, orderTotals } from "./pos-context";
+import { calculateOrderTotals } from "./tax-resolver";
 
 export type PrinterProfile = "thermal-80" | "thermal-58" | "standard-a4";
 
@@ -211,13 +212,18 @@ export function printOrderReceipt(
     profile?: PrinterProfile;
     simplified?: boolean;
     discountRate?: number;
+    pricing?: import("./tax-resolver").PricingContext;
   },
 ) {
   if (!order) return;
   const settings = getPrinterSettings();
   const profile = options?.profile || settings.defaultProfile;
   const cashier = options?.cashier || order.cashier || "Cashier";
-  const { total, subtotal, gross, discountAmount } = orderTotals(order, options?.discountRate ?? 0);
+  const { total, subtotal, gross, discountAmount, taxAmount } = calculateOrderTotals(
+    order.lines ?? [],
+    options?.discountRate ?? 0,
+    options?.pricing,
+  );
   const store = options?.store;
   const storeName = store?.name || "Velora POS";
   const storeTagline = store?.tagline || "";
