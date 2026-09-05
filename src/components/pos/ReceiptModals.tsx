@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { formatRs } from "@/lib/pos-data";
 import { useStore } from "@/lib/backend-context";
 import { usePos, orderTotals, type Order } from "@/lib/pos-context";
+import { usePricing } from "@/lib/use-pricing";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { printOrderReceipt, getPrinterSettings, savePrinterSettings, type PrinterProfile } from "@/lib/print-service";
@@ -148,7 +149,8 @@ export function Receipt({ order, simple }: { order: Order | null; simple?: boole
   const { currentUser } = useAuth();
   const store = useStore();
   const { productList, categoryList } = usePos();
-  const { subtotal, total } = orderTotals(order ?? undefined, 0);
+  const { totalsFor } = usePricing();
+  const { subtotal, taxAmount, total } = totalsFor(order ?? undefined);
 
   return (
     <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-border bg-card p-5 font-mono text-xs leading-relaxed">
@@ -173,6 +175,7 @@ export function Receipt({ order, simple }: { order: Order | null; simple?: boole
       )}
       <div className="mt-3 border-t border-dashed border-border pt-3">
         <Row label="Subtotal" value={formatRs(subtotal)} />
+        {taxAmount > 0 && <Row label="Tax" value={formatRs(taxAmount)} />}
         <Row label="Total" value={formatRs(total)} bold />
         {(order?.payments ?? []).map((p) => (
           <Row key={p.id} label={p.method} value={formatRs(p.amount)} />

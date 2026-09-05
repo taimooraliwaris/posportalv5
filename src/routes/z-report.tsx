@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { ArrowLeft, FileText, Printer, CheckCircle2, AlertCircle, ShoppingBag, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePos } from "@/lib/pos-context";
+import { usePricing } from "@/lib/use-pricing";
 import { formatRs } from "@/lib/pos-data";
 import { useStore } from "@/lib/backend-context";
 import { useAuth } from "@/lib/auth-context";
@@ -28,6 +29,7 @@ function ZReportPage() {
   const { closedSummary, orders, cashMoves, openingCash, activeSessionId, sessionOpenedAt } = usePos();
   const { currentUser } = useAuth();
   const store = useStore();
+  const { totalsFor } = usePricing();
   const [viewMode, setViewMode] = useState<"summary" | "orders">("summary");
 
   // Load last closed summary from storage if context was reset
@@ -66,7 +68,7 @@ function ZReportPage() {
   }, [cashMoves, snapshot?.id, activeSessionId, sessionOpenedAt]);
 
   const totalSales = snapshot?.totalSales ?? paidOrders.reduce(
-    (sum, o) => sum + calculateOrderTotals(o.lines).total,
+    (sum, o) => sum + totalsFor(o).total,
     0,
   );
 
@@ -262,7 +264,7 @@ function ZReportPage() {
             <h2 className="text-base font-bold text-foreground">Shift Transactions ({paidOrders.length})</h2>
             <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
               {paidOrders.map((o) => {
-                const orderTotal = o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
+                const orderTotal = totalsFor(o).total;
                 const itemCount = o.lines.reduce((s, l) => s + l.qty, 0);
 
                 return (

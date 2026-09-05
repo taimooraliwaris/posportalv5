@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Keypad } from "@/components/pos/Keypad";
 import { PrintModal, SendReceiptModal } from "@/components/pos/ReceiptModals";
 import { usePos, orderTotals, type PaymentLine } from "@/lib/pos-context";
+import { usePricing } from "@/lib/use-pricing";
 import { formatRs, pricelists } from "@/lib/pos-data";
 import { useScanTarget } from "@/lib/scan-mode-context";
 import { useNumericEntry } from "@/lib/use-numeric-entry";
@@ -48,8 +49,8 @@ function Payment() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [method, setMethod] = useState<PaymentLine["method"]>("Cash");
 
-  const pricelist = pricelists.find((p) => p.id === activeOrder?.pricelistId) ?? pricelists[0]!;
-  const { total, subtotal } = orderTotals(activeOrder, pricelist.discount);
+  const { totalsFor } = usePricing();
+  const { total, subtotal, taxAmount } = totalsFor(activeOrder);
 
   // Scan customer card or account barcode at payment
   useScanTarget(
@@ -79,7 +80,7 @@ function Payment() {
   const tendered = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = Math.max(0, total - tendered);
   const change = Math.max(0, tendered - total);
-  const covered = tendered >= total && total > 0;
+  const covered = tendered >= total;
 
   const entry = useNumericEntry({
     enabled: !showSuccess,
@@ -113,7 +114,7 @@ function Payment() {
       addTender(entry.numeric);
       return;
     }
-    if (tendered >= total && total > 0) handleValidate();
+    if (tendered >= total) handleValidate();
     else toast("Enter an amount to tender");
   };
 
@@ -155,6 +156,16 @@ function Payment() {
             </div>
 
             <dl className="mt-5 space-y-2 border-t border-border pt-4 text-base">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Subtotal</dt>
+                <dd className="font-semibold tabular-nums">{formatRs(subtotal)}</dd>
+              </div>
+              {taxAmount > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Tax</dt>
+                  <dd className="font-semibold tabular-nums">{formatRs(taxAmount)}</dd>
+                </div>
+              )}
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Amount tendered</dt>
                 <dd className="font-semibold tabular-nums">{formatRs(tendered)}</dd>

@@ -13,7 +13,8 @@ import {
   PreviousShiftReviewModal,
   EndOfDayWarningModal,
 } from "@/components/pos/RegisterSessionModals";
-import { usePos, orderTotals, type CartLine } from "@/lib/pos-context";
+import { usePos, type CartLine } from "@/lib/pos-context";
+import { usePricing } from "@/lib/use-pricing";
 import { useScanMode, useScanTarget } from "@/lib/scan-mode-context";
 import { applyNumericKey, useNumericKeyboard } from "@/lib/use-numeric-entry";
 import {
@@ -155,8 +156,8 @@ function Till() {
     },
   });
 
-  const pricelist = pricelists.find((p) => p.id === activeOrder?.pricelistId) ?? pricelists[0]!;
-  const { subtotal, total } = orderTotals(activeOrder, pricelist.discount);
+  const { totalsFor } = usePricing();
+  const { subtotal, taxAmount, total } = totalsFor(activeOrder);
 
   const filteredProducts = useMemo(() => {
     let list = productList;
@@ -271,6 +272,12 @@ function Till() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-medium">{formatRs(subtotal)}</span>
               </div>
+              {taxAmount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span className="font-medium">{formatRs(taxAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-base font-semibold">
                 <span>Total</span>
                 <span>{formatRs(total)}</span>

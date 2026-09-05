@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PosHeader } from "@/components/pos/PosHeader";
 import { usePos, orderTotals, type Order } from "@/lib/pos-context";
+import { usePricing } from "@/lib/use-pricing";
 import { useAuth } from "@/lib/auth-context";
 import { useStore } from "@/lib/backend-context";
 import { printOrderReceipt } from "@/lib/print-service";
@@ -142,7 +143,7 @@ function Orders() {
             <span>Status</span>
           </div>
           {filtered.map((o) => {
-            const { total } = orderTotals(o, 0);
+            const { total } = totalsFor(o);
             return (
               <div
                 key={o.id}
