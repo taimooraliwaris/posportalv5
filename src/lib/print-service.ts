@@ -305,6 +305,17 @@ export function printOrderReceipt(
       <span>Subtotal:</span>
       <span>${formatRs(subtotal)}</span>
     </div>
+    ${
+      taxAmount > 0
+        ? `
+    <div class="row">
+      <span>Tax:</span>
+      <span>${formatRs(taxAmount)}</span>
+    </div>
+    `
+        : ""
+    }
+
 
     <div class="total-row row">
       <span>TOTAL PAYABLE:</span>
