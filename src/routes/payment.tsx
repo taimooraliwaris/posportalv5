@@ -49,7 +49,7 @@ function Payment() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [method, setMethod] = useState<PaymentLine["method"]>("Cash");
 
-  const { totalsFor } = usePricing();
+  const { totalsFor, contextFor } = usePricing();
   const { total, subtotal, taxAmount } = totalsFor(activeOrder);
 
   // Scan customer card or account barcode at payment
@@ -104,7 +104,12 @@ function Payment() {
     // Auto-print support
     const settings = getPrinterSettings();
     if (settings.autoPrintOnCheckout && activeOrder) {
-      printOrderReceipt(activeOrder, { store, change, cashier: currentUser?.name ?? "Cashier" });
+      printOrderReceipt(activeOrder, {
+        store,
+        change,
+        cashier: currentUser?.name ?? "Cashier",
+        pricing: contextFor(activeOrder?.pricelistId),
+      });
     }
   };
 
@@ -328,14 +333,20 @@ function SuccessScreen({
 }) {
   const { currentUser } = useAuth();
   const store = useStore();
+  const { totalsFor, contextFor } = usePricing();
   const [sendOpen, setSendOpen] = useState(false);
   const total = order?.payments && order.payments.length > 0
     ? order.payments.reduce((s, p) => s + p.amount, 0)
-    : orderTotals(order ?? undefined).total;
+    : totalsFor(order ?? undefined).total;
 
   const handlePrint = () => {
     if (!order) return;
-    printOrderReceipt(order, { store, change, cashier: currentUser?.name ?? "Cashier" });
+    printOrderReceipt(order, {
+      store,
+      change,
+      cashier: currentUser?.name ?? "Cashier",
+      pricing: contextFor(order?.pricelistId),
+    });
     toast.success("Sending receipt to printer...");
   };
 
