@@ -30,7 +30,6 @@ export function useRealtimeRefresh(intervalMs = 20000) {
     return () => {
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
-      window.removeEventListener("focus", onFocus);
       void supabase.removeChannel(channel);
     };
   }, [queryClient, intervalMs]);
