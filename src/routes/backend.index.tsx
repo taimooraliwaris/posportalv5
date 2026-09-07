@@ -3,22 +3,22 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { Plus, Receipt, ShoppingCart } from "lucide-react";
 import { BackendLayout } from "@/components/backend/backend-layout";
 import { DataCard, StatCard } from "@/components/backend/backend-ui";
-import { useBackend } from "@/lib/backend-context";
-import { formatDate, stockStatus, toDateKey } from "@/lib/backend-data";
-import { formatRs, products } from "@/lib/pos-data";
+import { formatDate } from "@/lib/backend-data";
+import { formatRs } from "@/lib/pos-data";
 import { useHydrated } from "@/lib/use-hydrated";
 import { usePos } from "@/lib/pos-context";
-
+import { usePricing } from "@/lib/use-pricing";
+import { useRealtimeRefresh } from "@/lib/use-realtime-refresh";
 
 export const Route = createFileRoute("/backend/")({
   head: () => ({
     meta: [
       { title: "Back office dashboard — Velora POS" },
-      { name: "description", content: "Daily sales, stock alerts and trends for Velora Mart." },
+      { name: "description", content: "Live sales, stock alerts and trends for Velora Mart." },
       { property: "og:title", content: "Back office dashboard — Velora POS" },
       {
         property: "og:description",
-        content: "Daily sales, stock alerts and trends for Velora Mart.",
+        content: "Live sales, stock alerts and trends for Velora Mart.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -27,85 +27,76 @@ export const Route = createFileRoute("/backend/")({
   component: Dashboard,
 });
 
+const dayKey = (value: string | undefined) => (value ? value.slice(0, 10) : "");
+
 function Dashboard() {
-  const { productList, orders } = usePos();
+  const { productList, orders, returns } = usePos();
+  const { totalsFor } = usePricing();
   const hydrated = useHydrated();
-  const { sessions, sales } = useBackend();
+  useRealtimeRefresh();
 
   if (!hydrated) return <BackendLayout title="Dashboard">{null}</BackendLayout>;
 
   const todayKey = new Date().toISOString().slice(0, 10);
-  const days = [...new Set([...sessions.map((s) => s.date), todayKey])].sort().slice(-7);
-  
-  const chartData = days.map((day) => {
-    const daySessions = sessions.filter((s) => s.date === day);
-    const daySales = sales.filter((s) => s.date === day);
-    const sessionTotal = daySessions.reduce((sum, s) => sum + s.totalSales, 0);
-    const salesTotal = daySales.reduce((sum, s) => sum + s.total, 0);
-    const total = daySessions.length > 0 ? sessionTotal : salesTotal;
-    return {
-      day: formatDate(day).slice(0, 5),
-      sales: Math.round(total * 100) / 100,
-    };
+
+  /* Completed sales are the single source of truth for every figure below. */
+  const settled = orders.filter((o) => o.status === "paid" || o.status === "exchanged");
+
+  const last7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().slice(0, 10);
   });
 
-  const todaySalesRecords = sales.filter((s) => s.date === todayKey);
-  const todaySessions = sessions.filter((s) => s.date === todayKey);
+  const netForDay = (day: string) => {
+    const sales = settled
+      .filter((o) => dayKey(o.date) === day)
+      .reduce((sum, o) => sum + totalsFor(o).total, 0);
+    const refunds = returns
+      .filter((r) => dayKey(r.date) === day)
+      .reduce((sum, r) => sum + Math.max(0, r.refundAmount), 0);
+    return sales - refunds;
+  };
 
-  // Net sales for today: if active sessions exist use session total, otherwise sum sales records
-  const today = todaySessions.length > 0
-    ? todaySessions.reduce((sum, s) => sum + s.totalSales, 0)
-    : todaySalesRecords.reduce((sum, s) => sum + s.total, 0);
+  const chartData = last7.map((day) => ({
+    day: formatDate(day).slice(0, 5),
+    sales: Math.round(netForDay(day) * 100) / 100,
+  }));
 
-  const yesterdayKey = days.length > 1 ? days.at(-2) : undefined;
-  const yesterdaySessions = yesterdayKey ? sessions.filter((s) => s.date === yesterdayKey) : [];
-  const yesterday = yesterdaySessions.reduce((sum, s) => sum + s.totalSales, 0);
+  const today = netForDay(todayKey);
+  const yesterday = netForDay(last7[5] ?? "");
   const trend = yesterday ? ((today - yesterday) / yesterday) * 100 : 0;
 
-  // Positive sales orders count
-  const salesOrdersToday = todaySalesRecords.filter((s) => s.total > 0);
-  const ordersTodayCount = todaySessions.length > 0
-    ? todaySessions.reduce((sum, s) => sum + (s.orderCount || 0), 0)
-    : salesOrdersToday.length;
+  const todayOrders = settled.filter((o) => dayKey(o.date) === todayKey);
+  const ordersTodayCount = todayOrders.length;
+  const avgBasket = ordersTodayCount
+    ? todayOrders.reduce((sum, o) => sum + totalsFor(o).total, 0) / ordersTodayCount
+    : 0;
 
-  const avgBasket = ordersTodayCount > 0 ? Math.max(0, today / ordersTodayCount) : 0;
-
-  // Real product catalog low/out-of-stock count
   const lowStock = productList.filter((p) => Number(p.stock_qty ?? 0) <= 5).length;
 
-  // Compute Net units sold and net revenue per product (net of returns)
-  const unitsByProduct = new Map<string, { units: number; revenue: number }>();
-  
-  // 1. Process from completed live orders
-  const completedOrders = orders.filter((o) => o.status === "paid" || o.status === "exchanged");
-  if (completedOrders.length > 0) {
-    completedOrders.forEach((order) => {
-      const isReturn = order.number.startsWith("RET-") || (order.payments && order.payments.some((p) => p.amount < 0));
-      const multiplier = isReturn ? -1 : 1;
-      order.lines.forEach((line) => {
-        const entry = unitsByProduct.get(line.productId) ?? { units: 0, revenue: 0 };
-        const lineRevenue = line.qty * line.unitPrice * (1 - (line.discount || 0) / 100);
-        entry.units += line.qty * multiplier;
-        entry.revenue += lineRevenue * multiplier;
-        unitsByProduct.set(line.productId, entry);
-      });
-    });
-  } else {
-    // Fallback to sales table if no local orders
-    sales.forEach((sale) => {
-      const isReturn = sale.number.startsWith("RET-") || sale.total < 0;
-      const multiplier = isReturn ? -1 : 1;
-      sale.lines.forEach((line) => {
-        const entry = unitsByProduct.get(line.productId) ?? { units: 0, revenue: 0 };
-        entry.units += line.qty * multiplier;
-        entry.revenue += line.qty * line.unitPrice * multiplier;
-        unitsByProduct.set(line.productId, entry);
-      });
-    });
+  /* Net units and revenue per product, returns deducted. */
+  const perProduct = new Map<string, { units: number; revenue: number }>();
+  const bump = (productId: string, units: number, revenue: number) => {
+    const entry = perProduct.get(productId) ?? { units: 0, revenue: 0 };
+    entry.units += units;
+    entry.revenue += revenue;
+    perProduct.set(productId, entry);
+  };
+
+  for (const order of settled) {
+    for (const line of order.lines) {
+      bump(line.productId, line.qty, line.qty * line.unitPrice * (1 - (line.discount || 0) / 100));
+    }
+  }
+  for (const record of returns) {
+    for (const line of record.lines ?? []) {
+      bump(line.productId, -line.qty, -(line.qty * (line.unitPrice ?? 0)));
+    }
   }
 
-  const top = [...unitsByProduct.entries()]
-    .filter(([_, v]) => v.units > 0)
+  const top = [...perProduct.entries()]
+    .filter(([, v]) => v.units > 0)
     .sort((a, b) => b[1].units - a[1].units)
     .slice(0, 5)
     .map(([id, v]) => ({ name: productList.find((p) => p.id === id)?.name ?? id, ...v }));
@@ -114,9 +105,9 @@ function Dashboard() {
     <BackendLayout title="Dashboard">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Today's sales" value={formatRs(today)} trend={trend} />
-        <StatCard label="Orders today" value={String(ordersTodayCount)} trend={trend / 2} />
-        <StatCard label="Average basket" value={formatRs(avgBasket)} trend={-1.4} />
-        <StatCard label="Items low on stock" value={String(lowStock)} hint="Below reorder point" />
+        <StatCard label="Orders today" value={String(ordersTodayCount)} hint="Completed sales" />
+        <StatCard label="Average basket" value={formatRs(avgBasket)} hint="Today" />
+        <StatCard label="Items low on stock" value={String(lowStock)} hint="5 or fewer left" />
       </div>
 
       <DataCard className="mt-4 p-4">
@@ -137,39 +128,33 @@ function Dashboard() {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <DataCard className="p-4">
           <p className="mb-3 font-medium">Top selling products</p>
-          {top.map((t) => (
-            <div
-              key={t.name}
-              className="flex justify-between border-b border-border py-2 text-sm last:border-0"
-            >
-              <span>{t.name}</span>
-              <span className="text-muted-foreground">
-                {t.units} units · {formatRs(t.revenue)}
-              </span>
-            </div>
-          ))}
+          {top.length === 0 ? (
+            <p className="py-2 text-sm text-muted-foreground">No completed sales yet.</p>
+          ) : (
+            top.map((t) => (
+              <div
+                key={t.name}
+                className="flex justify-between border-b border-border py-2 text-sm last:border-0"
+              >
+                <span>{t.name}</span>
+                <span className="text-muted-foreground">
+                  {t.units} units · {formatRs(t.revenue)}
+                </span>
+              </div>
+            ))
+          )}
         </DataCard>
         <DataCard className="grid gap-2 p-4 sm:grid-cols-3">
-          <QuickTile
-            to="/backend/products"
-            icon={<Plus className="h-5 w-5" />}
-            label="Add product"
-          />
+          <QuickTile to="/backend/products" icon={<Plus className="h-5 w-5" />} label="Add product" />
           <QuickTile
             to="/backend/purchases"
             icon={<ShoppingCart className="h-5 w-5" />}
             label="New purchase order"
           />
-          <QuickTile
-            to="/z-report"
-            icon={<Receipt className="h-5 w-5" />}
-            label="Today's Z Report"
-          />
+          <QuickTile to="/z-report" icon={<Receipt className="h-5 w-5" />} label="Today's Z Report" />
         </DataCard>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
-        Latest trading day shown: {formatDate(todayKey)}
-      </p>
+      <p className="mt-3 text-xs text-muted-foreground">Live figures for {formatDate(todayKey)}</p>
     </BackendLayout>
   );
 }
