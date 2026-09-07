@@ -275,6 +275,36 @@ function CloseRegisterPage() {
                   <span>Expected Cash in Drawer:</span>
                   <span className="font-mono text-primary text-lg">{formatRs(expectedCash)}</span>
                 </div>
+
+                {(cardSales > 0 || accountSales > 0) && (
+                  <div className="rounded-xl bg-muted p-3 space-y-1.5 text-xs">
+                    <p className="font-semibold text-foreground">
+                      Not in the drawer (non-cash tenders)
+                    </p>
+                    {cardSales > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Card Sales:</span>
+                        <span className="font-mono font-medium text-foreground">
+                          {formatRs(cardSales)}
+                        </span>
+                      </div>
+                    )}
+                    {accountSales > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Customer Account Sales:</span>
+                        <span className="font-mono font-medium text-foreground">
+                          {formatRs(accountSales)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t border-border pt-1.5 text-muted-foreground">
+                      <span>Total Sales (all tenders):</span>
+                      <span className="font-mono font-medium text-foreground">
+                        {formatRs(totalGrossSales)}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
