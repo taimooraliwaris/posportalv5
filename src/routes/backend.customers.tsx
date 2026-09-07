@@ -6,6 +6,8 @@ import { DataCard, DetailDrawer } from "@/components/backend/backend-ui";
 import { DataTable, type Column } from "@/components/backend/data-table";
 import { CreatePartnerModal } from "@/components/pos/CustomerModals";
 import { usePos } from "@/lib/pos-context";
+import { usePricing } from "@/lib/use-pricing";
+import { formatDmy } from "@/lib/print-report";
 import { formatRs, type Customer } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 import { Plus, User, Phone, Mail, MapPin, Building, Briefcase, CreditCard, History, Calculator, Edit, Trash2 } from "lucide-react";
@@ -20,6 +22,7 @@ export const Route = createFileRoute("/backend/customers")({
 
 function CustomersPage() {
   const { customers, orders, deleteCustomer } = usePos();
+  const { totalsFor } = usePricing();
   const [selected, setSelected] = useState<Customer | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
