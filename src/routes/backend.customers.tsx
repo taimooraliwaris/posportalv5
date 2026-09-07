@@ -189,26 +189,30 @@ function CustomersPage() {
                   <CreditCard className="w-3.5 h-3.5" />
                   Account Ledger
                 </div>
-                <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", balanceFor(selected.name) < 0 ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success")}>
-                  {balanceFor(selected.name) < 0 ? "OWES BALANCE" : "CLEAR"}
+                <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", balanceFor(selected.id) < 0 ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success")}>
+                  {balanceFor(selected.id) < 0 ? `OWES ${formatRs(Math.abs(balanceFor(selected.id)))}` : "CLEAR"}
                 </span>
               </div>
               <div className="divide-y divide-border">
-                {[
-                  { date: "01/08/2026", description: "Opening balance", amount: 0 },
-                  { date: "09/08/2026", description: "Invoice RCP/1000", amount: -12500 },
-                  { date: "14/08/2026", description: "Cash received", amount: 8000 },
-                ].map((row, i) => (
-                  <div key={i} className="flex justify-between items-center p-3 text-sm hover:bg-muted/30 transition-colors">
-                    <div>
-                      <div className="font-medium">{row.description}</div>
-                      <div className="text-xs text-muted-foreground">{row.date}</div>
-                    </div>
-                    <div className={cn("font-mono font-medium", row.amount < 0 ? "text-destructive" : row.amount > 0 ? "text-success" : "text-muted-foreground")}>
-                      {row.amount > 0 ? "+" : ""}{formatRs(row.amount)}
-                    </div>
+                {accountEntriesFor(selected.id).length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Nothing on account — every sale was paid in full.
                   </div>
-                ))}
+                ) : (
+                  accountEntriesFor(selected.id).map((row, i) => (
+                    <div key={i} className="flex justify-between items-center p-3 text-sm hover:bg-muted/30 transition-colors">
+                      <div>
+                        <div className="font-medium">{row.description}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {row.date} · Order total {formatRs(row.orderTotal)}
+                        </div>
+                      </div>
+                      <div className={cn("font-mono font-medium", row.amount < 0 ? "text-destructive" : "text-success")}>
+                        {formatRs(row.amount)}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </DataCard>
 
