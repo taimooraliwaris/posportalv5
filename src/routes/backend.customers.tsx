@@ -6,6 +6,8 @@ import { DataCard, DetailDrawer } from "@/components/backend/backend-ui";
 import { DataTable, type Column } from "@/components/backend/data-table";
 import { CreatePartnerModal } from "@/components/pos/CustomerModals";
 import { usePos } from "@/lib/pos-context";
+import { usePricing } from "@/lib/use-pricing";
+import { formatDmy } from "@/lib/print-report";
 import { formatRs, type Customer } from "@/lib/pos-data";
 import { cn } from "@/lib/utils";
 import { Plus, User, Phone, Mail, MapPin, Building, Briefcase, CreditCard, History, Calculator, Edit, Trash2 } from "lucide-react";
@@ -20,6 +22,7 @@ export const Route = createFileRoute("/backend/customers")({
 
 function CustomersPage() {
   const { customers, orders, deleteCustomer } = usePos();
+  const { totalsFor } = usePricing();
   const [selected, setSelected] = useState<Customer | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
@@ -56,8 +59,24 @@ function CustomersPage() {
     );
   });
 
-  // Mock ledger balance based on string length to remain deterministic
-  const balanceFor = (name: string) => [0, -4200, 1500, -18750][name.length % 4] ?? 0;
+  // Real ledger: every amount a customer put on account (unpaid credit) counts
+  // against them; anything else they tendered (cash / card) is already settled.
+  const accountEntriesFor = (customerId: string) =>
+    orders
+      .filter((o) => o.customerId === customerId && o.status === "paid")
+      .flatMap((o) =>
+        (o.payments ?? [])
+          .filter((p) => p.method === "Customer Account")
+          .map((p) => ({
+            date: o.date ? formatDmy(o.date) : o.time,
+            description: `Invoice ${o.receipt || o.number} — on account`,
+            amount: -p.amount,
+            orderTotal: totalsFor(o).total,
+          })),
+      );
+
+  const balanceFor = (customerId: string) =>
+    accountEntriesFor(customerId).reduce((sum, e) => sum + e.amount, 0);
 
   return (
     <BackendLayout title="Customers">
@@ -170,26 +189,30 @@ function CustomersPage() {
                   <CreditCard className="w-3.5 h-3.5" />
                   Account Ledger
                 </div>
-                <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", balanceFor(selected.name) < 0 ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success")}>
-                  {balanceFor(selected.name) < 0 ? "OWES BALANCE" : "CLEAR"}
+                <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", balanceFor(selected.id) < 0 ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success")}>
+                  {balanceFor(selected.id) < 0 ? `OWES ${formatRs(Math.abs(balanceFor(selected.id)))}` : "CLEAR"}
                 </span>
               </div>
               <div className="divide-y divide-border">
-                {[
-                  { date: "01/08/2026", description: "Opening balance", amount: 0 },
-                  { date: "09/08/2026", description: "Invoice RCP/1000", amount: -12500 },
-                  { date: "14/08/2026", description: "Cash received", amount: 8000 },
-                ].map((row, i) => (
-                  <div key={i} className="flex justify-between items-center p-3 text-sm hover:bg-muted/30 transition-colors">
-                    <div>
-                      <div className="font-medium">{row.description}</div>
-                      <div className="text-xs text-muted-foreground">{row.date}</div>
-                    </div>
-                    <div className={cn("font-mono font-medium", row.amount < 0 ? "text-destructive" : row.amount > 0 ? "text-success" : "text-muted-foreground")}>
-                      {row.amount > 0 ? "+" : ""}{formatRs(row.amount)}
-                    </div>
+                {accountEntriesFor(selected.id).length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Nothing on account — every sale was paid in full.
                   </div>
-                ))}
+                ) : (
+                  accountEntriesFor(selected.id).map((row, i) => (
+                    <div key={i} className="flex justify-between items-center p-3 text-sm hover:bg-muted/30 transition-colors">
+                      <div>
+                        <div className="font-medium">{row.description}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {row.date} · Order total {formatRs(row.orderTotal)}
+                        </div>
+                      </div>
+                      <div className={cn("font-mono font-medium", row.amount < 0 ? "text-destructive" : "text-success")}>
+                        {formatRs(row.amount)}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </DataCard>
 
@@ -209,7 +232,7 @@ function CustomersPage() {
                           <div className="text-xs text-muted-foreground">Processed {o.date ? new Date(o.date).toLocaleDateString() : o.time}</div>
                         </div>
                         <div className="font-mono text-sm font-semibold">
-                          {formatRs(o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0))}
+                          {formatRs(totalsFor(o).total)}
                         </div>
                       </div>
                     ))}
@@ -243,7 +266,7 @@ function CustomersPage() {
 
 function customerColumns(
   ordersFor: (customerId: string) => { lines: { qty: number; unitPrice: number }[] }[],
-  balanceFor: (name: string) => number,
+  balanceFor: (customerId: string) => number,
 ): Column<Customer>[] {
   return [
     { 
@@ -276,7 +299,7 @@ function customerColumns(
       header: "Outstanding Balance",
       align: "right",
       cell: (c) => {
-        const balance = balanceFor(c.name);
+        const balance = balanceFor(c.id);
         return (
           <span className={cn("font-mono font-medium text-sm px-2 py-1 rounded-md bg-muted/30", balance < 0 ? "text-destructive" : "text-success")}>
             {formatRs(Math.abs(balance))}
