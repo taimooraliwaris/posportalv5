@@ -687,20 +687,25 @@ export function PosProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Decide the next active order OUTSIDE the state updater so a double
+      // invocation (StrictMode) can never create two blank orders.
+      const otherOngoing = orders.find(
+        (o) => o.id !== settled.id && (o.status === "ongoing" || o.status === "payment"),
+      );
+      const fresh = otherOngoing
+        ? null
+        : makeOrder(
+            nextOrderNumber(orders, returns),
+            currentUser?.name ?? "",
+            activeSessionId ?? undefined,
+          );
+      setSelectedLineId(null);
+      setActiveOrderId(otherOngoing ? otherOngoing.id : fresh!.id);
+      if (fresh) persist(fresh);
+
       mutateOrders((prev) => {
         const updated = prev.map((o) => (o.id === settled.id ? settled : o));
-        const otherOngoing = updated.find(
-          (o) => o.id !== settled.id && (o.status === "ongoing" || o.status === "payment"),
-        );
-        if (otherOngoing) {
-          setActiveOrderId(otherOngoing.id);
-          setSelectedLineId(null);
-          return updated;
-        }
-        const fresh = makeOrder(nextOrderNumber(updated, returns), currentUser?.name ?? "", activeSessionId ?? undefined);
-        setActiveOrderId(fresh.id);
-        setSelectedLineId(null);
-        persist(fresh);
+        if (!fresh || updated.some((o) => o.id === fresh.id)) return updated;
         return [fresh, ...updated];
       }, [settled.id]);
     },
