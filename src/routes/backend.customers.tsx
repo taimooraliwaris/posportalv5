@@ -232,7 +232,7 @@ function CustomersPage() {
                           <div className="text-xs text-muted-foreground">Processed {o.date ? new Date(o.date).toLocaleDateString() : o.time}</div>
                         </div>
                         <div className="font-mono text-sm font-semibold">
-                          {formatRs(o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0))}
+                          {formatRs(totalsFor(o).total)}
                         </div>
                       </div>
                     ))}
@@ -266,7 +266,7 @@ function CustomersPage() {
 
 function customerColumns(
   ordersFor: (customerId: string) => { lines: { qty: number; unitPrice: number }[] }[],
-  balanceFor: (name: string) => number,
+  balanceFor: (customerId: string) => number,
 ): Column<Customer>[] {
   return [
     { 
@@ -299,7 +299,7 @@ function customerColumns(
       header: "Outstanding Balance",
       align: "right",
       cell: (c) => {
-        const balance = balanceFor(c.name);
+        const balance = balanceFor(c.id);
         return (
           <span className={cn("font-mono font-medium text-sm px-2 py-1 rounded-md bg-muted/30", balance < 0 ? "text-destructive" : "text-success")}>
             {formatRs(Math.abs(balance))}
