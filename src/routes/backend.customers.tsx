@@ -56,8 +56,24 @@ function CustomersPage() {
     );
   });
 
-  // Mock ledger balance based on string length to remain deterministic
-  const balanceFor = (name: string) => [0, -4200, 1500, -18750][name.length % 4] ?? 0;
+  // Real ledger: every amount a customer put on account (unpaid credit) counts
+  // against them; anything else they tendered (cash / card) is already settled.
+  const accountEntriesFor = (customerId: string) =>
+    orders
+      .filter((o) => o.customerId === customerId && o.status === "paid")
+      .flatMap((o) =>
+        (o.payments ?? [])
+          .filter((p) => p.method === "Customer Account")
+          .map((p) => ({
+            date: o.date ? formatDmy(o.date) : o.time,
+            description: `Invoice ${o.receipt || o.number} — on account`,
+            amount: -p.amount,
+            orderTotal: totalsFor(o).total,
+          })),
+      );
+
+  const balanceFor = (customerId: string) =>
+    accountEntriesFor(customerId).reduce((sum, e) => sum + e.amount, 0);
 
   return (
     <BackendLayout title="Customers">
