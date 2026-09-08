@@ -139,6 +139,11 @@ export function ProductForm({ onSaved, onClose, initialBarcode, editProductId }:
   const [manualSize, setManualSize] = useState<string | undefined>(undefined);
   const [manualModel, setManualModel] = useState<string | undefined>(undefined);
   const [manualPly, setManualPly] = useState<string | undefined>(undefined);
+  // New fields
+  const [subCategory, setSubCategory] = useState<string>('');
+  const [reorderPoint, setReorderPoint] = useState<string>('');
+  const [isClaimable, setIsClaimable] = useState<boolean>(false);
+  const [claimTerms, setClaimTerms] = useState<string>('');
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -214,8 +219,9 @@ export function ProductForm({ onSaved, onClose, initialBarcode, editProductId }:
       return;
     }
 
+    const finalItemCode = itemCode || crypto.randomUUID();
     const payload = {
-      item_code: itemCode || null,
+      item_code: finalItemCode,
       name: nameEn,
       name_ur: nameUr || null,
       brand: resolvedBrand || null,
@@ -237,9 +243,13 @@ export function ProductForm({ onSaved, onClose, initialBarcode, editProductId }:
       },
       category: cat.slug,
       category_id: cat.id,
+      subcategory_id: subCategory || null,
+      reorder_point: reorderPoint ? Number(reorderPoint) : null,
+      claimable: isClaimable,
+      claim_terms: isClaimable ? claimTerms : null,
       vehicle_model_id: null,
       is_active: true,
-      barcode: itemCode || null,
+      barcode: finalItemCode,
     };
 
     let savedProductId = loadedProductId;
@@ -415,6 +425,64 @@ export function ProductForm({ onSaved, onClose, initialBarcode, editProductId }:
               ))}
             </select>
           </div>
+          {/* Sub‑Category */}
+          <div>
+            <label className="text-[11px] text-muted-foreground block mb-1">
+              Sub‑Category
+            </label>
+            <select
+              value={subCategory}
+              onChange={(e) => setSubCategory(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+            >
+              <option value="">Select sub‑category</option>
+              {categoryList
+                .filter((c) => c.parent_id === cat.id)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+          {/* Reorder Point */}
+          <div>
+            <label className="text-[11px] text-muted-foreground block mb-1">
+              Reorder Point (stock)
+            </label>
+            <Input
+              type="number"
+              value={reorderPoint}
+              onChange={(e) => setReorderPoint(e.target.value)}
+              className="h-9"
+              placeholder="0"
+            />
+          </div>
+          {/* Claimable */}
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="claimable"
+              checked={isClaimable}
+              onChange={(e) => setIsClaimable(e.target.checked)}
+            />
+            <label htmlFor="claimable" className="text-[11px] text-muted-foreground">
+              Claimable
+            </label>
+          </div>
+          {isClaimable && (
+            <div>
+              <label className="text-[11px] text-muted-foreground block mb-1">
+                Claim Terms
+              </label>
+              <textarea
+                value={claimTerms}
+                onChange={(e) => setClaimTerms(e.target.value)}
+                className="w-full h-20 p-2 border rounded"
+                placeholder="Enter claim terms (default 30 days)"
+              />
+            </div>
+          )}
         </div>
 
         {/* Dynamic Fields & Pricing column */}
