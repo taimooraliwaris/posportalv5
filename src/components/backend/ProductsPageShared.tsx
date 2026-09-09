@@ -187,6 +187,12 @@ export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
                               />
                             </td>
                             <td className="px-4 py-3 align-top text-right">
+                                {(() => {
+                                  const sub = categoryList.find(c => c.id === p.subcategory_id);
+                                  return sub ? sub.name : "-";
+                                })()}
+                              </td>
+                            <td className="px-4 py-3 align-top text-right">
                               <div className="flex justify-end gap-1">
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => { setEditProductId(p.id); setIsAddOpen(true); }}>
                                   <Edit className="w-4 h-4" />
