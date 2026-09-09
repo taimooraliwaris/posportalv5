@@ -140,7 +140,7 @@ export function ProductsPageShared({ categorySlug }: { categorySlug: string }) {
                           <th className="px-4 py-3 font-semibold">Specs</th>
                           <th className="px-4 py-3 font-semibold text-right">Sale Price</th>
                           <th className="px-4 py-3 font-semibold text-right w-[100px]">Stock</th>
-                          <th className="px-4 py-3 font-semibold text-right w-[100px]">Actions</th>
+                          <th className="px-4 py-3 font-semibold w-[120px]">Sub‑Category</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
