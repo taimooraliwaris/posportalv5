@@ -52,6 +52,9 @@ export type CartLine = {
   qty: number;
   unitPrice: number;
   discount: number;
+  reorder_point?: number;
+  claimable?: boolean;
+  claim_terms?: string;
 };
 
 export type PaymentLine = {

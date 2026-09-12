@@ -380,7 +380,7 @@ function Till() {
   );
 }
 
-function CartLineItem({
+export function CartLineItem({
   line,
   selected,
   editingLabel,
@@ -393,6 +393,7 @@ function CartLineItem({
   onClick: () => void;
   onRemove: () => void;
 }) {
+  const product = productList.find(p => p.id === line.productId);
   return (
   <div
     role="button"
@@ -423,6 +424,11 @@ function CartLineItem({
         </div>
         <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
           <span>{formatRs(line.unitPrice)}</span>
+          {line.reorder_point !== undefined && line.stock_qty <= line.reorder_point && (
+            <span className="ml-2 text-xs bg-warning text-warning-foreground px-1 rounded">
+              Low Stock
+            </span>
+          )}
           {line.discount > 0 && <span className="text-success">-{line.discount}%</span>}
         </div>
       </div>
