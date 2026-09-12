@@ -393,7 +393,8 @@ export function CartLineItem({
   onClick: () => void;
   onRemove: () => void;
 }) {
-  const product = productList.find(p => p.id === line.productId);
+// Removed unused product lookup – CartLineItem does not need productList here.
+
   return (
   <div
     role="button"
@@ -424,13 +425,18 @@ export function CartLineItem({
         </div>
         <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
           <span>{formatRs(line.unitPrice)}</span>
-          {line.reorder_point !== undefined && line.stock_qty <= line.reorder_point && (
-            <span className="ml-2 text-xs bg-warning text-warning-foreground px-1 rounded">
-              Low Stock
-            </span>
-          )}
+          {/* Stock alerts */}
+          {line.stock_qty === 0 ? (
+            <span className="ml-2 text-xs bg-destructive text-destructive-foreground px-1 rounded">Out of Stock</span>
+          ) : line.reorder_point !== undefined && line.stock_qty <= line.reorder_point ? (
+            <span className="ml-2 text-xs bg-warning text-warning-foreground px-1 rounded">Low Stock</span>
+          ) : null}
           {line.discount > 0 && <span className="text-success">-{line.discount}%</span>}
         </div>
+        {/* Claim terms */}
+        {line.claimable && line.claim_terms && (
+          <p className="mt-1 text-xs text-muted-foreground">{line.claim_terms}</p>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <span className="font-semibold">
